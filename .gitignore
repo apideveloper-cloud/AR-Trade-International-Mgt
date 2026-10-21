@@ -1,0 +1,20 @@
+# secrets and environment
+.env
+.env.*
+!.env.example
+server/.env
+
+# dependencies and build output
+node_modules/
+client/dist/
+release/
+
+# runtime data: uploads (images, CVs), logs, database exports, local scratch
+server/uploads/
+server/data/
+*.log
+deploy/*.sql
+deploy/*.tar.gz
+pid.txt
+.DS_Store
+Thumbs.db

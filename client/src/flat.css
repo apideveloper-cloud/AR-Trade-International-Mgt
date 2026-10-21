@@ -1,0 +1,61 @@
+/* Flat content blocks: no blurry drop shadows under cards / panels (a 1px border defines the edge).
+   Floating layers — dropdowns, modals, popups, the chat and cart buttons, the sticky buy bar — keep theirs. */
+.pcard, .pcard:hover, .white-card, .sbox, .deal, .mini, .perk, .why, .client, .stat, .stats-g > div,
+.bl-card, .bl-card:hover, .bs-card, .bs-card:hover, .bs, .rv, .rv-form, .pol-sec, .pol-sec:hover, .pol-nav, .pol-toc, .pol-hero, .pol-help,
+.dw-card, .howblock, .howto-hd, .howto-steps > li, .howto-steps > li:hover, .ptabs2, .spec2, .hl, .trust > div, .pd-price, .meter, .buybox,
+.offer-rail a, .offer-rail a:hover, .perks3 > div, .perks3 > div:hover, .svc-details .card, .svc-details .card:hover, .stage, .svc-cover, .bp-cover,
+.bp-cta, .bl-hero, .bl-main .bl-card, .crail .pcard, .rv-sum, .rv-empty, .ac-card, .ac-side, .ac-stat, .cat-link, .cat-card, .brand-card,
+.lbx-stage, .thumbs button, .thumbs button.on, .rail-nav button, .howto-img, .chip2 {
+  box-shadow: none;
+}
+.pcard:hover { box-shadow: 0 0 0 3px oklch(0.62 0.17 258 / .12); }
+.bl-card:hover, .svc-details .card:hover, .offer-rail a:hover { transform: translateY(-3px); }
+/* the rails clip their children: keep a little room so nothing is cut or smudged at the edges */
+.crail-track { padding-bottom: 4px; }
+
+/* sign-in / register modal */
+.login-bg { background: rgba(6,12,28,.62); backdrop-filter: blur(6px); }
+.login { width: min(860px, 100%); border-radius: 28px; box-shadow: 0 40px 90px -30px rgba(6,12,28,.7); animation: loginIn .35s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes loginIn { from { opacity: 0; transform: translateY(16px) scale(.98); } }
+.login .l { background: radial-gradient(120% 100% at 0% 0%, #1d3a7c 0%, #0b1631 62%); padding: 34px 32px; gap: 26px; }
+.login .l .o1 { background: radial-gradient(circle, oklch(0.7 0.15 235) 0%, transparent 70%); opacity: .55; }
+.login .l .o2 { background: radial-gradient(circle, oklch(0.62 0.17 275) 0%, transparent 70%); opacity: .4; }
+.lg-perks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.lg-perks li { display: flex; align-items: center; gap: 12px; padding: 11px 13px; border-radius: 16px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12); backdrop-filter: blur(6px); }
+.lg-perks i { flex: none; width: 36px; height: 36px; border-radius: 11px; display: grid; place-items: center; font-style: normal; font-size: 16px; color: #fff; background: linear-gradient(135deg, oklch(0.68 0.14 236), oklch(0.5 0.16 255)); }
+.lg-perks span { display: flex; flex-direction: column; gap: 1px; }
+.lg-perks b { font-size: 13.5px; color: #fff; }
+.lg-perks small { font-size: 11.5px; color: #aebbdc; }
+.login .r { padding: 34px 36px 28px; gap: 14px; }
+.login .r .x { top: 16px; right: 16px; width: 34px; height: 34px; border-color: #e1e7f1; color: #5d6679; transition: .2s; cursor: pointer; }
+.login .r .x:hover { background: #0b1631; color: #fff; border-color: #0b1631; }
+.ltabs { background: #eef2f9; padding: 5px; width: 100%; max-width: 270px; }
+.ltabs button { flex: 1; padding: 9px 16px; font-size: 13px; cursor: pointer; transition: .2s; }
+.ltabs button.on { color: #0b1631; box-shadow: 0 2px 8px -2px rgba(11,22,49,.25); }
+.llbl { font-size: 11px; letter-spacing: .07em; color: #6b7690; gap: 6px; }
+.llbl input { padding: 13px 14px; font-size: 14.5px; border: 1.5px solid #dde5f1; border-radius: 14px; background: #f7f9fd; transition: .2s; }
+.llbl input:focus { border-color: oklch(0.55 0.16 252); background: #fff; box-shadow: 0 0 0 4px oklch(0.6 0.15 252 / .14); }
+.login .r .btn-dark { padding: 14px !important; font-size: 15px; font-weight: 800; background: linear-gradient(135deg, oklch(0.6 0.15 245), oklch(0.46 0.16 258)); border: 0; transition: .2s; }
+.login .r .btn-dark:hover { filter: brightness(1.1); transform: translateY(-1px); }
+.login .r .btn-ghost { border: 1.5px solid #dde5f1 !important; background: #f7f9fd; color: #0b1631; font-weight: 700; padding: 12px !important; transition: .2s; }
+.login .r .btn-ghost:hover { background: #fff; border-color: oklch(0.6 0.12 250) !important; }
+.login .r .err { background: #fdeceb; color: #b3261e; border-radius: 12px; font-weight: 600; }
+@media (max-width: 700px) { .login .l { display: none; } .login .r { padding: 26px 22px; } }
+
+/* register form: mobile + email on one row, password + confirm on one row */
+.login .r form { gap: 14px !important; }
+.lg-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: start; }
+.lg-row .llbl input { padding: 13px 12px; font-size: 14px; }
+@media (max-width: 480px) { .lg-row { grid-template-columns: 1fr; } }
+
+/* social sign-in */
+.lg-social { display: flex; flex-direction: column; gap: 12px; margin-top: 2px; }
+.lg-or { display: flex; align-items: center; gap: 10px; color: #8a93a8; font-size: 12px; }
+.lg-or::before, .lg-or::after { content: ''; flex: 1; height: 1px; background: #e3e9f3; }
+.lg-sbtns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.lg-sbtns .sbtn, .lg-sbtns .g-slot { height: 46px; border-radius: 999px; display: flex; align-items: center; justify-content: center; gap: 9px; font-size: 14px; font-weight: 700; cursor: pointer; transition: .2s; min-width: 0; }
+.lg-sbtns .sbtn.g { background: #fff; border: 1.5px solid #dde5f1; color: #1f2740; }
+.lg-sbtns .sbtn.g:hover { border-color: #b9c6dd; background: #f7f9fd; }
+.lg-sbtns .sbtn.f { background: #1877f2; border: 0; color: #fff; }
+.lg-sbtns .sbtn.f:hover { filter: brightness(1.08); }
+.lg-sbtns .g-slot { overflow: hidden; }

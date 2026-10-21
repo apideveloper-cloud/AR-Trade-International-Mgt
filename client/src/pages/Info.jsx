@@ -1,0 +1,200 @@
+import { useEffect, useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
+import ProductCard from '../components/ProductCard.jsx';
+import { api, offPct } from '../api.js';
+import { useStore } from '../store.jsx';
+
+const wrap = { maxWidth: 1600, margin: '0 auto', padding: '28px 28px 72px', display: 'flex', flexDirection: 'column', gap: 28 };
+
+export function NotFound() {
+  return (
+    <section style={{ maxWidth: 760, margin: '0 auto', padding: '80px 28px', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 16, alignItems: 'center' }}>
+      <h1 style={{ fontWeight: 800, fontSize: 56, margin: 0 }}>Page not found</h1>
+      <Link to="/" className="btn btn-dark btn-pill" style={{ padding: '14px 24px' }}>Back to home</Link>
+    </section>
+  );
+}
+
+export function About() {
+  const { content } = useStore();
+  const [clientPg, setClientPg] = useState(null);
+  useEffect(() => { api.get('/pages/our-clients').then(setClientPg).catch(() => {}); }, []);
+  const logos = clientPg && clientPg.images.length ? clientPg.images : content.clients.filter(Boolean);
+  return (
+    <section style={{ ...wrap, gap: 56 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%,420px),1fr))', gap: 40, alignItems: 'end' }}>
+        <h1 style={{ fontWeight: 800, fontSize: 'clamp(38px,5vw,68px)', letterSpacing: '-.03em', margin: 0, lineHeight: .95, textWrap: 'balance' }}>Office technology for Bangladesh, since 2011.</h1>
+        <p style={{ margin: 0, fontSize: 17, lineHeight: 1.65, color: '#3d424d' }}>Founded by a group of experienced engineers, AR Trade International set up its head office in Dhaka in 2011 selling computer equipment, printers, photocopiers, toner and cartridges. Today we are a family of 40+ people serving homes, offices, banks, NGOs and government institutions.</p>
+      </div>
+      <div className="stats-g">{content.stats.map(s => <div key={s.t}><b>{s.v}</b><span style={{ fontSize: 14, color: '#5d6270' }}>{s.t}</span></div>)}</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%,420px),1fr))', gap: 20 }}>
+        <div style={{ background: '#16181d', color: '#f6f5f2', borderRadius: 24, padding: 36, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <span className="mono" style={{ fontSize: 12, letterSpacing: '.1em', textTransform: 'uppercase', color: '#a9adb8' }}>Message from the Managing Director</span>
+          <p style={{ margin: 0, fontSize: 18, lineHeight: 1.6 }}>“We treat client satisfaction as our core mission. We develop products and provide services to satisfy the needs of our valued customers — we exist because of their support.”</p>
+          <div style={{ display: 'flex', flexDirection: 'column' }}><b>Md Amir Hossain</b><span style={{ fontSize: 13, color: '#a9adb8' }}>Managing Director</span></div>
+        </div>
+        <div style={{ display: 'grid', gap: 20 }}>
+          <div className="white-card" style={{ gap: 10 }}><span style={{ fontFamily: 'var(--disp)', fontWeight: 700, fontSize: 22 }}>Vision</span><span style={{ fontSize: 15, lineHeight: 1.6, color: '#3d424d' }}>Help businesses and institutions across Bangladesh run on reliable, genuine technology — and grow the skills to use it well.</span></div>
+          <div className="white-card" style={{ gap: 10 }}><span style={{ fontFamily: 'var(--disp)', fontWeight: 700, fontSize: 22 }}>Mission</span><span style={{ fontSize: 15, lineHeight: 1.6, color: '#3d424d' }}>Serve public and private sector customers — production, trade, banks, government and NGOs — with modern technology products and dependable support.</span></div>
+        </div>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <h2 style={{ fontWeight: 800, fontSize: 36, letterSpacing: '-.025em', margin: 0 }}>Why choose us</h2>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(260px,1fr))', gap: 14 }}>
+          {content.whys.map((w, i) => <div className="why" key={w.t}><small>{String(i + 1).padStart(2, '0')}</small><b style={{ fontSize: 18 }}>{w.t}</b><span style={{ fontSize: 14, lineHeight: 1.55, color: '#5d6270' }}>{w.d}</span></div>)}
+        </div>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <h2 style={{ fontWeight: 800, fontSize: 36, letterSpacing: '-.025em', margin: 0 }}>Corporate clients</h2>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(150px,1fr))', gap: 10 }}>
+          {logos.map(c => <div className="client" key={c}><div style={{ backgroundImage: `url('${c}')` }} /></div>)}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export function Contact() {
+  const { site } = useStore();
+  const [sent, setSent] = useState(false);
+  const [err, setErr] = useState('');
+  const submit = async e => {
+    e.preventDefault(); setErr('');
+    try { await api.post('/contact', Object.fromEntries(new FormData(e.target).entries())); setSent(true); } catch (er) { setErr(er.message); }
+  };
+  const box = { background: '#fff', border: '1px solid #e4e2dc', borderRadius: 20, padding: 24, display: 'flex', flexDirection: 'column', gap: 8 };
+  const k = { fontFamily: 'var(--mono)', fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', color: '#5d6270' };
+  return (
+    <section style={wrap}>
+      <h1 style={{ fontWeight: 800, fontSize: 'clamp(36px,4.6vw,60px)', letterSpacing: '-.03em', margin: 0, lineHeight: 1 }}>Talk to us</h1>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(240px,1fr))', gap: 14 }}>
+        <div style={box}><span style={k}>Showroom</span><span style={{ fontWeight: 700, fontSize: 17 }}>{site.address}</span><span style={{ fontSize: 13, color: '#5d6270' }}>Sat–Thu · 10:00–20:00</span></div>
+        <div style={box}><span style={k}>Call / WhatsApp</span><a href="tel:+8801977554401" style={{ fontWeight: 700, fontSize: 17 }}>{site.phone}</a><span style={{ fontSize: 13, color: '#5d6270' }}>bKash · Nagad · Upay: 01929-360846</span></div>
+        <div style={box}><span style={k}>Email</span><a href="mailto:info@artradeinternational.com" style={{ fontWeight: 700, fontSize: 17 }}>{site.email}</a><span style={{ fontSize: 13, color: '#5d6270' }}>artrade46@gmail.com</span></div>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%,420px),1fr))', gap: 20 }}>
+        <div className="white-card" style={{ gap: 14 }}>
+          <span style={{ fontFamily: 'var(--disp)', fontWeight: 700, fontSize: 24 }}>Send a message or request a quote</span>
+          {!sent ? (
+            <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 12 }}>
+                <label className="lbl">Name<input className="field" name="name" required /></label>
+                <label className="lbl">Mobile or email<input className="field" name="contact" required /></label>
+              </div>
+              <label className="lbl">Company (optional)<input className="field" name="company" /></label>
+              <label className="lbl">Message<textarea className="field" name="msg" rows={5} required style={{ resize: 'vertical' }} /></label>
+              {err && <div className="err">{err}</div>}
+              <button className="btn btn-dark btn-pill" style={{ alignSelf: 'flex-start', padding: '14px 26px', fontSize: 15 }}>Send message</button>
+            </form>
+          ) : <span style={{ fontWeight: 700, color: 'oklch(0.42 0.19 258)', fontSize: 16 }}>Thanks — we'll reply within one business day.</span>}
+        </div>
+        <div className="map">
+          <iframe title="AR Trade International — 159 Santinagar, Dhaka-1217" src="https://maps.google.com/maps?q=159%20Santinagar%2C%20Dhaka%201217%2C%20Bangladesh&z=16&output=embed" loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
+          <a href="https://www.google.com/maps/dir/?api=1&destination=159+Santinagar+Dhaka+1217" target="_blank" rel="noreferrer"><img src="/ar-icon-round.png" alt="" /><span><b style={{ fontSize: 13 }}>AR Trade International</b><small>Get directions →</small></span></a>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export function Offers() {
+  const { products, site } = useStore();
+  const items = products.filter(p => p.old && p.price && p.price < p.old).sort((a, b) => offPct(b) - offPct(a));
+  const [shown, setShown] = useState(24);
+  return (
+    <section style={wrap}>
+      <div style={{ background: 'oklch(0.82 0.13 85)', borderRadius: 28, padding: 44, display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <span className="mono" style={{ fontSize: 12, letterSpacing: '.1em', textTransform: 'uppercase' }}>Hot sale · limited time</span>
+        <h1 style={{ fontWeight: 800, fontSize: 'clamp(36px,4.6vw,62px)', letterSpacing: '-.03em', margin: 0, lineHeight: .95, maxWidth: 820, textWrap: 'balance' }}>{site.offerTitle}</h1>
+        <p style={{ margin: 0, fontSize: 16, maxWidth: 560, lineHeight: 1.5 }}>{site.offerSub}</p>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(230px,1fr))', gap: 14 }}>{items.slice(0, shown).map(p => <ProductCard key={p.id} p={p} />)}</div>
+      {items.length > shown && <button className="btn btn-dark btn-pill" style={{ alignSelf: 'center', padding: '13px 28px' }} onClick={() => setShown(n => n + 24)}>Load more offers ({items.length - shown} more)</button>}
+    </section>
+  );
+}
+
+export function Faq() {
+  const { content, tk } = useStore();
+  return (
+    <section style={{ maxWidth: 860, margin: '0 auto', padding: '32px 28px 60px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 22 }}><h1 style={{ fontWeight: 800, fontSize: 'clamp(28px,3.4vw,42px)', letterSpacing: '-.025em', margin: 0, color: '#0b1631' }}>Frequently asked questions</h1><span style={{ color: '#5d6270', fontSize: 15 }}>Ordering, delivery, payment and warranty.</span></div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {content.faqs.map(f => <details className="faq" key={f.q}><summary>{tk(f.q)}</summary><p>{tk(f.a)}</p></details>)}
+      </div>
+    </section>
+  );
+}
+
+const POL_META = {
+  privacy: { icon: '🔒', tone: 250, line: 'How we collect, use and protect your information.' },
+  terms: { icon: '📜', tone: 290, line: 'The rules that apply when you shop with AR Trade.' },
+  returns: { icon: '↺', tone: 150, line: 'Easy returns, free replacement for faulty items and quick refunds.' },
+  shipping: { icon: '🚚', tone: 40, line: 'Where we deliver, how fast and what it costs.' }
+};
+// pulls a short "key fact" (e.g. "7 days", "48 hours") out of a section so it can be shown as a badge
+const FACT = /(\d+(?:\s*[–-]\s*\d+)?\s*(?:working\s+days?|days?|hours?|hrs?|minutes?))/i;
+
+/** Policy pages: hero banner, sticky policy menu, numbered section cards with key-fact badges and a help card. */
+export function Policy() {
+  const { key } = useParams();
+  const { content, tk, site } = useStore();
+  const list = content.policies;
+  const pol = list.find(p => p.k === key) || list.find(p => p.k === 'privacy') || list[0];
+  const meta = POL_META[pol.k] || { icon: '§', tone: 250, line: '' };
+  const secs = pol.secs.map(x => ({ h: tk(x.h), p: tk(x.p), fact: (FACT.exec(tk(x.p)) || [])[1] }));
+  const idx = list.findIndex(p => p.k === pol.k);
+  const next = list[(idx + 1) % list.length];
+  const go = id => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const wa = site && site.whatsapp ? `https://wa.me/${site.whatsapp}?text=${encodeURIComponent('Hi, I have a question about your ' + pol.t)}` : '#';
+
+  return (
+    <section className="pol" style={{ '--tone': meta.tone }} key={pol.k}>
+      <header className="pol-hero">
+        <span className="ic">{meta.icon}</span>
+        <div>
+          <span className="kick">AR Trade · Policies</span>
+          <h1>{pol.t}</h1>
+          <p>{meta.line}</p>
+          <div className="chips"><span>Last updated October 2026</span><span>{secs.length} sections</span><span>Applies to all orders</span></div>
+        </div>
+      </header>
+
+      <div className="pol-layout">
+        <aside className="pol-side">
+          <nav className="pol-nav">
+            <small>All policies</small>
+            {list.map(p => <Link key={p.k} to={'/policy/' + p.k} className={p.k === pol.k ? 'on' : ''}><i>{(POL_META[p.k] || {}).icon || '§'}</i>{p.t}</Link>)}
+          </nav>
+          <nav className="pol-toc">
+            <small>On this page</small>
+            {secs.map((x, i) => <a key={i} href={'#sec-' + i} onClick={e => { e.preventDefault(); go('sec-' + i); }}><b>{i + 1}</b>{x.h}</a>)}
+          </nav>
+        </aside>
+
+        <div className="pol-main">
+          {secs.map((x, i) => (
+            <article key={i} id={'sec-' + i} className="pol-sec" style={{ animationDelay: i * 0.08 + 's' }}>
+              <div className="no">{String(i + 1).padStart(2, '0')}</div>
+              <div className="bd">
+                <h2>{x.h}</h2>
+                {x.fact && <span className="fact">⏱ {x.fact}</span>}
+                <p>{x.p}</p>
+              </div>
+            </article>
+          ))}
+
+          <div className="pol-help">
+            <div><b>Still have a question?</b><span>Our team replies within working hours, usually in a few minutes.</span></div>
+            <div className="act">
+              <a href={'tel:' + String((site && site.phone) || '+8801977554401').replace(/\s/g, '')}>☎ Call us</a>
+              <a href={wa} target="_blank" rel="noreferrer" className="wa">WhatsApp</a>
+              <Link to="/contact">Contact page</Link>
+            </div>
+          </div>
+          <Link to={'/policy/' + next.k} className="pol-next"><span>Next policy</span><b>{next.t} →</b></Link>
+        </div>
+      </div>
+    </section>
+  );
+}

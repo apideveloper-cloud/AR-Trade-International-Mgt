@@ -1,0 +1,17 @@
+{
+  "name": "ar-trade-web-console",
+  "private": true,
+  "scripts": {
+    "install:all": "npm install && npm --prefix server install && npm --prefix client install",
+    "db:setup": "npm --prefix server run db:setup",
+    "dev": "concurrently -n api,web -c blue,green \"npm --prefix server run dev\" \"npm --prefix client run dev\"",
+    "build": "npm --prefix client run build",
+    "start": "npm --prefix server start",
+    "import:site": "npm run import:site --prefix server --",
+    "migrate:wp": "npm run migrate:wp --prefix server --",
+    "db:optimize": "npm run db:optimize --prefix server"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.1"
+  }
+}
