@@ -62,7 +62,7 @@ export default function Header() {
       {site.showPromo && <div className="promo"><div><span>{site.promo}</span><i>◆</i><span>{site.promo}</span><i>◆</i></div></div>}
       <header className="hdr">
         <div className="hdr-top">
-          <Link to="/" className="logo"><img src={LOGO} alt="AR Trade International" /></Link>
+          <Link to="/" className="logo"><img src={LOGO} alt="AR Trade International" onError={e => { e.currentTarget.onerror = null; e.currentTarget.src = "/ar-icon-round.png"; }} /></Link>
           <form className="search" onSubmit={submit}>
             <i />
             <input ref={searchRef} value={q} onChange={e => setQ(e.target.value)} placeholder={content.words[0]} aria-label="Search" />

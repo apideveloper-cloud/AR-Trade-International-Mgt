@@ -10,7 +10,8 @@
     "import:site": "node scripts/import-site.js",
     "db:optimize": "node scripts/optimize-indexes.js",
     "migrate:wp": "node scripts/migrate-wp.js",
-    "db:export": "node scripts/export-sql.js"
+    "db:export": "node scripts/export-sql.js",
+    "assets:localize": "node scripts/localize-assets.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

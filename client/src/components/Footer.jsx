@@ -46,7 +46,7 @@ export default function Footer() {
         </div>
         <div className="foot-grid">
           <div className="col">
-            <Link to="/" style={{ alignSelf: 'flex-start', display: 'flex' }}><img src={LOGO} alt="AR Trade International" style={{ height: 48, width: 'auto' }} /></Link>
+            <Link to="/" style={{ alignSelf: 'flex-start', display: 'flex' }}><img src={LOGO} alt="AR Trade International" style={{ height: 48, width: "auto" }} onError={e => { e.currentTarget.onerror = null; e.currentTarget.src = "/ar-icon-round.png"; }} /></Link>
             <p style={{ margin: 0, fontSize: 14, lineHeight: 1.65, maxWidth: 300 }}>Computers, printers, photocopiers and genuine toner for businesses across Bangladesh, since 2011.</p>
             <div className="socials">{Object.entries(content.social).map(([k, href]) => <SocialIcon key={k} name={k} href={href} />)}</div>
           </div>
