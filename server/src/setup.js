@@ -63,7 +63,7 @@ async function migrate() {
   await pool.query("ALTER TABLE staff MODIFY role ENUM('Super admin','Admin','Delivery rider','Marketing manager','Content writer','Field employee','Manager','Accounts') NOT NULL DEFAULT 'Delivery rider'");
   const [pc] = await pool.query("SELECT COLUMN_NAME c FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'products'");
   const pHave = new Set(pc.map(r => r.c));
-  for (const [c, def] of [['gallery', 'JSON NULL'], ['description', 'MEDIUMTEXT NULL'], ['source_url', "VARCHAR(500) NOT NULL DEFAULT ''"], ['edited', 'TINYINT(1) NOT NULL DEFAULT 0']]) {
+  for (const [c, def] of [['gallery', 'JSON NULL'], ['description', 'MEDIUMTEXT NULL'], ['source_url', "VARCHAR(500) NOT NULL DEFAULT ''"], ['edited', 'TINYINT(1) NOT NULL DEFAULT 0'], ['short_desc', 'TEXT NULL'], ['sku', "VARCHAR(80) NOT NULL DEFAULT ''"], ['tags', 'JSON NULL']]) {
     if (!pHave.has(c)) await pool.query(`ALTER TABLE products ADD COLUMN ${c} ${def}`);
   }
   const [cols] = await pool.query("SELECT COLUMN_NAME c FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'blog_posts'");

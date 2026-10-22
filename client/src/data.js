@@ -1,5 +1,5 @@
 // Static navigation and presentation data copied from the design (AR Trade Store.dc.html)
-export const LOGO = 'https://artradeinternational.com/wp-content/uploads/2019/09/artrade-logo.png';
+export const LOGO = '/api/uploads/site/artrade-logo.png';
 
 export const MEGA = [
   { t: 'Computer', c: 'computer', items: [['Brand PC', 'PC'], ['AR Clone PC', 'Clone'], ['Laptop', 'Laptop'], ['Notebook', 'Notebook'], ['Laptop Tablet', 'Tablet'], ['Monitor', 'Monitor']] },
@@ -24,9 +24,9 @@ export const MENUS = [
   { t: 'Ink', cat: 'ink', path: '/shop/ink' },
   { t: 'Printers', cat: 'printer', path: '/shop/printer' },
   { t: 'Photocopiers', cat: 'copier', path: '/shop/copier' },
-  { t: 'Hot Products', items: [int('Laser Toner', '/shop/toner'), int('Copier Toner', '/shop/copier-toner'), int('New Offer', '/offers')] },
-  { t: 'Our Services', items: [ext('Website Design & Development', 'https://aritfirm.net/static-website/'), ext('Digital Marketing Services', 'https://aritfirm.net/digital-marketing/'), ext('Software Development', 'https://aritsoft.com/'), ext('Domain & Hosting Service', 'https://secure.aritfirm.net')] },
-  { t: 'Blog', path: '/blog', items: [int('All articles', '/blog'), int('Toner guides', '/blog?cat=Toner'), int('Printer guides', '/blog?cat=Printers'), int('Accessories', '/blog?cat=Accessories'), int('Computer & IT', '/blog?cat=Computer')] }
+  { t: 'Hot Products', k: 'hot', items: [int('Laser Toner', '/shop/toner'), int('Copier Toner', '/shop/copier-toner'), int('New Offer', '/offers')] },
+  { t: 'Our Services', k: 'services', items: [ext('Website Design & Development', 'https://aritfirm.net/static-website/'), ext('Digital Marketing Services', 'https://aritfirm.net/digital-marketing/'), ext('Software Development', 'https://aritsoft.com/'), ext('Domain & Hosting Service', 'https://secure.aritfirm.net')] },
+  { t: 'Blog', k: 'blog', path: '/blog', items: [int('All articles', '/blog'), int('Toner guides', '/blog?cat=Toner'), int('Printer guides', '/blog?cat=Printers'), int('Accessories', '/blog?cat=Accessories'), int('Computer & IT', '/blog?cat=Computer')] }
 ];
 
 /** About Us links, shown in the footer instead of the menu bar. */
@@ -34,29 +34,29 @@ export const ABOUT_LINKS = [int('Message from Managing Director', '/about'), int
 
 export const CAT_TINT = { toner: 220, 'copier-toner': 350, ink: 300, printer: 85, copier: 258, computer: 200, scanner: 150, camera: 25, network: 180, parts: 60 };
 export const CAT_FALLBACK = {
-  computer: 'https://images.unsplash.com/photo-1587831990711-23ca6441447b?w=600&q=70&auto=format&fit=crop',
-  scanner: 'https://images.unsplash.com/photo-1612815154858-60aa4c59eaa6?w=600&q=70&auto=format&fit=crop',
-  network: 'https://images.unsplash.com/photo-1606904825846-647eb07f5be2?w=600&q=70&auto=format&fit=crop',
-  parts: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=600&q=70&auto=format&fit=crop',
-  copier: 'https://artradeinternational.com/wp-content/uploads/2018/09/Canon-imageRUNNER-IR2206-Monochrome-A3-Laser-Multifunctional-Photocopier.png',
-  camera: 'https://artradeinternational.com/wp-content/uploads/2019/03/Avtech-AVM-2200.jpg'
+  computer: '/api/uploads/site/category-computer.jpg',
+  scanner: '/api/uploads/site/category-scanner.jpg',
+  network: '/api/uploads/site/category-network.jpg',
+  parts: '/api/uploads/site/category-parts.jpg',
+  copier: '/api/uploads/site/canon-imagerunner-ir2206-monochrome-a3-laser-multifunctional-photocopier.png',
+  camera: '/api/uploads/site/avtech-avm-2200.jpg'
 };
 const PHOTO = ['computer', 'scanner', 'network', 'parts'];
 export const isPhoto = id => PHOTO.includes(id);
 
 export const SVC_IMGS = [
-  'https://artradeinternational.com/wp-content/uploads/2019/07/repair.jpg',
-  'https://artradeinternational.com/wp-content/uploads/2018/12/service4.jpg',
-  'https://artradeinternational.com/wp-content/uploads/2019/07/Printer-Networking.jpg'
+  '/api/uploads/site/repair.jpg',
+  '/api/uploads/site/service4.jpg',
+  '/api/uploads/site/printer-networking.jpg'
 ];
 
 export const PAY = [
   ['COD', 'Cash on delivery', 'Pay when it arrives', ['৳ COD', '11px', 'linear-gradient(135deg,oklch(0.62 0.15 150),oklch(0.5 0.14 155))']],
-  ['bKash', 'bKash', 'Instant wallet payment', ['bKash', '12px', 'linear-gradient(135deg,#e2136e,#c10d5d)']],
-  ['Nagad', 'Nagad', 'Instant wallet payment', ['নগদ', '13px', 'linear-gradient(135deg,#f7941d,#ec1c24)']],
-  ['Rocket', 'Rocket', 'DBBL mobile banking', ['Rocket', '11px', 'linear-gradient(135deg,#8c3494,#5b1f63)']],
+  ['bKash', 'bKash', 'Instant wallet payment', ['bKash', '12px', 'linear-gradient(135deg,#e2136e,#c10d5d)', '/api/uploads/site/pay-bkash.webp']],
+  ['Nagad', 'Nagad', 'Instant wallet payment', ['নগদ', '13px', 'linear-gradient(135deg,#f7941d,#ec1c24)', '/api/uploads/site/pay-nagad.webp']],
+  ['Rocket', 'Rocket', 'DBBL mobile banking', ['Rocket', '11px', 'linear-gradient(135deg,#8c3494,#5b1f63)', '/api/uploads/site/pay-rocket.webp']],
   ['Card', 'Card', 'Visa · Mastercard · Amex', ['VISA', '12px', 'linear-gradient(135deg,#1a1f71,#2b4bb5)']],
-  ['Bank', 'Bank transfer', 'Corporate orders', ['BANK', '11px', 'linear-gradient(135deg,#16213f,#0b1631)']]
+  ['Bank', 'Bank transfer', 'Corporate orders', ['BANK', '11px', 'linear-gradient(135deg,#16213f,#0b1631)', '/api/uploads/site/pay-bank.webp']]
 ];
 export const PAY_HERO = {
   bKash: 'linear-gradient(135deg,oklch(0.62 0.22 350),oklch(0.5 0.2 355))', Nagad: 'linear-gradient(135deg,oklch(0.7 0.19 45),oklch(0.58 0.21 30))',
@@ -64,3 +64,29 @@ export const PAY_HERO = {
 };
 export const PAY_LABEL = { COD: 'Cash on delivery', Bank: 'Bank transfer' };
 export const SLOT_TIMES = ['10am – 1pm', '1pm – 4pm', '4pm – 8pm'];
+
+/** Editable in Admin > Site content. These are the defaults used until an admin saves their own text. */
+export const DEFAULT_ABOUT = {
+  heading: 'Office technology for Bangladesh, since 2011.',
+  intro: 'Founded by a group of experienced engineers, AR Trade International set up its head office in Dhaka in 2011 selling computer equipment, printers, photocopiers, toner and cartridges. Today we are a family of 40+ people serving homes, offices, banks, NGOs and government institutions.',
+  mdMessage: '“We treat client satisfaction as our core mission. We develop products and provide services to satisfy the needs of our valued customers — we exist because of their support.”',
+  mdName: 'Md Amir Hossain', mdTitle: 'Managing Director',
+  vision: 'Help businesses and institutions across Bangladesh run on reliable, genuine technology — and grow the skills to use it well.',
+  mission: 'Serve public and private sector customers — production, trade, banks, government and NGOs — with modern technology products and dependable support.'
+};
+export const DEFAULT_FOOTER = {
+  tagline: 'Computers, printers, photocopiers and genuine toner for businesses across Bangladesh, since 2011.',
+  hours: 'Sat–Thu · 10:00–20:00',
+  mobileBanking: 'bKash · Nagad · Upay: 01929-360846',
+  email2: 'artrade46@gmail.com'
+};
+/** Links in the three text dropdowns of the menu bar and the footer "About us" column. */
+export const DEFAULT_MENUS = {
+  hot: MENUS.find(m => m.t === 'Hot Products').items,
+  services: MENUS.find(m => m.t === 'Our Services').items,
+  blog: MENUS.find(m => m.t === 'Blog').items,
+  about: ABOUT_LINKS
+};
+
+/** Defaults + saved values, where a blank saved value falls back to the default (so an empty field never blanks the page). */
+export const withDefaults = (def, saved) => Object.fromEntries(Object.entries(def).map(([k, v]) => [k, saved && String(saved[k] ?? '').trim() ? saved[k] : v]));

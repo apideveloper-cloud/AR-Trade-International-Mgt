@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { fmt } from '../api.js';
-import { LOGO, MEGA, MENUS } from '../data.js';
+import { MEGA, MENUS } from '../data.js';
+import Brand from './Brand.jsx';
 import { useStore } from '../store.jsx';
 
 const WORDS_HOLD = 'Type a model or part no.…';
@@ -47,6 +48,7 @@ export default function Header() {
   const cur = groups[megaG] || groups[0];
   // dropdowns for the main categories: everything, then the five biggest brands with product counts
   const menus = MENUS.map(m => {
+    if (m.k && content.menus && Array.isArray(content.menus[m.k]) && content.menus[m.k].length) return { ...m, items: content.menus[m.k] };
     if (!m.cat) return m;
     const pr = products.filter(p => p.cat === m.cat);
     const brands = {};
@@ -62,7 +64,7 @@ export default function Header() {
       {site.showPromo && <div className="promo"><div><span>{site.promo}</span><i>◆</i><span>{site.promo}</span><i>◆</i></div></div>}
       <header className="hdr">
         <div className="hdr-top">
-          <Link to="/" className="logo"><img src={LOGO} alt="AR Trade International" onError={e => { e.currentTarget.onerror = null; e.currentTarget.src = "/ar-icon-round.png"; }} /></Link>
+          <Brand size={68} className="logo" />
           <form className="search" onSubmit={submit}>
             <i />
             <input ref={searchRef} value={q} onChange={e => setQ(e.target.value)} placeholder={content.words[0]} aria-label="Search" />
@@ -153,7 +155,7 @@ export default function Header() {
                   <span className="k">Hot sale</span>
                   <span className="t">Original laser toner at reduced prices</span>
                   <span className="d">Cash on delivery in Dhaka. Courier delivery nationwide.</span>
-                  <span className="im"><img src="https://artradeinternational.com/wp-content/uploads/2018/09/hp-79a-black-toner.jpg" alt="" /></span>
+                  <span className="im"><img src="/api/uploads/site/hp-79a-black-toner.jpg" alt="" /></span>
                   <span className="go">See offers →</span>
                 </Link>
               </div>

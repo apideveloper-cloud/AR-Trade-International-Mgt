@@ -8,6 +8,52 @@ import { useStore } from '../store.jsx';
 
 const to = h => String(h || '/').replace(/^#/, '') || '/';
 
+/** Does this picture load? Local paths are assumed fine; remote ones are probed (5 s), so a dead host never leaves a blank slide. */
+function useImgOk(url) {
+  const [ok, setOk] = useState(!url || url.startsWith('/') || url.startsWith('./') ? true : null);
+  useEffect(() => {
+    if (!url || url.startsWith('/') || url.startsWith('./')) { setOk(true); return undefined; }
+    let dead = false;
+    const im = new Image();
+    const t = setTimeout(() => { if (!dead) setOk(false); }, 5000);
+    im.onload = () => { if (!dead) { clearTimeout(t); setOk(true); } };
+    im.onerror = () => { if (!dead) { clearTimeout(t); setOk(false); } };
+    im.src = url;
+    return () => { dead = true; clearTimeout(t); };
+  }, [url]);
+  return ok;
+}
+/** A good local photo for a slide: the best product of the category the slide links to. */
+function useSlidePic(href) {
+  const { products } = useStore();
+  const cat = (String(href || '').match(/\/shop\/([\w-]+)/) || [])[1];
+  const list = products.filter(p => p.img && (!cat || cat === 'all' || p.cat === cat));
+  const score = p => (p.price ? 3 : 0) + (p.popular ? 2 : 0) + (p.old > p.price ? 1 : 0);
+  return (list.sort((a, b) => score(b) - score(a))[0] || products.find(p => p.img) || {}).img || '';
+}
+
+function ImageSlide({ s }) {
+  const src = s.img.startsWith('./') ? s.img.slice(1).replace(/^\/assets\//, '/') : s.img;
+  const ok = useImgOk(src);
+  const pic = useSlidePic(s.href);
+  if (ok === false) {
+    return (
+      <div className="slide-d">
+        <span className="orb" />
+        <div className="col"><span className="tag">AR Trade</span><h1>{s.alt}</h1><p>Original products, cash on delivery across Bangladesh.</p><div className="ctas"><Link to={to(s.href)}>Shop now →</Link></div></div>
+        <div className="pic"><div className="card"><div style={{ backgroundImage: `url('${pic}')` }} /></div></div>
+      </div>
+    );
+  }
+  return <Link to={to(s.href)} className="slide-img" aria-label={s.alt}><div style={{ backgroundImage: ok ? `url('${src}')` : 'none' }} /></Link>;
+}
+
+function PicCard({ s }) {
+  const ok = useImgOk(s.pic);
+  const local = useSlidePic(s.h1);
+  return <div className="card"><div style={{ backgroundImage: `url('${ok === false ? local : s.pic}')` }} /></div>;
+}
+
 function Hero() {
   const { content, tk } = useStore();
   const slides = content.slides.filter(s => s.on !== false);
@@ -30,7 +76,7 @@ function Hero() {
       {slides.map((s, k) => (
         <div key={k} className={'slide' + (k === i ? ' on' : k === prev ? ' was' : '')} aria-hidden={k !== i}>
           {s.type === 'image' ? (
-            <Link to={to(s.href)} className="slide-img" aria-label={s.alt}><div style={{ backgroundImage: `url('${s.img.startsWith('./') ? s.img.slice(1) : s.img}')` }} /></Link>
+            <ImageSlide s={s} />
           ) : (
             <div className="slide-d">
               <span className="orb" /><span className="num">{String(k + 1).padStart(2, '0')}</span>
@@ -41,7 +87,7 @@ function Hero() {
                 <div className="ctas"><Link to={to(s.h1)}>{s.c1} →</Link><Link to={to(s.h2)}>{s.c2}</Link></div>
               </div>
               <div className="pic">
-                <div className="card"><div style={{ backgroundImage: `url('${s.pic}')` }} /></div>
+                <PicCard s={s} />
                 <span className="badge"><small>{s.badgeT}</small><b>{s.badgeV}</b></span>
               </div>
             </div>
@@ -344,11 +390,11 @@ export default function Home() {
           )}
           <div className="mini2">
             <Link to="/shop/copier-toner" className="mini" style={{ background: 'oklch(0.95 0.03 235)', color: '#0b1631' }}>
-              <div className="im"><img src="https://artradeinternational.com/wp-content/uploads/2018/12/Toshiba-5018P-Photocopier-toner.jpg" alt="" /></div>
+              <div className="im"><img src="/api/uploads/site/toshiba-5018p-photocopier-toner.jpg" alt="" /></div>
               <b>Copier toner</b><span style={{ color: '#5d6270' }}>Up to 18% off</span>
             </Link>
             <Link to="/shop/printer" className="mini" style={{ background: '#0b1631', color: '#fff' }}>
-              <div className="im"><img src="https://artradeinternational.com/wp-content/uploads/2024/10/cp1100-01-500x500-1.png" alt="" style={{ transform: 'scale(1.35)' }} /></div>
+              <div className="im"><img src="/api/uploads/site/cp1100-01-500x500-1.png" alt="" style={{ transform: 'scale(1.35)' }} /></div>
               <b>New: Pantum</b><span style={{ color: '#b8c2da' }}>From ৳ 20,000</span>
             </Link>
           </div>

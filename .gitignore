@@ -18,3 +18,4 @@ deploy/*.tar.gz
 pid.txt
 .DS_Store
 Thumbs.db
+uploads.original/

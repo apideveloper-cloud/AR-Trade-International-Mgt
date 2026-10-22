@@ -6,6 +6,7 @@ import { Categories, Products } from './pages/Catalog.jsx';
 import { Careers, Inbox, Marketing, Reviews, Services } from './pages/Engage.jsx';
 import { BlogAdmin } from './pages/BlogAdmin.jsx';
 import { PagesAdmin } from './pages/PagesAdmin.jsx';
+import { ContentAdmin } from './pages/ContentAdmin.jsx';
 import { Customers, Dashboard, Deliveries, Orders } from './pages/Sales.jsx';
 import { Settings, Team } from './pages/System.jsx';
 
@@ -14,10 +15,10 @@ const NAV = [
   ['Overview', [['dashboard', 'Dashboard', '▦', ADMINS]]],
   ['Sales', [['orders', 'Orders', '▤', [...ADMINS, 'Delivery rider']], ['deliveries', 'Deliveries', '⚑', [...ADMINS, 'Delivery rider']], ['customers', 'Customers', '☺', ADMINS]]],
   ['Catalog', [['products', 'Products', '▣', ADMINS], ['categories', 'Categories', '☰', ADMINS]]],
-  ['Engage', [['services', 'Servicing', '✦', ADMINS], ['blog', 'Blog', '✎', [...ADMINS, 'Content writer']], ['pages', 'Site pages', '❏', [...ADMINS, 'Content writer']], ['reviews', 'Reviews', '★', [...ADMINS, 'Marketing manager']], ['inbox', 'Inbox', '✉', [...ADMINS, 'Marketing manager']], ['marketing', 'Marketing', '✺', [...ADMINS, 'Marketing manager']], ['careers', 'Careers', '☷', ADMINS]]],
+  ['Engage', [['services', 'Servicing', '✦', ADMINS], ['blog', 'Blog', '✎', [...ADMINS, 'Content writer']], ['pages', 'Site pages', '❏', [...ADMINS, 'Content writer']], ['content', 'Site content', '▧', [...ADMINS, 'Content writer']], ['reviews', 'Reviews', '★', [...ADMINS, 'Marketing manager']], ['inbox', 'Inbox', '✉', [...ADMINS, 'Marketing manager']], ['marketing', 'Marketing', '✺', [...ADMINS, 'Marketing manager']], ['careers', 'Careers', '☷', ADMINS]]],
   ['System', [['team', 'Team', '☻', ADMINS], ['settings', 'Settings', '⚙', ADMINS]]]
 ];
-const TITLES = { dashboard: 'Dashboard', orders: 'Orders', deliveries: 'Deliveries', customers: 'Customers', products: 'Products', categories: 'Categories', services: 'Service requests', blog: 'Blog articles', pages: 'Servicing, clients & company pages', reviews: 'Product reviews', inbox: 'Inbox', marketing: 'Marketing', careers: 'Careers', team: 'Team & roles', settings: 'Settings' };
+const TITLES = { dashboard: 'Dashboard', orders: 'Orders', deliveries: 'Deliveries', customers: 'Customers', products: 'Products', categories: 'Categories', services: 'Service requests', blog: 'Blog articles', pages: 'Servicing, clients & company pages', content: 'Storefront content (slider, logos, FAQs, policies)', reviews: 'Product reviews', inbox: 'Inbox', marketing: 'Marketing', careers: 'Careers', team: 'Team & roles', settings: 'Settings' };
 
 export function Login({ onDone }) {
   const [mode, setMode] = useState('login');
@@ -45,7 +46,7 @@ export function Login({ onDone }) {
     <div className="adm-login">
       <div className="box">
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'center' }}>
-          <img src="/ar-icon-round.png" alt="" style={{ width: 52, height: 52, borderRadius: '50%', background: '#fff', padding: 2, boxShadow: '0 0 0 6px rgba(255,255,255,.06)' }} />
+          <img src="/api/uploads/site/ar-icon-round.png" alt="" style={{ width: 52, height: 52, borderRadius: '50%', background: '#fff', padding: 2, boxShadow: '0 0 0 6px rgba(255,255,255,.06)' }} />
           <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.15 }}><b style={{ fontSize: 17 }}>AR Trade</b><span className="mono" style={{ fontSize: 11, letterSpacing: '.14em', color: 'oklch(0.78 0.1 230)' }}>ADMIN CONSOLE</span></div>
         </div>
         <div className="card">
@@ -105,7 +106,7 @@ export default function AdminApp() {
   return (
     <div className="adm">
       <aside className="adm-side">
-        <div className="adm-brand"><img src="/ar-icon-round.png" alt="" /><div><b>AR Trade</b><small>Admin console</small></div></div>
+        <div className="adm-brand"><img src="/api/uploads/site/ar-icon-round.png" alt="" /><div><b>AR Trade</b><small>Admin console</small></div></div>
         <nav className="adm-nav">
           {groups.map(([g, items]) => (
             <div key={g} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -132,6 +133,7 @@ export default function AdminApp() {
             <Route path="services" element={<Services />} />
             <Route path="blog" element={<BlogAdmin staff={staff} />} />
             <Route path="pages" element={<PagesAdmin staff={staff} />} />
+            <Route path="content" element={<ContentAdmin />} />
             <Route path="reviews" element={<Reviews />} />
             <Route path="inbox" element={<Inbox />} />
             <Route path="marketing" element={<Marketing />} />

@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
-import { ABOUT_LINKS, LOGO } from '../data.js';
+import { DEFAULT_FOOTER, DEFAULT_MENUS, withDefaults } from '../data.js';
+import Brand from './Brand.jsx';
 import { useStore } from '../store.jsx';
 import { openChat } from './Chat.jsx';
 
@@ -30,13 +31,15 @@ const L = ({ to, children }) => <Link to={to} className="lk">{children}</Link>;
 
 export default function Footer() {
   const { site, content } = useStore();
+  const ft = withDefaults(DEFAULT_FOOTER, content.footer);
+  const aboutLinks = content.menus && content.menus.about && content.menus.about.length ? content.menus.about : DEFAULT_MENUS.about;
   return (
     <footer className="footer">
       <span className="g1" /><span className="g2" />
       <div className="foot-in">
         <div className="foot-cta">
           <div className="l">
-            <img src="/ar-icon-round.png" alt="AR Trade" />
+            <img src="/api/uploads/site/ar-icon-round.png" alt="AR Trade" />
             <div><b>{content.labels.needToner}</b><span style={{ fontSize: 13.5 }}>Order before 2 PM for same-day delivery inside Dhaka.</span></div>
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -46,8 +49,8 @@ export default function Footer() {
         </div>
         <div className="foot-grid">
           <div className="col">
-            <Link to="/" style={{ alignSelf: 'flex-start', display: 'flex' }}><img src={LOGO} alt="AR Trade International" style={{ height: 48, width: "auto" }} onError={e => { e.currentTarget.onerror = null; e.currentTarget.src = "/ar-icon-round.png"; }} /></Link>
-            <p style={{ margin: 0, fontSize: 14, lineHeight: 1.65, maxWidth: 300 }}>Computers, printers, photocopiers and genuine toner for businesses across Bangladesh, since 2011.</p>
+            <Brand size={48} />
+            <p style={{ margin: 0, fontSize: 14, lineHeight: 1.65, maxWidth: 300 }}>{ft.tagline}</p>
             <div className="socials">{Object.entries(content.social).map(([k, href]) => <SocialIcon key={k} name={k} href={href} />)}</div>
           </div>
           <div className="col">
@@ -57,7 +60,7 @@ export default function Footer() {
           </div>
           <div className="col">
             <h5>ABOUT US</h5>
-            {ABOUT_LINKS.map(l => (l.href
+            {aboutLinks.map(l => (l.href
               ? <a key={l.t} href={l.href} target="_blank" rel="noreferrer" className="lk">{l.t} <span style={{ opacity: .6 }}>↗</span></a>
               : <L key={l.t} to={l.to}>{l.t}</L>))}
           </div>
@@ -68,21 +71,20 @@ export default function Footer() {
           <div className="col" style={{ gap: 12, fontSize: 14, lineHeight: 1.5 }}>
             <h5>SHOWROOM</h5>
             <span className="foot-info"><i>⌖</i>{site.address}</span>
-            <span className="foot-info" style={{ color: '#8f9bb8', fontSize: 13 }}><i>◷</i>Sat–Thu · 10:00–20:00</span>
+            <span className="foot-info" style={{ color: '#8f9bb8', fontSize: 13 }}><i>◷</i>{ft.hours}</span>
             <a href="tel:+8801977554401" className="foot-info" style={{ color: '#fff', fontWeight: 700 }}><i>☏</i>{site.phone}</a>
             <a href="mailto:info@artradeinternational.com" className="foot-info"><i>@</i>{site.email}</a>
           </div>
         </div>
         <div className="pay-row">
-          <div><span>WE ACCEPT</span><img src="https://artradeinternational.com/wp-content/uploads/2025/10/bank-account.webp" alt="Payment methods: bKash, Rocket, Nagad, Bank transfer" /></div>
-          <div><span>SHIPPING PARTNERS</span><img src="https://artradeinternational.com/wp-content/uploads/2025/10/Shipping-Partners.webp" alt="Shipping partners: RedX, SA Paribahan, Steadfast, Sundarban" /></div>
+          <div><span>WE ACCEPT</span><img src="/api/uploads/site/bank-account.webp" alt="Payment methods: bKash, Rocket, Nagad, Bank transfer" loading="lazy" /></div>
+          <div><span>SHIPPING PARTNERS</span><img src="/api/uploads/site/shipping-partners.webp" alt="Shipping partners: RedX, SA Paribahan, Steadfast, Sundarban" loading="lazy" /></div>
         </div>
         <div className="foot-bot">
           <span className="copy">© 2011–{new Date().getFullYear()} AR Trade International. All rights reserved.</span>
           <span className="dev-by">Dev By: <b style={{ color: '#fff', fontWeight: 700 }}>Eng. A T M Faruque</b></span>
           <div className="legal">
             <Link to="/policy/privacy">Privacy</Link><Link to="/policy/terms">Terms</Link><Link to="/policy/returns">Returns</Link><Link to="/policy/shipping">Shipping</Link>
-            <a href="https://aritfirm.net/" target="_blank" rel="noreferrer">Developed by AR IT Firm</a>
           </div>
         </div>
       </div>

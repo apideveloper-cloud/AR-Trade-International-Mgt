@@ -95,7 +95,7 @@ export default function Product() {
   const cat = cats.find(c => c.id === p.cat);
   const off = offPct(p);
   const buyable = !!p.price && p.stock > 0;
-  const rows = specs(p);
+  const rows = specs(p).concat(((full && full.specs) || []).filter(x => !specs(p).some(r => r[0].toLowerCase() === x.name.toLowerCase())).map(x => [x.name, x.value]));
   const sib = products.filter(x => x.cat === p.cat);
   const si = Math.max(0, sib.findIndex(x => x.id === p.id));
   const prev = sib[(si - 1 + sib.length) % sib.length], next = sib[(si + 1) % sib.length];
@@ -238,9 +238,9 @@ export default function Product() {
       <div className="pd-lower">
         <div className="pd-left">
         <div className="ptabs2">
-          <div className="bar2">{[...(full && full.description ? [['desc', 'Description']] : []), ['spec', 'Specification'], ['ship', 'Delivery & warranty']].map(([k, l]) => <button key={k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{l}</button>)}</div>
+          <div className="bar2">{[...(full && (full.description || full.short) ? [['desc', 'Description']] : []), ['spec', 'Specification'], ['ship', 'Delivery & warranty']].map(([k, l]) => <button key={k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{l}</button>)}</div>
           <div className="body" key={tab}>
-            {tab === 'desc' && full && <div className="bp-body pd-desc" dangerouslySetInnerHTML={{ __html: full.description }} />}
+            {tab === 'desc' && full && <div className="bp-body pd-desc" dangerouslySetInnerHTML={{ __html: (full.short && !full.description.includes(full.short.slice(0, 40)) ? full.short : '') + full.description }} />}
             {tab === 'spec' && (
               <>
                 <div className="spec2">{rows.map(([k, v]) => <div key={k} className={String(v).length > 34 ? 'wide' : undefined}><i>{SPEC_ICON[k] || '•'}</i><span><small>{k}</small><b>{v}</b></span></div>)}</div>
@@ -296,7 +296,7 @@ export default function Product() {
           <ol className="howto-steps">
             {HOW.map((t, i) => (
               <li key={i} data-n={i + 1} style={{ '--r': `${i * 2 + 1} / span 4` }}>
-                <img src={`/how-step-${i + 1}.png`} alt={`Step ${i + 1}: ${t}`} loading="lazy" />
+                <img src={`/api/uploads/site/how-step-${i + 1}.png`} alt={`Step ${i + 1}: ${t}`} loading="lazy" />
               </li>
             ))}
             <li className="done" style={{ '--r': `${(HOW.length - 1) * 2 + 5}` }}><div className="fin"><i>✓</i><b>অর্ডার সম্পন্ন!</b><span>আমরা ফোন করে কনফার্ম করব এবং দ্রুত ডেলিভারি দেব।</span></div></li>

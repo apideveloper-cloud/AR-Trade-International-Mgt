@@ -23,6 +23,18 @@ export default function Chat() {
     window.addEventListener('ar:openchat', on);
     return () => window.removeEventListener('ar:openchat', on);
   }, [msgs]);
+  // keep the launcher above the footer's "Dev By" bar instead of covering it
+  useEffect(() => {
+    const place = () => {
+      const bar = document.querySelector('.foot-bot');
+      const top = bar ? bar.getBoundingClientRect().top : Infinity;
+      document.documentElement.style.setProperty('--chat-lift', top < window.innerHeight ? Math.round(window.innerHeight - top + 14) + 'px' : '22px');
+    };
+    place();
+    window.addEventListener('scroll', place, { passive: true });
+    window.addEventListener('resize', place);
+    return () => { window.removeEventListener('scroll', place); window.removeEventListener('resize', place); };
+  }, []);
   useEffect(() => { if (open && box.current) box.current.scrollTop = box.current.scrollHeight; }, [msgs, typing, open]);
   useEffect(() => () => clearTimeout(timer.current), []);
 
@@ -53,7 +65,7 @@ export default function Chat() {
   if (!open) {
     return (
       <button className="chat-open" onClick={() => { setOpen(true); setSeen(agentN); }}>
-        <span className="avatar"><img src="/ar-icon-round.png" alt="AR Trade" /></span>
+        <span className="avatar"><img src="/api/uploads/site/ar-icon-round.png" alt="AR Trade" /></span>
         <span className="tx"><b>Chat with us</b><small>Replies in a few minutes</small></span>
         {unread > 0 && <span className="un">{unread}</span>}
       </button>
@@ -63,7 +75,7 @@ export default function Chat() {
     <div className="chat">
       <div className="hd">
         <div className="row">
-          <div className="who"><span className="avatar"><img src="/ar-icon-round.png" alt="AR Trade" /></span><div><b>AR Trade Support</b><small>Online · Sat–Thu, 10:00–20:00</small></div></div>
+          <div className="who"><span className="avatar"><img src="/api/uploads/site/ar-icon-round.png" alt="AR Trade" /></span><div><b>AR Trade Support</b><small>Online · Sat–Thu, 10:00–20:00</small></div></div>
           <button className="min" onClick={() => { setOpen(false); setSeen(agentN); }} title="Minimise">✕</button>
         </div>
         <div className="links">

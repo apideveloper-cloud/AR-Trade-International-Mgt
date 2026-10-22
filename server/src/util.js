@@ -6,6 +6,7 @@ export const parseJson = v => (typeof v === 'string' ? JSON.parse(v) : v);
 /** Wraps an async express handler so thrown errors become JSON responses. */
 export const wrap = fn => (req, res) => fn(req, res).catch(e => {
   if (e.status) return res.status(e.status).json({ error: e.message });
+  if (e.code === 'ER_DATA_TOO_LONG' || e.code === 'ER_WARN_DATA_OUT_OF_RANGE') return res.status(400).json({ error: 'One of the fields is too long or out of range' });
   console.error(e);
   res.status(500).json({ error: 'Server error' });
 });

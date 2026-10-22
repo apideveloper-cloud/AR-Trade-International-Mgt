@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { pool } from './db.js';
 import { digits, fail, parseJson, wrap, checkPassword, readCookie } from './util.js';
 import adminRouter from './admin.js';
+import { mailContact, mailReady } from './mailer.js';
 import accountRouter from './account.js';
 import fieldRouter from './field.js';
 import { hubRouter, liveRouter } from './hub.js';
@@ -101,7 +102,10 @@ app.get('/api/bestsellers', wrap(async (req, res) => {
 app.get('/api/products/:id', wrap(async (req, res) => {
   const [[r]] = await pool.query('SELECT * FROM products WHERE id = ? AND active = 1', [parseInt(req.params.id, 10) || 0]);
   if (!r) throw fail(404, 'Product not found');
-  res.json({ ...productOut(r), description: r.description || '', gallery: parseJson(r.gallery) || [], source: r.source_url || '' });
+  const [imgs] = await pool.query('SELECT path, alt FROM product_images WHERE product_id = ? ORDER BY position', [r.id]);
+  const [specs] = await pool.query('SELECT name, value FROM product_specs WHERE product_id = ? ORDER BY position', [r.id]);
+  res.json({ ...productOut(r), description: r.description || '', short: r.short_desc || '', sku: r.sku || '', tags: parseJson(r.tags) || [], specs,
+    gallery: imgs.length ? imgs.map(x => x.path) : (parseJson(r.gallery) || []), source: r.source_url || '' });
 }));
 
 // servicing details, corporate clients and company pages managed from the admin console
@@ -225,13 +229,14 @@ app.put('/api/auth/me', auth(true), wrap(async (req, res) => {
 // ---------- pricing (mirrors the design's AR.totals) ----------
 async function priceOrder(items, { area, coupon, userId, express, partial }) {
   const s = (await getSettings()).site;
-  const ids = items.map(i => Number(i.id));
+  if (!Array.isArray(items) || items.length > 100) throw fail(400, 'Your cart is empty or too large');
+  const ids = items.map(i => parseInt(i?.id, 10)).filter(Number.isInteger);
   const [rows] = ids.length ? await pool.query('SELECT * FROM products WHERE active = 1 AND id IN (?)', [ids]) : [[]];
   const byId = new Map(rows.map(r => [r.id, r]));
   const mode = PARTIAL.includes(partial) ? partial : 'split';
 
   const lines = items.map(it => {
-    const p = byId.get(Number(it.id));
+    const p = byId.get(parseInt(it?.id, 10));
     const qty = Math.max(1, Math.min(999, parseInt(it.qty, 10) || 1));
     if (!p) throw fail(400, 'A product in your cart is no longer available');
     if (!p.price) throw fail(400, `${p.name} needs a quotation — please contact us`);
@@ -361,7 +366,13 @@ app.post('/api/services', limit('svcreq', 8, 1800000), wrap(async (req, res) => 
 app.post('/api/contact', limit('contact', 8, 1800000), wrap(async (req, res) => {
   const { name, contact, company, msg, subject } = req.body;
   if (!name || !msg) throw fail(400, 'Name and message are required');
+  if (String(name).length > 120 || String(contact || '').length > 160 || String(company || '').length > 160 || String(subject || '').length > 160 || String(msg).length > 5000) throw fail(400, 'One of the fields is too long');
   await pool.query('INSERT INTO messages (name,contact,company,subject,body) VALUES (?,?,?,?,?)', [name, contact || '', company || '', subject || '', msg]);
+  // the message is already saved for the admin inbox; the email is a best-effort notification
+  if (mailReady()) {
+    const shop = (await getSettings()).site?.email;
+    mailContact({ name, contact, company, msg, subject }, shop).catch(e => console.error('contact mail failed:', e.message));
+  }
   res.json({ ok: true });
 }));
 
@@ -487,6 +498,14 @@ if (fs.existsSync(dist)) {
   app.use(express.static(dist));
   app.get(/^(?!\/api).*/, (req, res) => res.sendFile(path.join(dist, 'index.html')));
 }
+
+// last resort: body-parser / routing errors as JSON, never an HTML stack trace
+app.use((err, req, res, next) => {
+  if (res.headersSent) return next(err);
+  const status = err.status || err.statusCode || 500;
+  if (status >= 500) console.error(err);
+  res.status(status).json({ error: status === 400 ? 'Invalid request' : status === 413 ? 'Request is too large' : status >= 500 ? 'Server error' : err.message });
+});
 
 const port = Number(process.env.PORT || 4000);
 app.listen(port, () => console.log(`AR Trade API on http://localhost:${port}`));

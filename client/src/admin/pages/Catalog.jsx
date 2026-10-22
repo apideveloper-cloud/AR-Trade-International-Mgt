@@ -7,6 +7,8 @@ const readFile = f => new Promise((res, rej) => { const r = new FileReader(); r.
 
 function Editor({ product, cats, onClose, onSaved }) {
   const [f, setF] = useState({ ...BLANK, cat: cats[0]?.id || '', ...product });
+  const [specText, setSpecText] = useState('');
+  useEffect(() => { if (product) adm.get(`/products/${product.id}/full`).then(r => setSpecText((r.specs || []).map(s => `${s.name}: ${s.value}`).join('\n'))).catch(() => {}); }, [product]);
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
   const on = k => e => setF(s => ({ ...s, [k]: e.target.value }));
@@ -15,7 +17,12 @@ function Editor({ product, cats, onClose, onSaved }) {
 
   const submit = async e => {
     e.preventDefault(); setErr(''); setBusy(true);
-    try { isNew ? await adm.post('/products', f) : await adm.put('/products/' + product.id, f); onSaved(); onClose(); } catch (er) { setErr(er.message); setBusy(false); }
+    try {
+      const saved = isNew ? await adm.post('/products', f) : await adm.put('/products/' + product.id, f);
+      const specs = specText.split('\n').map(l => { const i = l.indexOf(':'); return i > 0 ? { name: l.slice(0, i), value: l.slice(i + 1) } : null; }).filter(Boolean);
+      if (specs.length || !isNew) await adm.put(`/products/${isNew ? saved.id : product.id}/specs`, { specs });
+      onSaved(); onClose();
+    } catch (er) { setErr(er.message); setBusy(false); }
   };
   // images are uploaded to the server and stored in uploads/products/<category>/ (never inside the database)
   const upload = async e => {
@@ -75,6 +82,7 @@ function Editor({ product, cats, onClose, onSaved }) {
           <label className="a-lbl">Short spec line<input className="a-input" value={f.spec} onChange={on('spec')} placeholder="e.g. 33 ppm · Wi-Fi · Duplex" /></label>
           <label className="a-lbl">Compatible printers<textarea className="a-input" rows={2} value={f.compat || ''} onChange={on('compat')} /></label>
           <label className="a-lbl">Description <small style={{ fontWeight: 500, color: '#8a8f9b' }}>basic HTML allowed · shown on the product page</small><textarea className="a-input" rows={6} value={f.description || ''} onChange={on('description')} placeholder="<p>…</p>" /></label>
+          <label className="a-lbl">Specifications <small style={{ fontWeight: 500, color: '#8a8f9b' }}>one per line: Name: value</small><textarea className="a-input" rows={5} value={specText} onChange={e => setSpecText(e.target.value)} placeholder={'Page yield: 1,500 pages\nColour: Black'} /></label>
           <span style={{ fontSize: 12, color: '#6b7080' }}>Set price to 0 to show “Ask price” on the store.</span>
         </div>
       </div>

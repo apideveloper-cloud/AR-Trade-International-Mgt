@@ -10,7 +10,7 @@ export function printInvoice(o, site) {
   const paid = o.payStatus === 'Paid';
   const qr = 'https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=4&data=' + encodeURIComponent(`AR Trade International | Invoice ${inv} | Order ${o.id} | Total BDT ${o.total} | Verify: artradeinternational.com`);
   const rows = o.items.map((i, k) => `<tr><td><span class=n>${k + 1}</span></td><td class=nm>${esc(i.name)}</td><td class=r>${i.qty}</td><td class=r>${fmt(i.price)}</td><td class=r>${fmt(i.price * i.qty)}</td></tr>`).join('');
-  const logo = new URL('/ar-icon-round.png', location.href).href;
+  const logo = new URL('/api/uploads/site/ar-icon-round.png', location.href).href;
   const html = `<!doctype html><html><head><meta charset=utf-8><title>${inv}</title><style>${CSS}.paid{background:${paid ? '#e8f7ee' : '#fff4e0'};color:${paid ? '#1f8a4c' : '#a86400'}}</style></head><body><div class=pg>
 <div class=hd><div class=brand><img src="${logo}"><div><h1>AR Trade International</h1><div class=s>${esc(site.address)}<br>${esc(site.phone)} · ${esc(site.email)}</div></div></div><div class=meta><span class=tag>${o.vatInvoice ? 'TAX INVOICE · MUSHAK 6.3' : 'INVOICE'}</span><h2>${inv}</h2><div class=s>Order ${o.id}</div></div></div>
 <div class=strip><div><div class=k>Invoice date</div><div class=v>${fmtDate(o.date)}</div></div><div><div class=k>Payment</div><div class=v>${esc(o.payment)}</div></div><div><div class=k>Delivery</div><div class=v>${esc(o.slot || 'Standard')}</div></div><div><div class=k>Status</div><div class="v ${paid ? 'ok' : ''}">${paid ? '● Paid' : '● Payment due'} · ${o.status}</div></div></div>

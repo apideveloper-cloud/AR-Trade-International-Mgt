@@ -727,7 +727,7 @@ img { max-width: 100%; }
 .cmp-bar .x { border: 0; background: rgba(255,255,255,.1); color: #fff; width: 34px; height: 34px; border-radius: 10px; }
 
 /* chat */
-.chat-open { position: fixed; right: 22px; bottom: 22px; z-index: 60; display: flex; align-items: center; gap: 12px; border: 0; background: #0d1220; color: #fff; border-radius: 999px; padding: 7px 20px 7px 7px; box-shadow: 0 18px 40px -14px rgba(13,18,32,.7); animation: pop .4s ease both; }
+.chat-open { position: fixed; right: 22px; bottom: var(--chat-lift, 22px); z-index: 60; display: flex; align-items: center; gap: 12px; border: 0; background: #0d1220; color: #fff; border-radius: 999px; padding: 7px 20px 7px 7px; box-shadow: 0 18px 40px -14px rgba(13,18,32,.7); animation: pop .4s ease both; }
 .chat-open:hover { background: #1d2438; }
 .avatar { position: relative; width: 42px; height: 42px; border-radius: 50%; background: #fff; display: grid; box-shadow: 0 0 0 2px rgba(255,255,255,.15); place-items: center; flex-shrink: 0; }
 .avatar img { width: 36px; height: 36px; border-radius: 50%; object-fit: contain; background: #fff; }
@@ -965,3 +965,14 @@ img { max-width: 100%; }
 .crail-more:hover { background: #fff; border-color: oklch(0.6 0.15 250); color: var(--navy); }
 .crail-track { scrollbar-width: none; padding-bottom: 8px; }
 .crail-track::-webkit-scrollbar { display: none; height: 0; }
+
+/* local wordmark */
+.brand-mark { display: inline-flex; align-items: center; gap: calc(var(--s) * .16); flex-shrink: 0; color: oklch(0.58 0.14 240); text-decoration: none; }
+.brand-mark img { width: var(--s); height: var(--s); border-radius: 50%; display: block; }
+.brand-mark span { font-family: var(--disp); font-weight: 800; letter-spacing: .01em; font-size: calc(var(--s) * .34); line-height: 1; white-space: nowrap; }
+.brand-mark:hover { color: oklch(0.52 0.15 245); }
+.logo.brand-mark img { height: var(--s); width: var(--s); }
+@media (max-width: 760px) { .brand-mark span { display: none; } }
+
+.brand-mark img.wordmark { width: auto; border-radius: 0; }
+@media (max-width: 760px) { .brand-mark img.wordmark { height: calc(var(--s) * .8) !important; } }

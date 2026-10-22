@@ -94,7 +94,7 @@ export function Marketing() {
   const subs = useTable('/subscribers');
   const consents = useTable('/consents', { status: '' });
   const [camps, setCamps] = useState([]);
-  const [msg, setMsg] = useState('');
+  const msg = '';
   const [err, setErr] = useState('');
   const loadCamps = () => mktApi.get('/campaigns').then(setCamps).catch(() => setCamps([]));
   useEffect(() => { loadCamps(); }, []);

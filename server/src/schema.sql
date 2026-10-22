@@ -28,6 +28,9 @@ CREATE TABLE IF NOT EXISTS products (
   extra JSON NULL,
   gallery JSON NULL,
   description MEDIUMTEXT NULL,
+  short_desc TEXT NULL,
+  sku VARCHAR(80) NOT NULL DEFAULT '',
+  tags JSON NULL,
   source_url VARCHAR(500) NOT NULL DEFAULT '',
   edited TINYINT(1) NOT NULL DEFAULT 0,
   KEY idx_cat (category_id),
@@ -441,4 +444,25 @@ CREATE TABLE IF NOT EXISTS password_resets (
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   KEY idx_user (user_id),
   KEY idx_pending (requested, used_at, expires_at)
+);
+
+CREATE TABLE IF NOT EXISTS product_images (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  product_id INT NOT NULL,
+  position TINYINT NOT NULL DEFAULT 0,
+  src_url VARCHAR(500) NOT NULL DEFAULT '',
+  path VARCHAR(500) NOT NULL,
+  alt VARCHAR(255) NOT NULL DEFAULT '',
+  width INT NOT NULL DEFAULT 0,
+  height INT NOT NULL DEFAULT 0,
+  KEY idx_product (product_id, position)
+);
+
+CREATE TABLE IF NOT EXISTS product_specs (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  product_id INT NOT NULL,
+  position TINYINT NOT NULL DEFAULT 0,
+  name VARCHAR(80) NOT NULL,
+  value VARCHAR(500) NOT NULL,
+  KEY idx_product (product_id, position)
 );

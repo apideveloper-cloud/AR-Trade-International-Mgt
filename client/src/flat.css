@@ -59,3 +59,70 @@
 .lg-sbtns .sbtn.f { background: #1877f2; border: 0; color: #fff; }
 .lg-sbtns .sbtn.f:hover { filter: brightness(1.08); }
 .lg-sbtns .g-slot { overflow: hidden; }
+
+/* payment / shipping strips: local text chips (no images from other websites) */
+.chips-row { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.chips-row li { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 999px; font-size: 13px; font-weight: 700; color: #e9eefb; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.14); }
+.chips-row li i { width: 9px; height: 9px; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 30%, transparent); }
+
+/* brand logo strip: flat cards, no drop shadow */
+.brand-logo, .brand-logo:hover { box-shadow: none; }
+.brand-marq { padding: 4px 0; }
+
+/* ---- checkout polish ---- */
+.co .co-top { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 26px; }
+.co .co-top .h1 { margin: 0; }
+.co-steps { display: flex; gap: 6px; font-size: 12.5px; font-weight: 700; }
+.co-steps span { padding: 7px 14px; border-radius: 999px; background: #eef1f7; color: #7a8296; }
+.co-steps .done { background: oklch(0.95 0.05 150); color: oklch(0.42 0.13 150); }
+.co-steps .cur { background: var(--navy, #0b1631); color: #fff; }
+.co .cardbox, .co .cardbox2 { background: #fff; border: 1px solid #e6eaf2; border-radius: 20px; padding: 26px; display: flex; flex-direction: column; gap: 16px; box-shadow: none; transition: border-color .2s; }
+.co .cardbox:focus-within, .co .cardbox2:focus-within { border-color: oklch(0.7 0.1 252); }
+.co-h { display: flex; align-items: center; gap: 14px; padding-bottom: 14px; border-bottom: 1px solid #eef1f6; }
+.co-h i { width: 36px; height: 36px; border-radius: 12px; background: linear-gradient(135deg, oklch(0.6 0.15 250), oklch(0.42 0.16 262)); color: #fff; display: grid; place-items: center; font-style: normal; font-weight: 800; font-family: var(--disp); flex-shrink: 0; }
+.co-h b { display: block; font-family: var(--disp); font-size: 19px; color: #0b1631; line-height: 1.2; }
+.co-h small { color: #7a8296; font-size: 12.5px; }
+.co .lbl { font-size: 12.5px; font-weight: 700; color: #3a4258; display: flex; flex-direction: column; gap: 6px; }
+.co .field, .co .field2 { border: 1.5px solid #dfe4ee; background: #fafbfd; border-radius: 12px; padding: 12px 14px; font-size: 14.5px; outline: 0; transition: border-color .15s, box-shadow .15s, background .15s; width: 100%; box-sizing: border-box; }
+.co .field:focus, .co .field2:focus { border-color: oklch(0.55 0.16 254); background: #fff; box-shadow: 0 0 0 4px oklch(0.6 0.15 250 / .12); }
+.co .opt { text-align: left; border: 1.5px solid #e3e8f2; background: #fff; border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 3px; transition: all .15s; }
+.co .opt:hover { border-color: oklch(0.7 0.1 252); transform: translateY(-1px); }
+.co .opt.on { border-color: oklch(0.5 0.16 254); background: oklch(0.97 0.02 250); box-shadow: 0 0 0 4px oklch(0.6 0.15 250 / .12); }
+.co .opt small { color: #6b7080; font-size: 12px; }
+.co .summary { background: linear-gradient(180deg, #fff, #f8faff); border: 1px solid #dfe6f3; border-radius: 22px; padding: 26px; gap: 14px; }
+.co .sum-t { display: flex; align-items: baseline; justify-content: space-between; font-family: var(--disp); font-weight: 800; font-size: 21px; color: #0b1631; padding-bottom: 12px; border-bottom: 1px solid #e6ebf5; }
+.co .sum-t em { font-style: normal; font-family: inherit; font-size: 12px; font-weight: 700; color: #6b7792; background: #eef2fa; padding: 4px 10px; border-radius: 999px; }
+.co .summary .tot { border-top: 1.5px dashed #d5dcea; }
+.co .summary .tot b:last-child { color: oklch(0.42 0.16 258); }
+.co .summary .btn-blue { padding: 15px; border-radius: 14px; font-size: 15px; font-weight: 800; box-shadow: 0 14px 28px -14px oklch(0.45 0.16 258); }
+.co .trust { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; font-size: 11.5px; font-weight: 700; color: #5d6a85; }
+@media (max-width: 640px) { .co { padding-left: 16px !important; padding-right: 16px !important; } .co .cardbox, .co .cardbox2, .co .summary { padding: 18px; } }
+.co .pay { padding: 16px; gap: 14px; }
+.co .pay .logo2 { width: 64px; height: 44px; font-size: 13px; }
+.co .pay b { white-space: normal; overflow: visible; text-overflow: clip; font-size: 14.5px; line-height: 1.25; }
+.co .pay .logo2.img { background: #fff; border: 1px solid #e6eaf2; box-shadow: none; padding: 4px 6px; box-sizing: border-box; }
+.co .pay .logo2.img img { max-width: 100%; max-height: 100%; object-fit: contain; display: block; }
+/* footer: no blank strip under the legal links (chat button now lifts above the bar) */
+.foot-bot { padding-bottom: 14px !important; }
+@media (max-width: 700px) { .foot-bot { padding-bottom: 14px !important; } }
+.foot-in { padding-bottom: 8px; }
+
+/* login modal: compact */
+.login { width: min(720px, 100%); border-radius: 22px; max-height: calc(100vh - 24px); overflow: auto; }
+.login .l { padding: 22px 22px; gap: 14px; }
+
+
+.lg-perks { gap: 8px; }
+.lg-perks li { padding: 8px 10px; gap: 10px; border-radius: 12px; }
+.lg-perks i { width: 30px; height: 30px; border-radius: 9px; font-size: 14px; }
+.lg-perks b { font-size: 12.5px; }
+.lg-perks small { font-size: 11px; }
+.login .r { padding: 22px 24px 20px; gap: 10px; }
+.login .r .x { top: 10px; right: 10px; width: 28px; height: 28px; }
+.login .r form { gap: 10px !important; }
+.ltabs { max-width: 230px; padding: 4px; }
+.ltabs button { padding: 7px 14px; font-size: 12.5px; }
+.llbl { font-size: 10.5px; gap: 4px; }
+.llbl input, .lg-row .llbl input { padding: 10px 12px; font-size: 13.5px; border-radius: 11px; }
+.login .r .btn-dark { padding: 11px !important; font-size: 14px; }
+.login .r .btn-ghost { padding: 9px !important; font-size: 13px; }

@@ -194,6 +194,19 @@ router.put('/products/:id', guard(ADMINS), wrap(async (req, res) => {
   res.json(prodOut(p));
 }));
 
+router.get('/products/:id/full', guard(ADMINS), wrap(async (req, res) => {
+  const [[p]] = await pool.query('SELECT * FROM products WHERE id = ?', [req.params.id]);
+  if (!p) throw fail(404, 'Product not found');
+  const [specs] = await pool.query('SELECT name, value FROM product_specs WHERE product_id = ? ORDER BY position', [p.id]);
+  res.json({ ...prodOut(p), specs, short: p.short_desc || '', sku: p.sku || '' });
+}));
+router.put('/products/:id/specs', guard(ADMINS), wrap(async (req, res) => {
+  const rows = (Array.isArray(req.body.specs) ? req.body.specs : []).map(s => [String(s.name || '').trim().slice(0, 80), String(s.value || '').trim().slice(0, 500)]).filter(s => s[0] && s[1]).slice(0, 40);
+  await pool.query('DELETE FROM product_specs WHERE product_id = ?', [req.params.id]);
+  for (const [i, [n, v]] of rows.entries()) await pool.query('INSERT INTO product_specs (product_id, position, name, value) VALUES (?,?,?,?)', [req.params.id, i, n, v]);
+  await pool.query('UPDATE products SET edited = 1 WHERE id = ?', [req.params.id]);
+  res.json({ ok: true, count: rows.length });
+}));
 router.post('/products', guard(ADMINS), wrap(async (req, res) => {
   const b = req.body;
   if (!b.name || !b.cat || !b.brand) throw fail(400, 'Name, brand and category are required');
@@ -344,11 +357,11 @@ router.delete('/blog/:id', guard(BLOG), wrap(async (req, res) => {
   res.json({ ok: true });
 }));
 // images for products / blog / servicing / clients / company pages are stored under server/uploads/<folder>/ (folder = section/category)
-const FOLDER = /^(products|blog|services|clients|company)(\/[a-z0-9][a-z0-9-]{0,58}){0,2}$/;
+const FOLDER = /^(products|blog|services|clients|company|site)(\/[a-z0-9][a-z0-9-]{0,58}){0,2}$/;
 router.post('/upload-image', guard([...ADMINS, 'Content writer']), wrap(async (req, res) => {
   const folder = String(req.body.folder || 'blog/general').toLowerCase();
   if (!FOLDER.test(folder)) throw fail(400, 'Unknown upload folder');
-  if (req.staff.role === 'Content writer' && !/^(blog|services|clients|company)(\/|$)/.test(folder)) throw fail(403, 'Your role cannot upload product images');
+  if (req.staff.role === 'Content writer' && !/^(blog|services|clients|company|site)(\/|$)/.test(folder)) throw fail(403, 'Your role cannot upload product images');
   const m = /^data:image\/(png|jpe?g|gif|webp);base64,(.+)$/.exec(String(req.body.data || ''));
   if (!m) throw fail(400, 'Choose a PNG, JPG, GIF or WebP image');
   const buf = Buffer.from(m[2], 'base64');
@@ -404,6 +417,50 @@ router.post('/pages', guard(PAGES), wrap(async (req, res) => {
   res.json({ id: r.insertId, slug });
 }));
 router.delete('/pages/:id', guard(ADMINS), wrap(async (req, res) => { await pool.query('DELETE FROM site_pages WHERE id = ?', [req.params.id]); res.json({ ok: true }); }));
+
+// ---------- storefront content (home slides, brand + client logos, FAQs, policies, labels…) ----------
+const text = (v, max = 400) => String(v ?? '').trim().slice(0, max);
+const url = v => { const u = text(v, 500); if (u && !/^(\/api\/uploads\/|https?:\/\/|\/|#\/|\.\/)/.test(u)) throw fail(400, 'Links must start with / , #/ or https://'); return u; };
+const img = v => { const u = url(v); if (u && !/^(\/api\/uploads\/|https?:\/\/)/.test(u)) throw fail(400, 'Images must be uploaded here or be an https:// link'); return u; };
+const list = (v, max = 60) => { if (!Array.isArray(v)) throw fail(400, 'Expected a list'); return v.slice(0, max); };
+const CONTENT = {
+  slides: v => list(v, 12).map(s => (s.type === 'image'
+    ? { on: s.on !== false, type: 'image', alt: text(s.alt, 160), img: img(s.img), href: url(s.href) || '#/shop/all', ratio: Number(s.ratio) || 2.68 }
+    : { on: s.on !== false, type: 'design', tag: text(s.tag, 120), title: text(s.title, 200), sub: text(s.sub, 400), c1: text(s.c1, 60), h1: url(s.h1), c2: text(s.c2, 60), h2: url(s.h2), pic: img(s.pic), badgeT: text(s.badgeT, 30), badgeV: text(s.badgeV, 30) })),
+  brands: v => list(v, 40).filter(b => text(b.n)).map(b => ({ n: text(b.n, 60), src: img(b.src) })),
+  clients: v => list(v, 80).map(c => img(typeof c === 'string' ? c : c.src)).filter(Boolean),
+  faqs: v => list(v, 40).filter(f => text(f.q)).map(f => ({ q: text(f.q, 300), a: text(f.a, 2000) })),
+  perks: v => list(v, 8).map(p => ({ ic: text(p.ic, 8), t: text(p.t, 80), d: text(p.d, 160), dot: text(p.dot, 60) || 'oklch(0.72 0.13 220)' })),
+  whys: v => list(v, 12).map(w => ({ t: text(w.t, 80), d: text(w.d, 400) })),
+  stats: v => list(v, 8).map(x => ({ v: text(x.v, 20), t: text(x.t, 80) })),
+  words: v => list(v, 20).map(w => text(w, 120)).filter(Boolean),
+  social: v => Object.fromEntries(['facebook', 'instagram', 'linkedin', 'youtube', 'x'].map(k => [k, url(v && v[k])])),
+  labels: v => Object.fromEntries(Object.entries(v || {}).slice(0, 40).map(([k, x]) => [text(k, 40), text(x, 160)])),
+  policies: v => list(v, 8).map(p => ({ k: slugify(p.k || p.t) || 'policy', t: text(p.t, 120), secs: list(p.secs || [], 30).map(x => ({ h: text(x.h, 160), p: text(x.p, 3000) })) })),
+  sections: v => Object.fromEntries(Object.entries(v || {}).slice(0, 20).map(([k, x]) => [text(k, 30), !!x])),
+  slideSecs: v => Math.min(30, Math.max(2, Number(v) || 5.5)),
+  about: v => Object.fromEntries(['heading', 'intro', 'mdMessage', 'mdName', 'mdTitle', 'vision', 'mission'].map(k => [k, text(v && v[k], 2000)])),
+  footer: v => Object.fromEntries(['tagline', 'hours', 'mobileBanking', 'email2'].map(k => [k, text(v && v[k], 300)])),
+  menus: v => Object.fromEntries(['hot', 'services', 'blog', 'about'].map(k => [k, list((v || {})[k] || [], 20).filter(i => text(i.t)).map(i => {
+    const l = url(i.href || i.to);
+    return /^https?:\/\//.test(l) ? { t: text(i.t, 80), href: l, mark: '↗' } : { t: text(i.t, 80), to: l || '/' };
+  })]))
+};
+router.get('/content', guard(PAGES), wrap(async (req, res) => {
+  const [[row]] = await pool.query('SELECT v FROM settings WHERE k = "content"');
+  const c = parseJson(row.v);
+  res.json(Object.fromEntries(Object.keys(CONTENT).map(k => [k, c[k]])));
+}));
+router.put('/content/:section', guard(PAGES), wrap(async (req, res) => {
+  const fn = CONTENT[req.params.section];
+  if (!fn) throw fail(404, 'Unknown content section');
+  const value = fn(req.body.value);
+  const [[row]] = await pool.query('SELECT v FROM settings WHERE k = "content"');
+  const c = parseJson(row.v);
+  c[req.params.section] = value;
+  await pool.query('UPDATE settings SET v = ? WHERE k = "content"', [JSON.stringify(c)]);
+  res.json({ ok: true, value });
+}));
 
 // ---------- product reviews moderation ----------
 router.get('/reviews', guard(MKT), wrap(async (req, res) => {

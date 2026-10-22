@@ -121,15 +121,15 @@ export function LoginModal() {
         <div className="l">
           <span className="o1" /><span className="o2" />
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <img src="/ar-icon-round.png" alt="AR Trade" style={{ width: 42, height: 42, borderRadius: '50%', boxShadow: '0 0 0 3px rgba(255,255,255,.18)' }} />
+            <img src="/api/uploads/site/ar-icon-round.png" alt="AR Trade" style={{ width: 42, height: 42, borderRadius: '50%', boxShadow: '0 0 0 3px rgba(255,255,255,.18)' }} />
             <span style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.15 }}>
               <b style={{ fontFamily: 'var(--disp)', fontSize: 15, color: '#fff' }}>AR Trade International</b>
               <small style={{ fontFamily: 'var(--mono)', fontSize: 10, letterSpacing: '.12em', textTransform: 'uppercase', color: '#9fb3d1' }}>Since 2011 · Dhaka</small>
             </span>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <b style={{ fontFamily: 'var(--disp)', fontSize: 30, letterSpacing: '-.03em', lineHeight: 1 }}>Your AR Trade account.</b>
-            <span style={{ fontSize: 13, lineHeight: 1.5, color: '#c9ccd4' }}>Track deliveries, re-order toner in one tap and follow your servicing requests.</span>
+            <b style={{ fontFamily: 'var(--disp)', fontSize: 24, letterSpacing: '-.03em', lineHeight: 1 }}>Your AR Trade account.</b>
+            <span style={{ fontSize: 12.5, lineHeight: 1.5, color: '#c9ccd4' }}>Track deliveries, re-order toner in one tap and follow your servicing requests.</span>
           </div>
           <ul className="lg-perks"><li><i>৳</i><span><b>5% off online orders</b><small>and 10% on your next one</small></span></li><li><i>⚑</i><span><b>Live order tracking</b><small>from packing to your door</small></span></li><li><i>♡</i><span><b>Saved printer models &amp; wishlist</b><small>re-order toner in one tap</small></span></li></ul>
         </div>
@@ -197,7 +197,7 @@ export function PromoPopup() {
         <div className="promo-card">
           <span className="rays" /><span className="glow" />
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
-            <span className="brandpill"><img src="/ar-icon-round.png" alt="" />AR Trade</span><span className="lt">LIMITED TIME</span>
+            <span className="brandpill"><img src="/api/uploads/site/ar-icon-round.png" alt="" />AR Trade</span><span className="lt">LIMITED TIME</span>
           </div>
           <div style={{ textAlign: 'center', marginTop: 18, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
             <span style={{ fontFamily: 'var(--bn)', fontSize: 20, fontWeight: 600 }}>ধামাকা অফার!</span>
@@ -266,7 +266,7 @@ export function NewsletterPopup() {
       <div className="nl" onClick={e => e.stopPropagation()}>
         <button className="x" onClick={() => setMode(null)} title="Close">×</button>
         <div className="l">
-          <img src="/ar-icon-round.png" alt="AR Trade" style={{ width: 48, height: 48, borderRadius: '50%' }} />
+          <img src="/api/uploads/site/ar-icon-round.png" alt="AR Trade" style={{ width: 48, height: 48, borderRadius: '50%' }} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, position: 'relative' }}>
             <span style={{ fontFamily: 'var(--mono)', fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase', color: 'oklch(0.82 0.1 230)' }}>Welcome offer</span>
             <span style={{ fontFamily: 'var(--disp)', fontWeight: 800, fontSize: 84, lineHeight: .9, letterSpacing: '-.04em' }}>10%<span style={{ fontSize: 30, letterSpacing: 0 }}> off</span></span>
@@ -324,7 +324,7 @@ export function OptInMail() {
           <span>From: AR Trade International &lt;hello@artradeinternational.com&gt;</span><span>To: {email}</span>
         </div>
         <div className="bd"><div className="card">
-          <img src="/ar-icon-round.png" alt="AR Trade" style={{ width: 52, height: 52, borderRadius: '50%' }} />
+          <img src="/api/uploads/site/ar-icon-round.png" alt="AR Trade" style={{ width: 52, height: 52, borderRadius: '50%' }} />
           {!confirmed ? (
             <>
               <span style={{ fontFamily: 'var(--disp)', fontWeight: 800, fontSize: 24, color: '#0b1631' }}>One click to confirm</span>

@@ -122,3 +122,5 @@
   .adm-nav { flex-direction: row; flex-wrap: wrap; overflow: visible; }
   .adm-main { padding: 18px 14px 50px; }
 }
+
+@media (max-width: 900px) { .bw-grid { grid-template-columns: minmax(0, 1fr) !important; } }

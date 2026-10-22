@@ -11,7 +11,12 @@
     "db:optimize": "node scripts/optimize-indexes.js",
     "migrate:wp": "node scripts/migrate-wp.js",
     "db:export": "node scripts/export-sql.js",
-    "assets:localize": "node scripts/localize-assets.js"
+    "assets:localize": "node scripts/localize-assets.js",
+    "images:localize": "node scripts/localize-db-images.js",
+    "assets:move": "node scripts/move-assets.js",
+    "images:optimize": "node scripts/optimize-images.js",
+    "images:clean": "node scripts/clean-fake-images.js",
+    "scrape:products": "node scripts/scrape-products.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -21,6 +26,8 @@
     "express": "^4.21.1",
     "jsonwebtoken": "^9.0.2",
     "mysql2": "^3.11.3",
-    "sanitize-html": "^2.18.1"
+    "nodemailer": "^10.2.1",
+    "sanitize-html": "^2.18.1",
+    "sharp": "^0.35.5"
   }
 }

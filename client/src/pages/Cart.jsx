@@ -65,7 +65,7 @@ export function Cart() {
 const sel = on => 'opt' + (on ? ' on' : '');
 
 export function Checkout() {
-  const { cartLines, user, site, totals, clearCart, setLoginOpen, optIn, say } = useStore();
+  const { cartLines, user, site, totals, clearCart, setLoginOpen, optIn } = useStore();
   const nav = useNavigate();
   const [area, setArea] = useState(user?.area || 'inside');
   const [coupon, setCoupon] = useState('');
@@ -115,14 +115,14 @@ export function Checkout() {
   const zones = [['inside', 'Inside Dhaka', (site.insideFee ? fmt(site.insideFee) : 'Free') + ' · same / next day'], ['suburb', 'Dhaka suburbs', fmt(site.suburbFee) + ' · Savar, Gazipur, Narayanganj'], ['outside', 'Outside Dhaka', fmt(site.outsideFee) + ' · courier, 2–4 days']];
 
   return (
-    <section className="page" style={{ padding: '28px 28px 72px' }}>
+    <section className="page co" style={{ padding: '28px 28px 72px' }}>
       <div className="crumbs"><Link to="/cart">Cart</Link><span>/</span><span>Checkout</span></div>
-      <h1 className="h1" style={{ marginBottom: 24 }}>Checkout</h1>
+      <div className="co-top"><h1 className="h1">Secure checkout</h1><div className="co-steps"><span className="done">Cart</span><span className="cur">Details</span><span>Confirmation</span></div></div>
       <form ref={form} onSubmit={submit} className="cart-body">
         <div style={{ flex: '999 1 520px', display: 'flex', flexDirection: 'column', gap: 18 }}>
           {err && <div className="err">{err}</div>}
           <div className="cardbox">
-            <span style={{ fontFamily: 'var(--disp)', fontWeight: 700, fontSize: 20 }}>1. Contact</span>
+            <div className="co-h"><i>1</i><div><b>Contact</b><small>Who should we call about this order?</small></div></div>
             <div className="two">
               <label className="lbl">Full name<input className="field" name="name" required defaultValue={user?.name} /></label>
               <label className="lbl">Mobile number<input className="field" name="phone" required defaultValue={user?.phone} placeholder="01XXX-XXXXXX" /></label>
@@ -143,7 +143,7 @@ export function Checkout() {
             <div className="note-hold"><i>⏸</i><div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}><b style={{ fontSize: 14, color: '#0b1631' }}>{t.heldN} item(s) need approval before dispatch</b><span style={{ fontSize: 12.5, color: '#56607a', lineHeight: 1.5 }}>High-value machines and special orders are held until our team confirms model, installation and payment. Everything else in your cart ships as normal.</span></div></div>
           )}
           <div className="cardbox2">
-            <span style={{ fontFamily: 'var(--disp)', fontWeight: 700, fontSize: 20, color: '#0b1631' }}>2. Delivery</span>
+            <div className="co-h"><i>2</i><div><b>Delivery</b><small>Choose your area, speed and address</small></div></div>
             <div className="two" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 10 }}>
               {zones.map(([k, tt, d]) => <button type="button" key={k} className={sel(area === k)} onClick={() => { setArea(k); if (k !== 'inside') setExpress(false); }}><span style={{ fontWeight: 700, fontSize: 14 }}>{tt}</span><small>{d}</small></button>)}
             </div>
@@ -168,11 +168,11 @@ export function Checkout() {
             <label className="lbl">Order note (optional)<input className="field2" name="note" placeholder="e.g. Printer model, floor / office name" /></label>
           </div>
           <div className="cardbox2">
-            <span style={{ fontFamily: 'var(--disp)', fontWeight: 700, fontSize: 20, color: '#0b1631' }}>3. Payment</span>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(min(100%,190px),1fr))', gap: 10 }}>
-              {payOpts.map(([k, tt, d, [logo, fs, bg]]) => (
+            <div className="co-h"><i>3</i><div><b>Payment</b><small>Pick how you would like to pay</small></div></div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(min(100%,250px),1fr))', gap: 10 }}>
+              {payOpts.map(([k, tt, d, [logo, fs, bg, img]]) => (
                 <button type="button" key={k} className={'pay' + (pay === k ? ' on' : '')} onClick={() => setPay(k)}>
-                  <span className="logo2" style={{ background: bg, fontSize: fs }}>{logo}</span>
+                  <span className={'logo2' + (img ? ' img' : '')} style={img ? undefined : { background: bg, fontSize: fs }}>{img ? <img src={img} alt={tt} /> : logo}</span>
                   <span style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, flex: 1 }}><b>{tt}</b><small>{d}</small></span>
                   <span className="rad"><i /></span>
                 </button>
@@ -199,7 +199,7 @@ export function Checkout() {
           </div>
         </div>
         <aside className="summary">
-          <span style={{ fontFamily: 'var(--disp)', fontWeight: 700, fontSize: 22 }}>Your order</span>
+          <span className="sum-t">Order summary <em>{t.lines.length} item{t.lines.length > 1 ? 's' : ''}</em></span>
           {t.lines.map(l => (
             <div key={l.id} style={{ display: 'grid', gridTemplateColumns: '48px minmax(0,1fr) auto', gap: 10, alignItems: 'center', fontSize: 13 }}>
               <div style={{ backgroundImage: l.img ? `url('${l.img}')` : 'none', backgroundSize: '118%', backgroundRepeat: 'no-repeat', backgroundPosition: 'center', width: 48, height: 48 }} />
@@ -216,6 +216,7 @@ export function Checkout() {
           <div className="tot"><b style={{ fontFamily: 'inherit', fontSize: 16 }}>Total</b><b>{fmt(t.total)}</b></div>
           <span style={{ fontSize: 12, color: '#6b7080', textAlign: 'right', marginTop: -8 }}>Includes VAT {t.vatPct}% · {fmt(t.vat)}</span>
           <button className="btn btn-blue" disabled={busy}>{busy ? 'Placing order…' : (online ? 'Pay & place order · ' : 'Place order · ') + fmt(t.total)}</button>
+          <div className="trust"><span>🔒 Secure checkout</span><span>🚚 Fast delivery</span><span>✓ Genuine products</span></div>
           <span style={{ fontSize: 12, color: '#5d6270', textAlign: 'center' }}>We will call you on your mobile number to confirm this order.</span>
         </aside>
       </form>

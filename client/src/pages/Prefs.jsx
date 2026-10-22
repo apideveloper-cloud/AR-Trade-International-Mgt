@@ -24,7 +24,7 @@ export default function Prefs() {
     <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: '32px 18px', background: 'radial-gradient(90% 60% at 50% 0%,#dbe6f7 0%,#eef1f6 70%)' }}>
       <div style={{ width: '100%', maxWidth: 520, background: '#fff', borderRadius: 24, boxShadow: '0 30px 70px -40px rgba(11,22,49,.5)', overflow: 'hidden' }}>
         <div style={{ background: '#0b1631', color: '#fff', padding: '22px 26px', display: 'flex', alignItems: 'center', gap: 14 }}>
-          <img src="/ar-icon-round.png" alt="AR Trade" style={{ width: 44, height: 44, borderRadius: '50%' }} />
+          <img src="/api/uploads/site/ar-icon-round.png" alt="AR Trade" style={{ width: 44, height: 44, borderRadius: '50%' }} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}><b style={{ fontFamily: 'var(--disp)', fontSize: 20 }}>Email preferences</b><span style={{ fontSize: 12.5, color: '#a9b6d3' }}>{d?.email || ''}</span></div>
         </div>
         {err && !d && <div style={{ padding: '30px 26px', color: 'oklch(0.5 0.18 25)', fontWeight: 600 }}>{err}</div>}
