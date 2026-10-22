@@ -11,6 +11,7 @@
     "db:optimize": "node scripts/optimize-indexes.js",
     "migrate:wp": "node scripts/migrate-wp.js",
     "db:export": "node scripts/export-sql.js",
+    "db:patch": "node scripts/export-patch.js",
     "assets:localize": "node scripts/localize-assets.js",
     "images:localize": "node scripts/localize-db-images.js",
     "assets:move": "node scripts/move-assets.js",
