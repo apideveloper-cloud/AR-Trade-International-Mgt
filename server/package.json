@@ -17,7 +17,8 @@
     "assets:move": "node scripts/move-assets.js",
     "images:optimize": "node scripts/optimize-images.js",
     "images:clean": "node scripts/clean-fake-images.js",
-    "scrape:products": "node scripts/scrape-products.js"
+    "scrape:products": "node scripts/scrape-products.js",
+    "seo:products": "node scripts/seo-products.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

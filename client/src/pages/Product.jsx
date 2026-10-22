@@ -42,7 +42,14 @@ export default function Product() {
   const p = find(id);
 
   useEffect(() => { setQty(1); setTab('spec'); setZoom(null); setView(0); setBox(false); }, [id]);
-  useEffect(() => { if (p) document.title = `${p.name} | AR Trade International`; return () => { document.title = 'AR Trade International'; }; }, [p]);
+  // title + description + keywords for SPA navigation (crawlers get the same values server-side)
+  useEffect(() => {
+    if (!p) return undefined;
+    document.title = full?.metaTitle || `${p.name} | AR Trade International`;
+    const set = (n, v) => { if (!v) return; let m = document.head.querySelector(`meta[name="${n}"]`); if (!m) { m = document.createElement('meta'); m.name = n; document.head.appendChild(m); } m.content = v; };
+    set('description', full?.metaDesc); set('keywords', full?.metaKeywords);
+    return () => { document.title = 'AR Trade International'; };
+  }, [p, full]);
   // show the sticky buy bar once the main buy box has scrolled out of view
   useEffect(() => {
     const el = buyRef.current;

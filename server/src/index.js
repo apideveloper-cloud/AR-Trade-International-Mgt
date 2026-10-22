@@ -11,6 +11,7 @@ import { pool } from './db.js';
 import { digits, fail, parseJson, wrap, checkPassword, readCookie } from './util.js';
 import adminRouter from './admin.js';
 import { mailContact, mailReady } from './mailer.js';
+import { mountSeo } from './seo.js';
 import accountRouter from './account.js';
 import fieldRouter from './field.js';
 import { hubRouter, liveRouter } from './hub.js';
@@ -66,6 +67,7 @@ const productOut = r => ({
   popular: !!r.popular, isNew: !!r.is_new, featured: !!r.featured, tech: r.tech, color: r.color, yield: r.yield_info,
   part: r.part, compat: r.compat, spec: r.spec, extra: parseJson(r.extra) || []
 });
+const seoOut = r => ({ metaTitle: r.meta_title || '', metaDesc: r.meta_desc || '', metaKeywords: r.meta_keywords || '' });
 const userOut = u => ({ id: u.id, name: u.name, email: u.email, phone: u.phone, address: u.address, area: u.area, role: u.role });
 const sign = u => jwt.sign({ id: u.id, role: u.role }, SECRET, { expiresIn: '30d' });
 /** The customer session lives in an HttpOnly cookie, so page scripts (and any XSS) can never read the token. */
@@ -104,7 +106,7 @@ app.get('/api/products/:id', wrap(async (req, res) => {
   if (!r) throw fail(404, 'Product not found');
   const [imgs] = await pool.query('SELECT path, alt FROM product_images WHERE product_id = ? ORDER BY position', [r.id]);
   const [specs] = await pool.query('SELECT name, value FROM product_specs WHERE product_id = ? ORDER BY position', [r.id]);
-  res.json({ ...productOut(r), description: r.description || '', short: r.short_desc || '', sku: r.sku || '', tags: parseJson(r.tags) || [], specs,
+  res.json({ ...productOut(r), description: r.description || '', short: r.short_desc || '', sku: r.sku || '', tags: parseJson(r.tags) || [], specs, ...seoOut(r),
     gallery: imgs.length ? imgs.map(x => x.path) : (parseJson(r.gallery) || []), source: r.source_url || '' });
 }));
 
@@ -495,8 +497,8 @@ app.use('/api/prefs', prefsRouter);
 // ---------- production: serve the built client ----------
 const dist = path.resolve(here, '../../client/dist');
 if (fs.existsSync(dist)) {
-  app.use(express.static(dist));
-  app.get(/^(?!\/api).*/, (req, res) => res.sendFile(path.join(dist, 'index.html')));
+  app.use(express.static(dist, { index: false }));
+  mountSeo(app, dist); // robots.txt, sitemap.xml and the HTML shell with per-page meta tags
 }
 
 // last resort: body-parser / routing errors as JSON, never an HTML stack trace

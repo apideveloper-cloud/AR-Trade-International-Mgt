@@ -151,9 +151,10 @@ router.delete('/orders/:id', guard(ADMINS), wrap(async (req, res) => {
 const prodOut = r => ({
   id: r.id, cat: r.category_id, brand: r.brand, name: r.name, old: r.old_price, price: r.price, img: r.img, stock: r.stock, popular: !!r.popular,
   isNew: !!r.is_new, featured: !!r.featured, active: !!r.active, tech: r.tech, color: r.color, yield: r.yield_info, part: r.part, compat: r.compat, spec: r.spec,
-  description: r.description || '', gallery: parseJson(r.gallery) || [], source: r.source_url || '', edited: !!r.edited
+  description: r.description || '', gallery: parseJson(r.gallery) || [], source: r.source_url || '', edited: !!r.edited,
+  metaTitle: r.meta_title || '', metaDesc: r.meta_desc || '', metaKeywords: r.meta_keywords || ''
 });
-const PROD_COLS = { cat: 'category_id', brand: 'brand', name: 'name', old: 'old_price', price: 'price', img: 'img', stock: 'stock', popular: 'popular', isNew: 'is_new', featured: 'featured', active: 'active', tech: 'tech', color: 'color', yield: 'yield_info', part: 'part', compat: 'compat', spec: 'spec' };
+const PROD_COLS = { metaTitle: 'meta_title', metaDesc: 'meta_desc', metaKeywords: 'meta_keywords', cat: 'category_id', brand: 'brand', name: 'name', old: 'old_price', price: 'price', img: 'img', stock: 'stock', popular: 'popular', isNew: 'is_new', featured: 'featured', active: 'active', tech: 'tech', color: 'color', yield: 'yield_info', part: 'part', compat: 'compat', spec: 'spec' };
 const BOOL = new Set(['popular', 'isNew', 'featured', 'active']);
 const INT = new Set(['old', 'price', 'stock']);
 
@@ -176,6 +177,7 @@ function productPatch(body) {
     if (!(k in body)) continue;
     let v = body[k];
     if (BOOL.has(k)) v = +!!v; else if (INT.has(k)) v = Math.max(0, parseInt(v, 10) || 0); else v = v == null ? '' : String(v);
+    if (k === 'metaTitle') v = v.slice(0, 160); if (k === 'metaDesc') v = v.slice(0, 320); if (k === 'metaKeywords') v = v.slice(0, 500);
     if (k === 'img' && !v) v = null;
     sets.push(`${col} = ?`); vals.push(v);
   }

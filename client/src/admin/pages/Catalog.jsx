@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { adm, fmtMoney, useTable } from '../adminApi.js';
 import { Empty, Modal, Pager, Switch, Toolbar } from '../ui.jsx';
 
-const BLANK = { name: '', brand: '', cat: '', price: '', old: '', stock: 10, img: '', part: '', tech: '', color: '', yield: '', compat: '', spec: '', description: '', gallery: [] };
+const BLANK = { name: '', brand: '', cat: '', price: '', old: '', stock: 10, img: '', part: '', tech: '', color: '', yield: '', compat: '', spec: '', description: '', gallery: [], metaTitle: '', metaDesc: '', metaKeywords: '' };
 const readFile = f => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(f); });
 
 function Editor({ product, cats, onClose, onSaved }) {
@@ -19,6 +19,7 @@ function Editor({ product, cats, onClose, onSaved }) {
     e.preventDefault(); setErr(''); setBusy(true);
     try {
       const saved = isNew ? await adm.post('/products', f) : await adm.put('/products/' + product.id, f);
+      if (isNew && (f.metaTitle || f.metaDesc || f.metaKeywords)) await adm.put('/products/' + saved.id, { metaTitle: f.metaTitle, metaDesc: f.metaDesc, metaKeywords: f.metaKeywords });
       const specs = specText.split('\n').map(l => { const i = l.indexOf(':'); return i > 0 ? { name: l.slice(0, i), value: l.slice(i + 1) } : null; }).filter(Boolean);
       if (specs.length || !isNew) await adm.put(`/products/${isNew ? saved.id : product.id}/specs`, { specs });
       onSaved(); onClose();
@@ -82,6 +83,15 @@ function Editor({ product, cats, onClose, onSaved }) {
           <label className="a-lbl">Short spec line<input className="a-input" value={f.spec} onChange={on('spec')} placeholder="e.g. 33 ppm · Wi-Fi · Duplex" /></label>
           <label className="a-lbl">Compatible printers<textarea className="a-input" rows={2} value={f.compat || ''} onChange={on('compat')} /></label>
           <label className="a-lbl">Description <small style={{ fontWeight: 500, color: '#8a8f9b' }}>basic HTML allowed · shown on the product page</small><textarea className="a-input" rows={6} value={f.description || ''} onChange={on('description')} placeholder="<p>…</p>" /></label>
+          <div style={{ border: '1px solid #e3e8f2', borderRadius: 14, padding: 14, display: 'flex', flexDirection: 'column', gap: 10, background: '#f9fbff' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
+              <b style={{ fontSize: 13.5 }}>SEO · how this product appears on Google</b>
+              <button type="button" className="a-btn" onClick={() => setF(s => ({ ...s, metaTitle: s.name + ' Price in Bangladesh | AR Trade', metaDesc: `${s.name}. Buy online in Dhaka, Bangladesh. Genuine, fast delivery.`, metaKeywords: [s.name, s.brand && `${s.brand} ${s.part || ''}`.trim(), s.part, `${s.name} price in Bangladesh`, 'AR Trade International'].filter(Boolean).join(', ') }))}>Auto-fill</button>
+            </div>
+            <label className="a-lbl">SEO title <small style={{ fontWeight: 500, color: (f.metaTitle || '').length > 60 ? '#b3261e' : '#8a8f9b' }}>{(f.metaTitle || '').length}/60 recommended</small><input className="a-input" maxLength={160} value={f.metaTitle || ''} onChange={on('metaTitle')} placeholder="Product name + Price in Bangladesh | AR Trade" /></label>
+            <label className="a-lbl">Meta description <small style={{ fontWeight: 500, color: (f.metaDesc || '').length > 160 ? '#b3261e' : '#8a8f9b' }}>{(f.metaDesc || '').length}/160 recommended</small><textarea className="a-input" rows={2} maxLength={320} value={f.metaDesc || ''} onChange={on('metaDesc')} /></label>
+            <label className="a-lbl">SEO keywords <small style={{ fontWeight: 500, color: '#8a8f9b' }}>comma separated, most important first</small><textarea className="a-input" rows={2} maxLength={500} value={f.metaKeywords || ''} onChange={on('metaKeywords')} placeholder="hp 79a toner, hp cf279a, toner price in bangladesh" /></label>
+          </div>
           <label className="a-lbl">Specifications <small style={{ fontWeight: 500, color: '#8a8f9b' }}>one per line: Name: value</small><textarea className="a-input" rows={5} value={specText} onChange={e => setSpecText(e.target.value)} placeholder={'Page yield: 1,500 pages\nColour: Black'} /></label>
           <span style={{ fontSize: 12, color: '#6b7080' }}>Set price to 0 to show “Ask price” on the store.</span>
         </div>
