@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import Social from './Social.jsx';
+import { popupAllowed, popupClose, popupOpen } from '../popupBus.js';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { api, fmt, offPct } from '../api.js';
 import { useStore } from '../store.jsx';
@@ -175,9 +176,14 @@ export function PromoPopup() {
   const [copied, setCopied] = useState(false);
   useEffect(() => {
     if (pathname !== '/') return undefined;
-    const t = setTimeout(() => { try { if (!sessionStorage.getItem('arPromoSeen')) setOpen(true); } catch { setOpen(true); } }, 900);
+    const mode = site.popupMode || 'one';
+    const t = setTimeout(() => {
+      try { if (sessionStorage.getItem('arPromoSeen')) return; } catch { /* storage unavailable */ }
+      if (popupAllowed('promo', mode)) { popupOpen('promo'); setOpen(true); }
+    }, Math.max(0, Number(site.promoDelay ?? 1)) * 1000);
     return () => clearTimeout(t);
-  }, [pathname]);
+  }, [pathname, site.popupMode, site.promoDelay]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (open) return () => popupClose('promo'); return undefined; }, [open]);
   if (!open) return null;
 
   const src = products.filter(p => p.img && p.old && p.price).map(p => ({ p, off: offPct(p) })).sort((a, b) => b.off - a.off);
@@ -224,20 +230,30 @@ export function PromoPopup() {
 export function NewsletterPopup() {
   const { content, optIn, subscribed, optMail, say } = useStore();
   const [mode, setMode] = useState(null);
+  const { site } = useStore();
   const pp = content.popup || { on: true, delay: 30, exit: true };
+  const pmode = site.popupMode || 'one';
+  const delay = Number(site.nlDelay ?? pp.delay ?? 30);
+  const exitOn = site.nlExit ?? pp.exit;
 
   useEffect(() => {
-    if (!pp.on) return undefined;
+    if (!pp.on || pmode === 'off') return undefined;
+    let done = false;
     const show = m => {
-      try { if (sessionStorage.getItem('ar_nl_seen')) return; sessionStorage.setItem('ar_nl_seen', '1'); } catch { /* storage unavailable */ }
+      if (done) return;
+      try { if (sessionStorage.getItem('ar_nl_seen')) { done = true; return; } } catch { /* storage unavailable */ }
       if (subscribed || optMail) return;
-      setMode(m);
+      if (!popupAllowed('newsletter', pmode)) return; // another popup is open (or this visit already had one): never stack
+      try { sessionStorage.setItem('ar_nl_seen', '1'); } catch { /* storage unavailable */ }
+      done = true; popupOpen('newsletter'); setMode(m);
     };
-    const t = setTimeout(() => show('timed'), (pp.delay || 30) * 1000);
-    const out = e => { if (pp.exit && !e.relatedTarget && e.clientY <= 0) show('exit'); };
+    // the timed popup waits politely until nothing else is open
+    let t = setTimeout(function tick() { show('timed'); if (!done) t = setTimeout(tick, 4000); }, Math.max(1, delay) * 1000);
+    const out = e => { if (exitOn && !e.relatedTarget && e.clientY <= 0) show('exit'); };
     document.addEventListener('mouseout', out);
-    return () => { clearTimeout(t); document.removeEventListener('mouseout', out); };
-  }, [pp.on, pp.delay, pp.exit, subscribed, optMail]);
+    return () => { done = true; clearTimeout(t); document.removeEventListener('mouseout', out); };
+  }, [pp.on, pmode, delay, exitOn, subscribed, optMail]);
+  useEffect(() => { if (mode) return () => popupClose('newsletter'); return undefined; }, [mode]);
 
   if (!mode) return null;
   const submit = async e => {

@@ -538,7 +538,12 @@ router.put('/settings', guard(ADMINS), wrap(async (req, res) => {
     payments: b.payments ?? cur.payments, svcPrices: b.svcPrices ?? cur.svcPrices,
     // home page category rows: products per category (1-20) and an on/off switch
     homeRailLimit: 'homeRailLimit' in b ? Math.min(20, Math.max(1, num(b.homeRailLimit))) : (cur.homeRailLimit ?? 20),
-    homeRails: 'homeRails' in b ? !!b.homeRails : (cur.homeRails ?? true)
+    homeRails: 'homeRails' in b ? !!b.homeRails : (cur.homeRails ?? true),
+    // popups: only one is ever open at a time; the admin chooses which ones may show and when
+    popupMode: ['one', 'sequential', 'promo', 'newsletter', 'off'].includes(b.popupMode) ? b.popupMode : (cur.popupMode ?? 'one'),
+    promoDelay: 'promoDelay' in b ? Math.min(120, num(b.promoDelay)) : (cur.promoDelay ?? 1),
+    nlDelay: 'nlDelay' in b ? Math.min(600, Math.max(1, num(b.nlDelay))) : (cur.nlDelay ?? 30),
+    nlExit: 'nlExit' in b ? !!b.nlExit : (cur.nlExit ?? true)
   };
   await pool.query('UPDATE settings SET v = ? WHERE k = "site"', [JSON.stringify(next)]);
   res.json(next);

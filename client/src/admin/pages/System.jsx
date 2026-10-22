@@ -79,6 +79,22 @@ export function Settings() {
         <span style={{ fontSize: 12, color: '#6b7080' }}>Each category shows its best products (with photo, price, popular or discounted first) up to this limit, scrolling round and round.</span>
       </div>
       <div className="a-card">
+        <h3>Popups</h3>
+        <div className="a-fields">
+          <label className="a-lbl">Which popups show<select className="a-input" value={s.popupMode || 'one'} onChange={set('popupMode')}>
+            <option value="one">Only one popup per visit (recommended)</option>
+            <option value="sequential">Both, one after the other (never together)</option>
+            <option value="promo">Mega toner sale popup only</option>
+            <option value="newsletter">Newsletter popup only</option>
+            <option value="off">No popups</option>
+          </select></label>
+          <label className="a-lbl">Sale popup appears after (seconds)<input className="a-input" type="number" min="0" max="120" value={s.promoDelay ?? 1} onChange={set('promoDelay')} /></label>
+          <label className="a-lbl">Newsletter popup appears after (seconds)<input className="a-input" type="number" min="1" max="600" value={s.nlDelay ?? 30} onChange={set('nlDelay')} /></label>
+        </div>
+        <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontWeight: 600 }}><input type="checkbox" checked={s.nlExit !== false} onChange={set('nlExit')} />Newsletter popup also when the visitor is about to leave (exit intent)</label>
+        <span style={{ fontSize: 12, color: '#6b7080' }}>Each popup shows at most once per visit. A popup never opens while another is open.</span>
+      </div>
+      <div className="a-card">
         <h3>Checkout &amp; delivery</h3>
         <div className="a-fields">
           <F k="insideFee" type="number" label="Delivery fee — inside Dhaka (৳)" /><F k="suburbFee" type="number" label="Delivery fee — suburbs (৳)" /><F k="outsideFee" type="number" label="Delivery fee — outside Dhaka (৳)" /><F k="freeOver" type="number" label="Free delivery over (৳)" />
