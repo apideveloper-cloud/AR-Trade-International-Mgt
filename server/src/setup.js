@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { pool } from './db.js';
 import { ensureIndexes } from './indexes.js';
@@ -142,14 +143,19 @@ async function main() {
   }
 
   const [[{ n }]] = await pool.query('SELECT COUNT(*) n FROM users');
-  if (!n) {
+  const PROD = process.env.NODE_ENV === 'production'; // demo logins (known passwords) are never created on the live server
+  if (!n && !PROD) {
     const hash = await bcrypt.hash('demo123', 10);
     await pool.query('INSERT INTO users (name,email,phone,password_hash,address,area) VALUES (?,?,?,?,?,?)',
       ['Shakil Ahmed', 'demo@artrade.com', '01711000000', hash, 'House 12, Road 4, Shantinagar, Dhaka-1217', 'inside']);
   }
 
   const [[{ ns }]] = await pool.query('SELECT COUNT(*) ns FROM staff');
-  if (!ns) {
+  if (!ns && PROD) { // a brand-new live database still needs a first admin: random password, shown once
+    const pass = crypto.randomBytes(9).toString('base64url');
+    await pool.query('INSERT INTO staff (name,email,phone,password_hash,role,status) VALUES (?,?,?,?,"Super admin","Active")', ['AR Admin', 'admin@artradeinternational.com', '01700000000', await bcrypt.hash(pass, 10)]);
+    console.log('\nFIRST ADMIN CREATED  admin@artradeinternational.com  password: ' + pass + '  (change it after the first sign-in)\n');
+  } else if (!ns) {
     const demoStaff = [
       ['AR Admin', 'admin@artradeinternational.com', '01700000000', 'admin123', 'Super admin', '', 4.8, null],
       ['Rafiq Hasan', 'rider@artradeinternational.com', '01711450012', 'rider123', 'Delivery rider', 'Motorbike · DHA-LA 22-4417', 4.9, 'B1'],
@@ -171,11 +177,11 @@ async function main() {
   await seedEmailCenter();
   await seedBlog();
   await ensureIndexes(pool);
-  // demo Content writer account (only created if missing)
-  await pool.query('INSERT IGNORE INTO staff (name,email,phone,password_hash,role,status) VALUES (?,?,?,?,?,"Active")',
+  // demo Content writer account (only created if missing; never on the live server)
+  if (!PROD) await pool.query('INSERT IGNORE INTO staff (name,email,phone,password_hash,role,status) VALUES (?,?,?,?,?,"Active")',
     ['Content Writer', 'writer@artradeinternational.com', '01700000003', await bcrypt.hash('writer123', 10), 'Content writer']);
   // demo mobile-app accounts (only created if missing)
-  for (const [name, email, phone, pass, role] of [
+  if (!PROD) for (const [name, email, phone, pass, role] of [
     ['Alex Field', 'field@artradeinternational.com', '01700000010', 'field123', 'Field employee'],
     ['Rahim Manager', 'manager@artradeinternational.com', '01700000011', 'manager123', 'Manager'],
     ['Karim Accounts', 'accounts@artradeinternational.com', '01700000012', 'accounts123', 'Accounts']
@@ -184,7 +190,7 @@ async function main() {
   }
 
   const [[{ c }]] = await pool.query('SELECT COUNT(*) c FROM products');
-  console.log(`Done. ${AR.CATS.length} categories, ${c} products. Demo login: demo@artrade.com / demo123 · Admin: admin@artradeinternational.com / admin123`);
+  console.log(`Done. ${AR.CATS.length} categories, ${c} products. ${PROD ? '' : 'Demo login: demo@artrade.com / demo123 · Admin: admin@artradeinternational.com / admin123'}`);
   await pool.end();
 }
 

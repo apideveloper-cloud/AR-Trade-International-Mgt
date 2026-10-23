@@ -3,6 +3,9 @@ import nodemailer from 'nodemailer';
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 let tx;
 
+/** Public https URL of the shop (SITE_URL in .env); links inside emails are built from it, never from request headers. */
+export const siteUrl = () => String(process.env.SITE_URL || '').replace(/\/$/, '');
+
 // SMTP is configured in .env (SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM, SMTP_SECURE). Without it nothing is sent.
 export const mailReady = () => !!process.env.SMTP_HOST;
 

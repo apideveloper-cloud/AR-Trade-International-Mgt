@@ -3,6 +3,7 @@ import dns from 'node:dns/promises';
 import { pool } from './db.js';
 import { ADMINS, guard } from './admin.js';
 import { fail, parseJson, wrap } from './util.js';
+import { mailReady, sendMail, siteUrl } from './mailer.js';
 
 const staff = Router();
 const pub = Router();
@@ -28,6 +29,71 @@ const campOut = c => ({
 async function audience(kind) {
   const [subs] = await pool.query('SELECT s.email, p.offers, p.festivals, p.tips, p.refill FROM subscribers s LEFT JOIN mkt_prefs p ON p.email = s.email');
   return subs.filter(r => kind === 'all' || (r[kind] ?? 1));
+}
+
+// ---------- real sending: campaigns and automation steps go out through the SMTP account in .env ----------
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const consentToken = async email => (await pool.query('SELECT token FROM consents WHERE email = ? AND status = "Confirmed" ORDER BY id DESC LIMIT 1', [email]))[0][0]?.token;
+
+/** One marketing email with the unsubscribe / preferences link every message must carry. Returns false when the person has no confirmed consent. */
+async function sendMarketing(email, subject, { headline, body, cta, ctaUrl }) {
+  const token = await consentToken(email);
+  if (!token) return false; // no confirmed opt-in on record: never mail them
+  const prefs = siteUrl() + '/prefs/' + token;
+  const paras = String(body || '').split(/\n+/).filter(Boolean);
+  await sendMail({
+    to: email, subject,
+    text: [headline, '', ...paras, cta && ctaUrl ? `\n${cta}: ${ctaUrl}` : '', '', 'Unsubscribe or change what you receive: ' + prefs].filter(x => x !== undefined).join('\n'),
+    html: `<div style="font-family:Arial,sans-serif;max-width:520px;margin:auto;color:#0b1631"><h2>${esc(headline || subject)}</h2>${paras.map(p => `<p>${esc(p)}</p>`).join('')}${cta && ctaUrl ? `<p><a href="${esc(ctaUrl)}" style="background:#0b1631;color:#fff;padding:12px 22px;border-radius:99px;text-decoration:none">${esc(cta)}</a></p>` : ''}<hr style="border:0;border-top:1px solid #eee"><p style="font-size:12px;color:#777">AR Trade International, Dhaka. <a href="${esc(prefs)}">Unsubscribe or change your preferences</a>.</p></div>`
+  });
+  return true;
+}
+
+async function sendDueCampaigns() {
+  const [due] = await pool.query('SELECT * FROM mkt_campaigns WHERE status = "Scheduled" AND send_at <= NOW() ORDER BY send_at');
+  for (const c of due) {
+    const [claim] = await pool.query('UPDATE mkt_campaigns SET status = "Sent" WHERE id = ? AND status = "Scheduled"', [c.id]);
+    if (!claim.affectedRows) continue;
+    const [[t]] = c.template_id ? await pool.query('SELECT * FROM mkt_templates WHERE id = ?', [c.template_id]) : [[null]];
+    const content = { headline: t?.headline || c.subj_a, body: c.body || t?.body || '', cta: t?.cta, ctaUrl: siteUrl() + '/shop/all' };
+    let sent = 0, i = 0;
+    for (const r of await audience(c.audience)) {
+      const subject = c.subj_b && i++ % 2 ? c.subj_b : c.subj_a; // A/B: every second recipient gets subject B
+      try { if (await sendMarketing(r.email, subject, content)) sent++; } catch (e) { console.error('campaign mail failed:', e.message); }
+      await sleep(150);
+    }
+    await pool.query('UPDATE mkt_campaigns SET sent = ? WHERE id = ?', [sent, c.id]);
+  }
+}
+
+async function sendDueAutomationSteps() {
+  const [due] = await pool.query('SELECT * FROM mkt_outbox WHERE status = "Queued" AND send_at <= NOW() ORDER BY send_at LIMIT 50');
+  for (const m of due) {
+    const [[sub]] = await pool.query('SELECT email FROM subscribers WHERE email = ?', [m.email]);
+    let ok = false;
+    if (sub) {
+      try {
+        ok = await sendMarketing(m.email, m.subject, { headline: m.subject, body: 'Thanks for joining AR Trade International.\nUse code WELCOME10 for 10% off your first order.', cta: 'Start shopping', ctaUrl: siteUrl() + '/shop/all' });
+      } catch (e) { console.error('automation mail failed:', e.message); continue; } // leave it queued and try again next minute
+    }
+    await pool.query('UPDATE mkt_outbox SET status = ? WHERE id = ?', [ok ? 'Sent' : 'Skipped', m.id]);
+    if (ok) await pool.query('UPDATE mkt_automations SET sent = sent + 1 WHERE id = ?', [m.automation_id]);
+    await sleep(150);
+  }
+}
+
+let working = false;
+const tick = async () => {
+  if (working) return;
+  working = true;
+  try { await sendDueCampaigns(); await sendDueAutomationSteps(); } catch (e) { console.error('mail worker:', e.message); } finally { working = false; }
+};
+/** Checks every minute for scheduled campaigns and queued automation steps. Without SMTP + SITE_URL nothing is sent and they simply wait. */
+export function startMailWorker() {
+  if (!mailReady() || !siteUrl()) { console.log('Marketing email is off: set SMTP_HOST and SITE_URL in server/.env. Campaigns and automations wait until then.'); return; }
+  setInterval(tick, 60000).unref();
+  setTimeout(tick, 15000).unref();
 }
 
 /** Called when somebody confirms their subscription: queue the welcome series if it is switched on. */
@@ -91,19 +157,20 @@ staff.post('/campaigns', guard(MKT), wrap(async (req, res) => {
   const [[t]] = tpl ? await pool.query('SELECT * FROM mkt_templates WHERE id = ?', [tpl]) : [[null]];
   const tag = TAGS[tpl] || (t?.kind === 'Health tip' ? 'Health tip' : 'Offer');
   const at = when ? new Date(when) : new Date();
-  const later = at.getTime() > Date.now() + 60000;
   const kind = ['offers', 'festivals', 'tips', 'all'].includes(aud) ? aud : 'offers';
-  const sent = later ? 0 : (await audience(kind)).length;
+  // a campaign is only "Sent" once the mail worker has really sent it; until then it stays Scheduled
   const [r] = await pool.query('INSERT INTO mkt_campaigns (name,tag,template_id,subj_a,subj_b,body,audience,status,send_at,sent) VALUES (?,?,?,?,?,?,?,?,?,?)',
-    [name, tag, tpl || null, subjA, subjB || '', body || null, kind, later ? 'Scheduled' : 'Sent', at.toISOString().slice(0, 19).replace('T', ' '), sent]);
+    [name, tag, tpl || null, subjA, subjB || '', body || null, kind, 'Scheduled', at.toISOString().slice(0, 19).replace('T', ' '), 0]);
   const [[c]] = await pool.query('SELECT * FROM mkt_campaigns WHERE id = ?', [r.insertId]);
   res.json(campOut(c));
 }));
 staff.post('/campaigns/:id/send', guard(MKT), wrap(async (req, res) => {
   const [[c]] = await pool.query('SELECT * FROM mkt_campaigns WHERE id = ?', [req.params.id]);
   if (!c || c.status !== 'Scheduled') throw fail(400, 'Only scheduled campaigns can be sent');
-  await pool.query('UPDATE mkt_campaigns SET status = "Sent", send_at = NOW(), sent = ? WHERE id = ?', [(await audience(c.audience)).length, c.id]);
-  res.json({ ok: true });
+  if (!mailReady() || !siteUrl()) throw fail(409, 'Email sending is not set up yet (SMTP_HOST and SITE_URL in server/.env), so nothing can be sent.');
+  await pool.query('UPDATE mkt_campaigns SET send_at = NOW() WHERE id = ?', [c.id]);
+  tick(); // the worker picks it up now rather than at the next minute
+  res.json({ ok: true, queued: true });
 }));
 staff.delete('/campaigns/:id', guard(MKT), wrap(async (req, res) => {
   await pool.query('DELETE FROM mkt_campaigns WHERE id = ? AND status = "Scheduled"', [req.params.id]);

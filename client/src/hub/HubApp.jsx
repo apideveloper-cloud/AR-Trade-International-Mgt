@@ -130,7 +130,7 @@ function RiderApp({ staff, reload }) {
               <span style={{ background: 'oklch(0.72 0.15 150)', color: '#05230f', fontSize: 11, fontWeight: 800, padding: '4px 10px', borderRadius: 999 }}>● On duty</span>
             </div>
             <div className="kp">{[['Assigned', data.stats.assigned], ['Delivered today', data.stats.doneToday], ['Cash in hand', fmt(data.stats.cash)]].map(([t, v]) => <div key={t}><small>{t}</small><b>{v}</b></div>)}</div>
-            {data.stats.cash > 0 && <button className="hbtn" style={{ background: '#fff', color: '#0b1631', fontSize: 12.5, padding: 9 }} onClick={() => run(() => hub.post(`/riders/${riderId}/deposit`))}>Deposit {fmt(data.stats.cash)} cash at branch</button>}
+            {data.stats.cash > 0 && <div style={{ background: '#fff', color: '#0b1631', fontSize: 12.5, padding: 9, borderRadius: 10, fontWeight: 700, textAlign: 'center' }}>Hand {fmt(data.stats.cash)} to the office — they mark it deposited</div>}
           </div>
           <div className="jobs">
             {err && <div className="a-msg err">{err}</div>}

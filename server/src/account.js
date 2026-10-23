@@ -1,9 +1,8 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
 import { pool } from './db.js';
-import { digits, fail, parseJson, wrap, checkPassword, readCookie } from './util.js';
-import { applyFlow } from './flow.js';
+import { digits, fail, parseJson, wrap, checkPassword, readCustomer, sessionCookie } from './util.js';
+import { cancelOrder } from './flow.js';
 
 const router = Router();
 
@@ -15,14 +14,11 @@ const NOTIF_DEFAULTS = {
 /** Signed-in storefront customer (not staff). */
 const customer = async (req, res, next) => {
   try {
-    let t;
-    try { t = jwt.verify(readCookie(req, 'ar_session') || (req.headers.authorization || '').replace(/^Bearer /, ''), process.env.JWT_SECRET || 'dev-secret'); } catch { throw fail(401, 'Please sign in'); }
-    if (!t.id) throw fail(401, 'Please sign in');
-    const [[u]] = await pool.query('SELECT * FROM users WHERE id = ?', [t.id]);
+    const u = await readCustomer(req);
     if (!u) throw fail(401, 'Please sign in');
     req.user = u;
     next();
-  } catch (e) { res.status(e.status || 500).json({ error: e.message }); }
+  } catch (e) { res.status(e.status || 500).json({ error: e.status ? e.message : 'Server error' }); }
 };
 router.use(customer);
 
@@ -126,9 +122,7 @@ router.post('/orders/:id/cancel', wrap(async (req, res) => {
   const [[o]] = await pool.query('SELECT * FROM orders WHERE id = ? AND user_id = ?', [req.params.id, req.user.id]);
   if (!o) throw fail(404, 'Order not found');
   if (!['Pending', 'Confirmed'].includes(o.status)) throw fail(400, 'This order is already being packed and can no longer be cancelled online. Please call us.');
-  const [items] = await pool.query('SELECT product_id, qty, backorder FROM order_items WHERE order_id = ?', [o.id]);
-  for (const i of items) await pool.query('UPDATE products SET stock = stock + ? WHERE id = ?', [Math.max(0, i.qty - i.backorder), i.product_id]);
-  await applyFlow(o.id, 'Cancelled', 'Cancelled by customer');
+  await cancelOrder(o.id, 'Cancelled by customer');
   res.json({ ok: true });
 }));
 
@@ -164,7 +158,9 @@ router.put('/password', wrap(async (req, res) => {
   const { current, next } = req.body;
   if (!(await bcrypt.compare(current || '', req.user.password_hash))) throw fail(400, 'Current password is wrong');
   checkPassword(next);
-  await pool.query('UPDATE users SET password_hash = ? WHERE id = ?', [await bcrypt.hash(next, 10), req.user.id]);
+  const hash = await bcrypt.hash(next, 10);
+  await pool.query('UPDATE users SET password_hash = ? WHERE id = ?', [hash, req.user.id]);
+  res.append('Set-Cookie', sessionCookie(req, { ...req.user, password_hash: hash })); // every other device is signed out; this one stays in
   res.json({ ok: true });
 }));
 

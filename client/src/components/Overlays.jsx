@@ -290,61 +290,19 @@ export function NewsletterPopup() {
   );
 }
 
-/** The "confirm your email" toast and the demo confirmation email. */
+/** "Check your inbox" toast: the confirmation link itself arrives by email and opens the preferences page. */
 export function OptInMail() {
-  const { optMail, setOptMail, confirmOptIn, say } = useStore();
-  const [copied, setCopied] = useState(false);
+  const { optMail, setOptMail } = useStore();
   if (!optMail) return null;
-  const { email, token, open, confirmed } = optMail;
-  const set = patch => setOptMail(m => ({ ...m, ...patch }));
-  const confirm = async () => { try { await confirmOptIn(); } catch (e) { say(e.message); } };
-
-  if (!open) {
-    if (confirmed) return null;
-    return (
-      <div className="toast-opt">
-        <i>✉</i>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 }}>
-          <b style={{ fontSize: 14, color: '#0b1631' }}>Confirm your email</b>
-          <span style={{ fontSize: 12.5, color: '#56607a', lineHeight: 1.45 }}>We sent a link to <b>{email}</b>. You're subscribed only after you click it.</span>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button className="btn btn-pill" style={{ padding: '7px 13px', fontSize: 12 }} onClick={() => set({ open: true })}>Open email (demo)</button>
-            <button style={{ border: 0, background: 'transparent', color: '#7a8090', fontSize: 12, fontWeight: 700 }} onClick={() => setOptMail(null)}>Later</button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-  const close = () => (confirmed ? setOptMail(null) : set({ open: false }));
   return (
-    <div className="modal-bg" onClick={close}>
-      <div className="mail" onClick={e => e.stopPropagation()}>
-        <div className="hd">
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}><b style={{ fontSize: 14.5, color: '#0b1631' }}>Confirm your subscription to AR Trade</b><button onClick={close} style={{ border: 0, background: 'transparent', fontSize: 18, color: '#56607a' }}>×</button></div>
-          <span>From: AR Trade International &lt;hello@artradeinternational.com&gt;</span><span>To: {email}</span>
+    <div className="toast-opt">
+      <i>✉</i>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 }}>
+        <b style={{ fontSize: 14, color: '#0b1631' }}>Confirm your email</b>
+        <span style={{ fontSize: 12.5, color: '#56607a', lineHeight: 1.45 }}>We sent a link to <b>{optMail.email}</b>. You're subscribed only after you click it.</span>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn btn-pill" style={{ padding: '7px 13px', fontSize: 12 }} onClick={() => setOptMail(null)}>OK</button>
         </div>
-        <div className="bd"><div className="card">
-          <img src="/api/uploads/site/ar-icon-round.png" alt="AR Trade" style={{ width: 52, height: 52, borderRadius: '50%' }} />
-          {!confirmed ? (
-            <>
-              <span style={{ fontFamily: 'var(--disp)', fontWeight: 800, fontSize: 24, color: '#0b1631' }}>One click to confirm</span>
-              <span style={{ fontSize: 14, lineHeight: 1.6, color: '#56607a', maxWidth: 380 }}>Someone (hopefully you) asked to get deals and updates from AR Trade at this address. Confirm and we'll send your 10% welcome code.</span>
-              <button className="btn btn-grad btn-pill" style={{ padding: '13px 26px' }} onClick={confirm}>Yes, subscribe me</button>
-              <span style={{ fontSize: 11.5, color: '#8a8f9b' }}>Didn't request this? Ignore this email — you won't be added.</span>
-            </>
-          ) : (
-            <>
-              <span style={{ fontFamily: 'var(--disp)', fontWeight: 800, fontSize: 24, color: 'oklch(0.42 0.12 150)' }}>✓ You're subscribed</span>
-              <span style={{ fontSize: 14, color: '#56607a' }}>Here's your welcome code — 10% off your first order:</span>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center', border: '2px dashed oklch(0.7 0.1 240)', borderRadius: 14, padding: '8px 8px 8px 18px' }}>
-                <b style={{ fontFamily: 'var(--mono)', fontSize: 20, letterSpacing: '.12em', color: '#0b1631' }}>WELCOME10</b>
-                <button className="btn" style={{ padding: '8px 12px', fontSize: 12 }} onClick={() => { try { navigator.clipboard.writeText('WELCOME10'); } catch { /* clipboard unavailable */ } setCopied(true); }}>{copied ? 'Copied ✓' : 'Copy'}</button>
-              </div>
-              <Link to="/shop/all" onClick={close} style={{ fontSize: 13, fontWeight: 700, color: 'oklch(0.48 0.16 254)' }}>Start shopping →</Link>
-            </>
-          )}
-          <span style={{ fontSize: 11, color: '#8a8f9b', borderTop: '1px solid #eef0f4', paddingTop: 12, width: '100%' }}>Ref {token} · AR Trade International, Dhaka · <Link to={'/prefs/' + token} onClick={close} style={{ color: '#6b7080', textDecoration: 'underline' }}>Unsubscribe</Link> · <Link to={'/prefs/' + token} onClick={close} style={{ color: '#6b7080', textDecoration: 'underline' }}>Manage preferences</Link></span>
-        </div></div>
       </div>
     </div>
   );

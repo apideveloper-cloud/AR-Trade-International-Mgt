@@ -50,7 +50,7 @@ export function StoreProvider({ children }) {
   const [toast, setToast] = useState(null);
   const [cartOpen, setCartOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
-  const [optMail, setOptMail] = useState(null); // { email, token, open, confirmed }
+  const [optMail, setOptMail] = useState(null); // { email } while the "check your inbox" toast is showing
   const [subscribed, setSubscribed] = useState(false);
   const timer = useRef();
 
@@ -93,18 +93,13 @@ export function StoreProvider({ children }) {
   };
   const logout = () => { setToken(null); setUser(null); api.post('/auth/logout').catch(() => {}); };
 
-  /** Starts the double opt-in flow: the (demo) confirmation mail is opened from a toast. */
+  /** Starts the double opt-in flow: the confirmation link is emailed, and the subscription only counts once it is clicked. */
   const optIn = async (email, source) => {
     const r = await api.post('/optin', { email, source });
     if (r.status === 'Confirmed') { setSubscribed(true); say('You are already subscribed'); return r; }
-    setOptMail({ email: r.email, token: r.token, open: false, confirmed: false });
+    setOptMail({ email: r.email });
     setSubscribed(true);
     return r;
-  };
-  const confirmOptIn = async () => {
-    if (!optMail) return;
-    await api.post('/optin/confirm', { token: optMail.token });
-    setOptMail(m => ({ ...m, confirmed: true }));
   };
 
   const value = {
@@ -113,7 +108,7 @@ export function StoreProvider({ children }) {
     wish, toggleWish, compare, setCompare, toggleCompare,
     user, setUser, login: b => auth('login', b), register: b => auth('register', b), social: b => auth('social', b), logout,
     toast, say, cartOpen, setCartOpen, loginOpen, setLoginOpen,
-    optMail, setOptMail, optIn, confirmOptIn, subscribed,
+    optMail, setOptMail, optIn, subscribed,
     totals: opts => computeTotals(cartLines, data.site, { member: !!user, ...opts }),
     tk: s => tk(s, data?.site || {})
   };

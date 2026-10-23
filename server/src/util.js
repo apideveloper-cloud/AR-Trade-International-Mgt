@@ -1,4 +1,15 @@
 // Small helpers shared by the public and admin API routes
+import crypto from 'node:crypto';
+import jwt from 'jsonwebtoken';
+import { pool } from './db.js';
+
+/** The one place the JWT secret is read. Production never falls back to the dev secret. */
+export const secret = () => {
+  const s = process.env.JWT_SECRET;
+  if (s && (s.length >= 24 || process.env.NODE_ENV !== 'production')) return s;
+  if (process.env.NODE_ENV === 'production') throw new Error('JWT_SECRET must be set to a long random value (24+ characters)');
+  return 'dev-secret';
+};
 export const fail = (status, message) => Object.assign(new Error(message), { status });
 export const digits = s => String(s || '').replace(/\D/g, '');
 export const parseJson = v => (typeof v === 'string' ? JSON.parse(v) : v);
@@ -22,3 +33,37 @@ export const readCookie = (req, name) => {
   const m = String(req.headers.cookie || '').split(';').map(s => s.trim()).find(s => s.startsWith(name + '='));
   return m ? decodeURIComponent(m.slice(name.length + 1)) : '';
 };
+
+/** True for URLs under the private upload folders, however they are spelled (%63v, //cv, /./cv, backslashes, case). */
+export const isPrivateUploadPath = raw => {
+  let p = String(raw || '');
+  for (let i = 0; i < 3; i++) { try { const d = decodeURIComponent(p); if (d === p) break; p = d; } catch { return true; } }
+  p = p.replace(/[\\\u0000]/g, m => (m === '\\' ? '/' : ''));
+  const segs = [];
+  for (const s of p.split('/')) { if (s === '' || s === '.') continue; if (s === '..') segs.pop(); else segs.push(s.toLowerCase()); }
+  return ['cv', 'vouchers'].includes(segs[0]);
+};
+
+export const sessionCookie = (req, u) => `ar_session=${signCustomer(u)}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${30 * 86400}${req.secure ? '; Secure' : ''}`;
+
+/** Customer sessions are bound to the current password, so a password change or reset signs every old session out. */
+const pv = u => crypto.createHash('sha256').update(String(u.password_hash)).digest('hex').slice(0, 16);
+export const signCustomer = u => jwt.sign({ id: u.id, role: u.role, pv: pv(u) }, secret(), { expiresIn: '30d' });
+/** The signed-in storefront customer (full row) or null. */
+export async function readCustomer(req, cookieName = 'ar_session') {
+  let t;
+  try { t = jwt.verify(readCookie(req, cookieName) || (req.headers.authorization || '').replace(/^Bearer /, ''), secret()); } catch { return null; }
+  if (!t.id || !t.pv) return null;
+  const [[u]] = await pool.query('SELECT * FROM users WHERE id = ?', [t.id]);
+  return u && pv(u) === t.pv ? u : null;
+}
+
+/** Collision-free ids such as AR-10501: an atomic counter (seeded from the highest id already in `table`) instead of COUNT(*)+1. */
+let countersReady;
+export async function nextSeq(name, table, prefix, base) {
+  countersReady ||= pool.query('CREATE TABLE IF NOT EXISTS counters (name VARCHAR(30) PRIMARY KEY, v BIGINT NOT NULL)');
+  await countersReady;
+  await pool.query(`INSERT IGNORE INTO counters (name, v) SELECT ?, GREATEST(?, COALESCE(MAX(CAST(SUBSTRING(id, ?) AS UNSIGNED)), 0)) FROM \`${table}\``, [name, base, prefix.length + 1]);
+  const [r] = await pool.query('UPDATE counters SET v = LAST_INSERT_ID(v + 1) WHERE name = ?', [name]);
+  return prefix + r.insertId;
+}

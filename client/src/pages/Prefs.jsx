@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { api } from '../api.js';
 
 const ROWS = [['offers', 'Offers & weekly deals', 'Friday deals and price drops'], ['festivals', 'Festival campaigns', 'Eid, Puja and Pohela Boishakh offers'], ['tips', 'Health tips', 'Printer care guides and servicing advice'], ['refill', 'Refill & back-in-stock alerts', 'Reminders for the supplies you use']];
@@ -10,8 +10,14 @@ export default function Prefs() {
   const [d, setD] = useState(null);
   const [err, setErr] = useState('');
   const [saved, setSaved] = useState(false);
+  const [qs] = useSearchParams();
+  const [welcome, setWelcome] = useState(false);
   const load = () => api.get('/prefs/' + token).then(setD).catch(e => setErr(e.message));
-  useEffect(() => { load(); }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
+  // the link in the confirmation email carries ?confirm=1: opening it is the double opt-in click
+  useEffect(() => {
+    if (qs.get('confirm') === '1') api.post('/optin/confirm', { token }).then(() => setWelcome(true)).catch(e => setErr(e.message)).finally(load);
+    else load();
+  }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggle = async k => {
     const prefs = { ...d.prefs, [k]: !d.prefs[k] };
@@ -31,6 +37,7 @@ export default function Prefs() {
         {!d && !err && <div style={{ padding: 40, textAlign: 'center' }}><span className="spin" /></div>}
         {d?.subscribed && (
           <div style={{ padding: '24px 26px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {welcome && <div style={{ border: '2px dashed oklch(0.7 0.1 240)', borderRadius: 14, padding: '12px 16px', fontSize: 14, color: '#0b1631' }}>✓ You're subscribed. Your welcome code: <b style={{ fontFamily: 'var(--mono)', letterSpacing: '.1em' }}>WELCOME10</b> (10% off your first order)</div>}
             <span style={{ fontSize: 14, color: '#56607a', lineHeight: 1.55 }}>Choose what you'd like to hear about. Changes apply immediately.</span>
             {ROWS.map(([k, t, ds]) => {
               const on = d.prefs[k];

@@ -2,7 +2,7 @@ import { Router } from 'express';
 import crypto from 'node:crypto';
 import { pool } from './db.js';
 import { ADMINS, guard } from './admin.js';
-import { COURIERS, DONE, FLOW, RETURN_REASONS, applyFlow, getBranches, returnEligible, routeBranch } from './flow.js';
+import { COURIERS, DONE, FLOW, RETURN_REASONS, applyFlow, cancelOrder, getBranches, returnEligible, routeBranch } from './flow.js';
 import { digits, fail, parseJson, wrap } from './util.js';
 
 const hub = Router();
@@ -91,9 +91,7 @@ hub.post('/orders/:id/cancel', guard(ADMINS), wrap(async (req, res) => {
   const [[o]] = await pool.query('SELECT * FROM orders WHERE id = ?', [req.params.id]);
   if (!o) throw fail(404, 'Order not found');
   if (DONE.includes(o.flow)) throw fail(400, 'This order is already closed');
-  const [items] = await pool.query('SELECT product_id, qty, backorder FROM order_items WHERE order_id = ?', [o.id]);
-  for (const i of items) await pool.query('UPDATE products SET stock = stock + ? WHERE id = ?', [Math.max(0, i.qty - i.backorder), i.product_id]);
-  await applyFlow(o.id, 'Cancelled', req.body.note || 'Cancelled by staff');
+  await cancelOrder(o.id, req.body.note || 'Cancelled by staff');
   res.json({ ok: true });
 }));
 
@@ -154,8 +152,9 @@ hub.get('/riders/:id', guard(HUB_ROLES), wrap(async (req, res) => {
   res.json({ rider: riderOut(r), jobs, stats: { assigned: jobs.length, doneToday, cash: Number(cash.s) } });
 }));
 
-hub.post('/riders/:id/deposit', guard(HUB_ROLES), wrap(async (req, res) => {
-  const id = req.staff.role === 'Delivery rider' ? req.staff.id : Number(req.params.id);
+// only the office confirms that a rider handed the cash in (a rider cannot clear their own balance)
+hub.post('/riders/:id/deposit', guard(ADMINS), wrap(async (req, res) => {
+  const id = Number(req.params.id);
   await pool.query('UPDATE orders SET cod_deposited_at = NOW() WHERE rider_id = ? AND cod_collected > 0 AND cod_deposited_at IS NULL', [id]);
   res.json({ ok: true });
 }));

@@ -25,6 +25,17 @@ export const adm = {
   del: url => call('DELETE', url)
 };
 
+/** Downloads a private file (e.g. an applicant's CV) with the staff token, then hands it to the browser as a normal download. */
+export async function downloadFile(url, fallbackName = 'download') {
+  const t = getAdminToken();
+  const res = await fetch('/api/admin' + url, { headers: t ? { Authorization: 'Bearer ' + t } : {} });
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Download failed');
+  const name = /filename="?([^";]+)"?/.exec(res.headers.get('Content-Disposition') || '')?.[1] || fallbackName;
+  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(await res.blob()), download: name });
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+}
+
 export const mktApi = {
   get: url => call('GET', url, undefined, '/api/mkt'),
   post: (url, body) => call('POST', url, body, '/api/mkt'),

@@ -6,7 +6,7 @@ import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { pool } from './db.js';
-import { digits, fail, wrap, checkPassword } from './util.js';
+import { digits, fail, wrap, checkPassword, secret } from './util.js';
 import { guard } from './admin.js';
 
 // REST API for the AR Trade mobile app: attendance, live GPS tracking and expenses.
@@ -15,7 +15,6 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const VOUCHERS = path.resolve(here, '../uploads/vouchers');
 fs.mkdirSync(VOUCHERS, { recursive: true });
 
-const secret = () => process.env.JWT_SECRET || 'dev-secret';
 const APPROVERS = ['Super admin', 'Admin', 'Manager', 'Accounts'];
 const isApprover = s => APPROVERS.includes(s.role);
 const appRole = r => ({ 'Super admin': 'admin', Admin: 'admin', Manager: 'manager', Accounts: 'accounts' }[r] || 'employee');

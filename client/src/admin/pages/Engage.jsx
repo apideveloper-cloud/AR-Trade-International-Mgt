@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { adm, dateF, dateTimeF, mktApi, useTable } from '../adminApi.js';
+import { adm, downloadFile, dateF, dateTimeF, mktApi, useTable } from '../adminApi.js';
 import { Empty, Modal, Pager, Pill, Toolbar } from '../ui.jsx';
 
 export function Services() {
@@ -224,7 +224,7 @@ export function Careers() {
                 <span>{a.jobTitle} · {a.exp || '—'} · expects ৳{a.salary || '—'}</span>
                 <span><a href={'tel:' + a.phone}>{a.phone}</a>{a.email && <> · {a.email}</>}{a.link && <> · <a href={a.link} target="_blank" rel="noreferrer">link</a></>}</span>
                 {a.note && <span style={{ color: '#5d6270' }}>“{a.note}”</span>}
-                <span style={{ color: '#8a8f9b', fontSize: 12 }}>CV: {a.cv} · applied {dateF(a.at)}</span>
+                <span style={{ color: '#8a8f9b', fontSize: 12 }}>CV: <button type="button" className="a-btn sm ghost" style={{ padding: '2px 8px' }} onClick={() => downloadFile('/applications/' + a.id + '/cv', a.cv).catch(e => window.alert(e.message))}>{a.cv || 'Download'}</button> · applied {dateF(a.at)}</span>
               </div>
               <select className="a-input" value={a.stage} onChange={e => setSt(a.id, e.target.value)} style={{ borderRadius: 999, fontWeight: 700, width: 'auto' }}>{STAGES.map(s => <option key={s}>{s}</option>)}</select>
             </div>

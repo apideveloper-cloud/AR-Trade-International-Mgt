@@ -2,20 +2,19 @@ import express from 'express';
 import compression from 'compression';
 import cors from 'cors';
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
 import crypto from 'node:crypto';
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { pool } from './db.js';
-import { digits, fail, parseJson, wrap, checkPassword, readCookie } from './util.js';
+import { digits, fail, parseJson, wrap, checkPassword, readCookie, isPrivateUploadPath, nextSeq, signCustomer, readCustomer } from './util.js';
 import adminRouter from './admin.js';
-import { mailContact, mailReady } from './mailer.js';
+import { mailContact, mailReady, sendMail, siteUrl } from './mailer.js';
 import { mountSeo } from './seo.js';
 import accountRouter from './account.js';
 import fieldRouter from './field.js';
 import { hubRouter, liveRouter } from './hub.js';
-import { mktRouter, onSubscribed, prefsRouter } from './mkt.js';
+import { mktRouter, onSubscribed, prefsRouter, startMailWorker } from './mkt.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -23,7 +22,6 @@ if (process.env.NODE_ENV === 'production' && (!process.env.JWT_SECRET || process
   console.error('Refusing to start: set a long random JWT_SECRET in server/.env (e.g. openssl rand -hex 32).');
   process.exit(1);
 }
-const SECRET = process.env.JWT_SECRET || 'dev-secret';
 const UPLOADS = path.resolve(here, '../uploads/cv');
 fs.mkdirSync(UPLOADS, { recursive: true });
 
@@ -34,6 +32,8 @@ app.use((req, res, next) => {
   res.setHeader('X-Frame-Options', 'SAMEORIGIN');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(self)');
+  res.setHeader('Content-Security-Policy', "frame-ancestors 'self'; base-uri 'self'; object-src 'none'; form-action 'self'");
+  if (req.secure) res.setHeader('Strict-Transport-Security', 'max-age=31536000');
   next();
 });
 
@@ -56,7 +56,7 @@ app.use(express.json({ limit: '3mb' })); // everything else: small bodies (CV up
 // blog images live in the project (server/uploads/blog) and are served through /api so the Vite dev proxy covers them too
 app.use('/api/media', express.static(path.resolve(here, '../uploads/blog'), { maxAge: '7d', fallthrough: false })); // old blog image links
 // every imported / uploaded image lives under server/uploads/<products|blog|services|clients|company>/<category>/
-app.use('/api/uploads', (req, res, next) => (/^\/(cv|vouchers)(\/|$)/i.test(req.path) ? res.status(404).end() : next())); // private folders are never served
+app.use('/api/uploads', (req, res, next) => (isPrivateUploadPath(req.url.split('?')[0]) ? res.status(404).end() : next())); // private folders (CVs, vouchers) are never served, whatever the URL spelling
 app.use('/api/uploads', express.static(path.resolve(here, '../uploads'), { maxAge: '7d', fallthrough: false, index: false, dotfiles: 'deny' }));
 
 const AREAS = ['inside', 'suburb', 'outside'];
@@ -69,15 +69,18 @@ const productOut = r => ({
 });
 const seoOut = r => ({ metaTitle: r.meta_title || '', metaDesc: r.meta_desc || '', metaKeywords: r.meta_keywords || '' });
 const userOut = u => ({ id: u.id, name: u.name, email: u.email, phone: u.phone, address: u.address, area: u.area, role: u.role });
-const sign = u => jwt.sign({ id: u.id, role: u.role }, SECRET, { expiresIn: '30d' });
 /** The customer session lives in an HttpOnly cookie, so page scripts (and any XSS) can never read the token. */
 const COOKIE = 'ar_session';
-const setSession = (req, res, u) => res.append('Set-Cookie', `${COOKIE}=${sign(u)}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${30 * 86400}${req.secure ? '; Secure' : ''}`);
+const setSession = (req, res, u) => res.append('Set-Cookie', `${COOKIE}=${signCustomer(u)}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${30 * 86400}${req.secure ? '; Secure' : ''}`);
 const sendAuth = (req, res, u, extra = {}) => { setSession(req, res, u); res.json({ user: userOut(u), ...extra }); };
 
+/** Sets req.user ({ id, role }) from the session cookie; with required=true anonymous requests get a 401. */
 function auth(required) {
-  return (req, res, next) => {
-    try { req.user = jwt.verify(readCookie(req, COOKIE) || (req.headers.authorization || '').replace(/^Bearer /, ''), SECRET); } catch { req.user = null; }
+  return async (req, res, next) => {
+    try {
+      const u = await readCustomer(req, COOKIE);
+      req.user = u ? { id: u.id, role: u.role } : null;
+    } catch (e) { console.error(e); return res.status(500).json({ error: 'Server error' }); }
     if (required && !req.user) return res.status(401).json({ error: 'Please sign in' });
     next();
   };
@@ -124,6 +127,7 @@ app.get('/api/pages/:slug', wrap(async (req, res) => {
 }));
 
 app.get('/api/bootstrap', wrap(async (req, res) => {
+  res.setHeader('Cache-Control', 'public, max-age=30');
   const [cats] = await pool.query('SELECT id, title AS t, description AS d FROM categories WHERE hidden = 0 ORDER BY sort_order');
   const [prods] = await pool.query('SELECT * FROM products WHERE active = 1 ORDER BY id DESC');
   const s = await getSettings();
@@ -222,14 +226,14 @@ app.get('/api/auth/me', auth(true), wrap(async (req, res) => {
 
 app.put('/api/auth/me', auth(true), wrap(async (req, res) => {
   const { name, phone, address, area } = req.body;
-  await pool.query('UPDATE users SET name = COALESCE(?,name), phone = COALESCE(?,phone), address = COALESCE(?,address), area = ? WHERE id = ?',
-    [name ?? null, phone != null ? digits(phone) : null, address ?? null, AREAS.includes(area) ? area : 'inside', req.user.id]);
+  await pool.query('UPDATE users SET name = COALESCE(?,name), phone = COALESCE(?,phone), address = COALESCE(?,address), area = COALESCE(?,area) WHERE id = ?',
+    [name != null ? String(name).slice(0, 120) : null, phone != null ? digits(phone) : null, address != null ? String(address).slice(0, 500) : null, AREAS.includes(area) ? area : null, req.user.id]);
   const [[u]] = await pool.query('SELECT * FROM users WHERE id = ?', [req.user.id]);
   res.json({ user: userOut(u) });
 }));
 
 // ---------- pricing (mirrors the design's AR.totals) ----------
-async function priceOrder(items, { area, coupon, userId, express, partial }) {
+async function priceOrder(items, { area, coupon, userId, express, partial, phone }) {
   const s = (await getSettings()).site;
   if (!Array.isArray(items) || items.length > 100) throw fail(400, 'Your cart is empty or too large');
   const ids = items.map(i => parseInt(i?.id, 10)).filter(Number.isInteger);
@@ -250,7 +254,12 @@ async function priceOrder(items, { area, coupon, userId, express, partial }) {
 
   const cu = String(coupon || '').trim().toUpperCase();
   const welcome = cu === 'WELCOME10';
-  const okCoupon = !!cu && (cu === String(s.coupon).toUpperCase() || welcome);
+  let okCoupon = !!cu && (cu === String(s.coupon).toUpperCase() || welcome);
+  if (welcome && okCoupon) { // the welcome code works once per customer (account or mobile number)
+    const ph = digits(phone).slice(-10);
+    const [[used]] = await pool.query('SELECT COUNT(*) n FROM orders WHERE coupon = "WELCOME10" AND status <> "Cancelled" AND ((? IS NOT NULL AND user_id = ?) OR (? <> "" AND RIGHT(customer_phone, 10) = ?))', [userId || null, userId || null, ph, ph]);
+    if (used.n) okCoupon = false;
+  }
   const discount = okCoupon ? Math.round(subtotal * (welcome ? 10 : s.couponPct) / 100) : 0;
   const memberPct = userId ? s.memberPct : 0;
   const member = Math.round((subtotal - discount) * memberPct / 100);
@@ -279,7 +288,7 @@ const quoteOut = t => ({
 });
 
 app.post('/api/quote', auth(false), wrap(async (req, res) => {
-  const t = await priceOrder(req.body.items || [], { ...req.body, userId: req.user?.id });
+  const t = await priceOrder(req.body.items || [], { ...req.body, userId: req.user?.id, phone: req.body.phone });
   res.json(quoteOut(t));
 }));
 
@@ -300,26 +309,30 @@ async function hydrateOrders(rows) {
   }));
 }
 
-app.post('/api/orders', auth(false), wrap(async (req, res) => {
-  const { items, customer = {}, address, area, payment, gateway, paid, note, coupon, express, partial, slot, vatInvoice, company, bin } = req.body;
+app.post('/api/orders', limit('order', 20, 3600000), auth(false), wrap(async (req, res) => {
+  const { items, customer: cust = {}, area, coupon, express, partial, vatInvoice } = req.body;
+  // payment status is never taken from the browser: orders start Unpaid and staff / the delivery flow mark them Paid
+  const str = (v, n) => String(v ?? '').trim().slice(0, n);
+  const customer = { name: str(cust.name, 120), phone: str(cust.phone, 40), email: str(cust.email, 160) };
+  const address = str(req.body.address, 500), payment = str(req.body.payment, 60), gateway = str(req.body.gateway, 60), note = str(req.body.note, 500), slot = str(req.body.slot, 60), company = str(req.body.company, 160), bin = str(req.body.bin, 60);
   if (!Array.isArray(items) || !items.length) throw fail(400, 'Your cart is empty');
   if (!customer.name || !customer.phone || !address) throw fail(400, 'Name, phone and delivery address are required');
-  const t = await priceOrder(items, { area, coupon, userId: req.user?.id, express, partial });
+  if (!/^01\d{9}$/.test(digits(customer.phone).slice(-11))) throw fail(400, 'Enter a valid mobile number (01XXXXXXXXX)');
+  const t = await priceOrder(items, { area, coupon, userId: req.user?.id, express, partial, phone: customer.phone });
   const live = t.lines.filter(l => l.chargeQty > 0);
   if (!live.length) throw fail(400, 'None of the items in your cart are in stock right now');
 
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
-    const [[{ n }]] = await conn.query('SELECT COUNT(*) n FROM orders');
-    const id = 'AR-' + (10500 + n + 1);
+    const id = await nextSeq('order', 'orders', 'AR-', 10500);
     const hold = t.heldN > 0;
     await conn.query(
       `INSERT INTO orders (id,user_id,customer_name,customer_phone,customer_email,company,bin,address,area,subtotal,discount,member_discount,delivery,express,total,vat,
          payment,gateway,pay_status,partial,slot,vat_invoice,hold,hold_note,note,coupon) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-      [id, req.user?.id || null, customer.name, customer.phone, customer.email || '', vatInvoice ? (company || '') : '', vatInvoice ? (bin || '') : '', address, t.zone,
-        t.subtotal, t.discount, t.member, t.delivery, +!!t.express, t.total, t.vat, payment || 'Cash on delivery', gateway || '', paid ? 'Paid' : 'Unpaid',
-        t.partial, slot || '', +!!vatInvoice, +hold, hold ? 'High-value / special-order items held until our team approves them' : '', note || '', t.coupon]);
+      [id, req.user?.id || null, customer.name, customer.phone, customer.email, vatInvoice ? company : '', vatInvoice ? bin : '', address, t.zone,
+        t.subtotal, t.discount, t.member, t.delivery, +!!t.express, t.total, t.vat, payment || 'Cash on delivery', gateway, 'Unpaid',
+        t.partial, slot, +!!vatInvoice, +hold, hold ? 'High-value / special-order items held until our team approves them' : '', note, t.coupon]);
     for (const l of live) {
       if (l.avail) {
         const [u] = await conn.query('UPDATE products SET stock = stock - ? WHERE id = ? AND stock >= ?', [l.avail, l.p.id, l.avail]);
@@ -357,8 +370,8 @@ app.get('/api/orders/track', limit('track', 30, 600000), wrap(async (req, res) =
 app.post('/api/services', limit('svcreq', 8, 1800000), wrap(async (req, res) => {
   const { type, name, phone, model, issue, date, mkt, mktEmail } = req.body;
   if (!type || !name || !phone) throw fail(400, 'Service type, name and phone are required');
-  const [[{ n }]] = await pool.query('SELECT COUNT(*) n FROM service_requests');
-  const id = 'SV-' + (2092 + n);
+  if (mkt && mktEmail && !/^\S+@\S+\.\S+$/.test(String(mktEmail))) throw fail(400, 'Enter a valid email');
+  const id = await nextSeq('service', 'service_requests', 'SV-', 2091);
   await pool.query('INSERT INTO service_requests (id,type,name,phone,model,issue,preferred_date) VALUES (?,?,?,?,?,?,?)',
     [id, type, name, phone, model || '', issue || '', date || null]);
   if (mkt && mktEmail) await optIn(mktEmail, 'Service booking · ' + id, req.ip);
@@ -389,21 +402,30 @@ async function optIn(emailRaw, source, ip) {
   const email = String(emailRaw || '').trim().toLowerCase();
   if (!/^\S+@\S+\.\S+$/.test(email)) throw fail(400, 'Enter a valid email');
   const [[ex]] = await pool.query('SELECT token, status FROM consents WHERE email = ? AND status <> "Unsubscribed" ORDER BY id DESC LIMIT 1', [email]);
-  if (ex?.status === 'Confirmed') return { email, token: ex.token, status: 'Confirmed' };
-  const token = 'OPT-' + crypto.randomBytes(5).toString('hex').toUpperCase();
-  await pool.query('INSERT INTO consents (email,source,token,ip) VALUES (?,?,?,?)', [email, source || '', token, ip || '']);
-  return { email, token, status: 'Pending' };
+  if (ex?.status === 'Confirmed') return { email, status: 'Confirmed' };
+  const token = 'OPT-' + crypto.randomBytes(10).toString('hex').toUpperCase();
+  await pool.query('INSERT INTO consents (email,source,token,ip) VALUES (?,?,?,?)', [email, String(source || '').slice(0, 120), token, ip || '']);
+  // the token only ever travels by email, so nobody can subscribe an address they do not control (staff can still confirm by hand in Admin > Consents)
+  if (mailReady() && siteUrl()) {
+    const link = siteUrl() + '/prefs/' + token + '?confirm=1';
+    sendMail({
+      to: email, subject: 'Confirm your subscription to AR Trade International',
+      text: 'Someone (hopefully you) asked to receive offers and updates from AR Trade International at this address.\n\nConfirm: ' + link + '\n\nIf this was not you, ignore this email and you will not be added.',
+      html: '<p>Someone (hopefully you) asked to receive offers and updates from AR Trade International at this address.</p><p><a href="' + link + '" style="background:#0b1631;color:#fff;padding:12px 22px;border-radius:99px;text-decoration:none">Yes, subscribe me</a></p><p style="color:#777;font-size:12px">If this was not you, ignore this email and you will not be added.</p>'
+    }).catch(e => console.error('opt-in mail failed:', e.message));
+  }
+  return { email, status: 'Pending' };
 }
 
 app.post('/api/optin', limit('optin', 8, 1800000), wrap(async (req, res) => { res.json(await optIn(req.body.email, req.body.source, req.ip)); }));
 
-app.post('/api/optin/confirm', wrap(async (req, res) => {
-  const [[c]] = await pool.query('SELECT * FROM consents WHERE token = ?', [req.body.token]);
+app.post('/api/optin/confirm', limit('optin-confirm', 30, 600000), wrap(async (req, res) => {
+  const [[c]] = await pool.query('SELECT * FROM consents WHERE token = ?', [String(req.body.token || '')]);
   if (!c) throw fail(404, 'This confirmation link is not valid');
   await pool.query('UPDATE consents SET status = "Confirmed", confirmed_at = COALESCE(confirmed_at, NOW()) WHERE id = ?', [c.id]);
   await pool.query('INSERT IGNORE INTO subscribers (email) VALUES (?)', [c.email]);
   await onSubscribed(c.email);
-  res.json({ ok: true, email: c.email, token: c.token });
+  res.json({ ok: true, email: c.email });
 }));
 
 // ---------- product reviews (published only after an admin approves them) ----------
@@ -475,8 +497,7 @@ app.post('/api/jobs/:id/apply', limit('apply', 5, 3600000), wrap(async (req, res
   if (!ext) throw fail(400, 'CV must be a PDF or Word file.');
   const buf = Buffer.from(m[2], 'base64');
   if (buf.length > 2 * 1048576) throw fail(400, 'CV must be under 2 MB.');
-  const [[{ n }]] = await pool.query('SELECT COUNT(*) n FROM applications');
-  const id = 'APP-' + (2004 + n);
+  const id = await nextSeq('application', 'applications', 'APP-', 2003);
   const file = `${id}${ext}`;
   fs.writeFileSync(path.join(UPLOADS, file), buf);
   await pool.query('INSERT INTO applications (id,job_id,name,phone,email,exp,salary,link,note,cv_name,cv_file) VALUES (?,?,?,?,?,?,?,?,?,?,?)',
@@ -486,6 +507,7 @@ app.post('/api/jobs/:id/apply', limit('apply', 5, 3600000), wrap(async (req, res
 
 app.use(['/api/admin/login', '/api/admin/register'], limit('stafflogin', 15, 10 * 60000));
 app.use('/api/field/login', limit('fieldlogin', 15, 10 * 60000));
+app.use('/api/live', limit('live', 40, 10 * 60000)); // order lookup / return by order id + mobile number
 app.use('/api/admin', adminRouter);
 app.use('/api/account', accountRouter);
 app.use('/api/field', fieldRouter);
@@ -510,4 +532,12 @@ app.use((err, req, res, next) => {
 });
 
 const port = Number(process.env.PORT || 4000);
-app.listen(port, () => console.log(`AR Trade API on http://localhost:${port}`));
+app.listen(port, () => {
+  console.log(`AR Trade API on http://localhost:${port}`);
+  if (process.env.NODE_ENV === 'production' && !process.env.SITE_URL) console.warn('SITE_URL is not set: canonical links, the sitemap and emails will use the request Host header. Set SITE_URL=https://your-domain in server/.env.');
+  startMailWorker();
+});
+// retention: GPS breadcrumbs older than 90 days are of no use
+const purge = () => pool.query('DELETE FROM field_track WHERE at < UTC_TIMESTAMP() - INTERVAL 90 DAY LIMIT 50000').catch(() => {});
+setTimeout(purge, 60000).unref();
+setInterval(purge, 24 * 3600000).unref();

@@ -7,13 +7,13 @@ import sanitizeHtml from 'sanitize-html';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { pool } from './db.js';
-import { digits, fail, parseJson, wrap, checkPassword } from './util.js';
-import { applyFlow, FROM_STATUS } from './flow.js';
+import { digits, fail, parseJson, wrap, checkPassword, secret } from './util.js';
+import { applyFlow, cancelOrder, FROM_STATUS } from './flow.js';
 
 const router = Router();
-const secret = () => process.env.JWT_SECRET || 'dev-secret';
+const CV_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../uploads/cv');
 const STATUSES = ['Pending', 'Confirmed', 'Packed', 'Shipped', 'Delivered', 'Cancelled'];
-const ROLES = ['Super admin', 'Admin', 'Delivery rider', 'Marketing manager', 'Content writer'];
+const ROLES = ['Super admin', 'Admin', 'Delivery rider', 'Marketing manager', 'Content writer', 'Field employee', 'Manager', 'Accounts'];
 
 const staffOut = s => ({ id: s.id, name: s.name, email: s.email, phone: s.phone, role: s.role, status: s.status, since: s.created_at });
 const sign = s => jwt.sign({ sid: s.id, srole: s.role }, secret(), { expiresIn: '12h' });
@@ -131,18 +131,34 @@ router.get('/orders/:id', guard(SALES), wrap(async (req, res) => {
 router.put('/orders/:id/status', guard(SALES), wrap(async (req, res) => {
   const { status } = req.body;
   if (!STATUSES.includes(status)) throw fail(400, 'Unknown status');
-  if (req.staff.role === 'Delivery rider' && !['Shipped', 'Delivered'].includes(status)) throw fail(403, 'Riders can only mark orders shipped or delivered');
+  const rider = req.staff.role === 'Delivery rider';
+  // riders only start their own trip here; closing a delivery needs the OTP / signature and cash tick in the Delivery Hub
+  if (rider && status !== 'Shipped') throw fail(403, 'Riders start the trip here; close the delivery with the OTP or signature in the Delivery Hub');
   const [[o]] = await pool.query('SELECT status, rider_id FROM orders WHERE id = ?', [req.params.id]);
   if (!o) throw fail(404, 'Order not found');
-  if (req.staff.role === 'Delivery rider' && !['Packed', 'Shipped'].includes(o.status) && o.rider_id !== req.staff.id) throw fail(404, 'Order not found');
+  if (rider && !(o.rider_id === req.staff.id || (!o.rider_id && o.status === 'Packed'))) throw fail(404, 'Order not found');
+  if (o.status === 'Delivered' && status !== 'Delivered') throw fail(400, 'A delivered order cannot be moved back');
   if (o.status !== status) {
-    await applyFlow(req.params.id, FROM_STATUS[status], 'Updated in admin console');
-    if (status === 'Delivered') await pool.query('UPDATE orders SET pay_status = IF(payment = "Cash on delivery", "Paid", pay_status) WHERE id = ?', [req.params.id]);
+    if (status === 'Cancelled') await cancelOrder(req.params.id, 'Cancelled in admin console'); // also puts the stock back
+    else {
+      const extra = {};
+      if (status === 'Shipped') { // same trip details the Delivery Hub creates, so the OTP proof works
+        const cur = (await pool.query('SELECT otp FROM orders WHERE id = ?', [req.params.id]))[0][0];
+        extra.out_at = new Date().toISOString().slice(0, 19).replace('T', ' ');
+        extra.otp = cur.otp || String(1000 + crypto.randomInt(9000));
+        if (rider) extra.rider_id = req.staff.id;
+      }
+      await applyFlow(req.params.id, FROM_STATUS[status], 'Updated in admin console', extra);
+      if (status === 'Delivered') await pool.query('UPDATE orders SET pay_status = IF(payment = "Cash on delivery", "Paid", pay_status) WHERE id = ?', [req.params.id]);
+    }
   }
   res.json((await loadOrders('WHERE id = ?', [req.params.id]))[0]);
 }));
 
 router.delete('/orders/:id', guard(ADMINS), wrap(async (req, res) => {
+  const [[o]] = await pool.query('SELECT status FROM orders WHERE id = ?', [req.params.id]);
+  if (!o) throw fail(404, 'Order not found');
+  if (o.status !== 'Cancelled') throw fail(400, 'Only cancelled orders can be deleted. Cancel it first so the stock goes back.');
   await pool.query('DELETE FROM orders WHERE id = ?', [req.params.id]);
   res.json({ ok: true });
 }));
@@ -555,6 +571,14 @@ router.get('/applications', guard(ADMINS), wrap(async (req, res) => {
   const [rows] = await pool.query('SELECT a.*, j.title job_title FROM applications a JOIN jobs j ON j.id = a.job_id ORDER BY a.created_at DESC');
   res.json(rows.map(a => ({ id: a.id, job: a.job_id, jobTitle: a.job_title, name: a.name, phone: a.phone, email: a.email, exp: a.exp, salary: a.salary, link: a.link, note: a.note, cv: a.cv_name, stage: a.stage, at: a.created_at })));
 }));
+// applicants' CVs are private files: downloaded here by an Admin, never through the public /api/uploads path
+router.get('/applications/:id/cv', guard(ADMINS), wrap(async (req, res) => {
+  const [[a]] = await pool.query('SELECT cv_file, cv_name FROM applications WHERE id = ?', [req.params.id]);
+  if (!a || !a.cv_file) throw fail(404, 'CV not found');
+  const file = path.join(CV_DIR, path.basename(a.cv_file));
+  if (!fs.existsSync(file)) throw fail(404, 'CV file is missing on the server');
+  res.download(file, (/\.[a-z]{3,4}$/i.test(a.cv_name || '') ? a.cv_name : a.cv_file).replace(/[^\w.\- ]/g, '_'));
+}));
 router.put('/applications/:id', guard(ADMINS), wrap(async (req, res) => {
   if (!['New', 'Shortlisted', 'Interview', 'Offered', 'Hired', 'Rejected'].includes(req.body.stage)) throw fail(400, 'Unknown stage');
   await pool.query('UPDATE applications SET stage = ? WHERE id = ?', [req.body.stage, req.params.id]);
@@ -572,6 +596,7 @@ router.put('/staff/:id', guard(ADMINS), wrap(async (req, res) => {
   if (!t) throw fail(404, 'Not found');
   if (t.id === req.staff.id) throw fail(400, 'You cannot change your own access');
   if (t.role === 'Super admin' && req.staff.role !== 'Super admin') throw fail(403, 'Only a Super admin can change a Super admin');
+  if (role === 'Super admin' && req.staff.role !== 'Super admin') throw fail(403, 'Only a Super admin can make someone a Super admin');
   if (role) { if (!ROLES.includes(role)) throw fail(400, 'Unknown role'); await pool.query('UPDATE staff SET role = ? WHERE id = ?', [role, t.id]); }
   if (status) { if (!['Active', 'Pending', 'Disabled'].includes(status)) throw fail(400, 'Unknown status'); await pool.query('UPDATE staff SET status = ? WHERE id = ?', [status, t.id]); }
   res.json({ ok: true });

@@ -18,7 +18,9 @@
     "images:optimize": "node scripts/optimize-images.js",
     "images:clean": "node scripts/clean-fake-images.js",
     "scrape:products": "node scripts/scrape-products.js",
-    "seo:products": "node scripts/seo-products.js"
+    "seo:products": "node scripts/seo-products.js",
+    "test": "node --test test/*.test.js",
+    "db:lockdown": "node scripts/lock-demo-accounts.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
