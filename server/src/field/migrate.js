@@ -71,6 +71,21 @@ async function run() {
     }
   }
 
+  // offline-safe retries: clientRef makes a POST idempotent per staff member; approval remarks for sales orders
+  for (const [t, c, ddl] of [
+    ['field_expenses', 'client_ref', 'VARCHAR(64) NULL'], ['field_payments', 'client_ref', 'VARCHAR(64) NULL'],
+    ['field_sales_orders', 'client_ref', 'VARCHAR(64) NULL'], ['field_purchase_orders', 'client_ref', 'VARCHAR(64) NULL'],
+    ['field_sales_orders', 'approval_note', "VARCHAR(255) NOT NULL DEFAULT ''"]
+  ]) {
+    try {
+      await addColumn(t, c, ddl);
+      if (c === 'client_ref') {
+        const [[k]] = await pool.query("SELECT COUNT(*) n FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND INDEX_NAME = 'idx_client_ref'", [t]);
+        if (!k.n) await pool.query(`ALTER TABLE \`${t}\` ADD KEY idx_client_ref (staff_id, client_ref)`);
+      }
+    } catch (e) { console.error(`[field] ${t}.${c}: ${e.message}`); }
+  }
+
   if (process.env.NODE_ENV === 'production' || process.env.FIELD_SEED_DEMO === '0') return;
   const seedDir = path.join(here, 'seed');
   if (fs.existsSync(seedDir)) {

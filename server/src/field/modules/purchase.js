@@ -13,7 +13,7 @@
 //   DELETE /api/field/purchase/orders/:id             delete a Draft
 // The approval steps live in approvals.js (Manager: Submitted -> ManagerApproved, Accountant: -> Approved).
 import { Router } from 'express';
-import { pool, fail, wrap, guardRole, roleKey, nextSeq, notify, staffIdsByRole } from '../common.js';
+import { pool, fail, wrap, guardRole, roleKey, nextSeq, notify, staffIdsByRole, clientRefOf } from '../common.js';
 
 const router = Router();
 
@@ -167,13 +167,18 @@ router.get('/vendors', guardRole(...buyerRoles), wrap(async (req, res) => {
 
 // ---------- purchase orders ----------
 router.post('/orders', guardRole('purchase', 'manager'), wrap(async (req, res) => {
+  const ref = clientRefOf(req.body);
+  if (ref) { // retry of a PO this person already created: return the existing one
+    const [[dup]] = await pool.query('SELECT id FROM field_purchase_orders WHERE staff_id = ? AND client_ref = ? LIMIT 1', [req.staff.id, ref]);
+    if (dup) return res.json(await poOut(await loadPo(dup.id), true, req.staff));
+  }
   if (!req.body.prId) {
     // no requisition: start an empty draft for the chosen vendor
     const [[v]] = await pool.query('SELECT id FROM field_vendors WHERE id = ?', [parseInt(req.body.vendorId, 10)]);
     if (!v) throw fail(400, 'Choose a vendor first');
     const nid = numberId('PO-', await nextSeq('field_po', 'field_purchase_orders', 'PO-', 883));
     const due = new Date(Date.now() + 6 * 3600e3 + 6 * 864e5).toISOString().slice(0, 10);
-    await pool.query("INSERT INTO field_purchase_orders (id, vendor_id, staff_id, status, deliver_by, payment_terms, deliver_to) VALUES (?,?,?, 'Draft', ?, '15 days', ?)", [nid, v.id, req.staff.id, due, TO[0]]);
+    await pool.query("INSERT INTO field_purchase_orders (id, vendor_id, staff_id, status, deliver_by, payment_terms, deliver_to, client_ref) VALUES (?,?,?, 'Draft', ?, '15 days', ?, ?)", [nid, v.id, req.staff.id, due, TO[0], ref]);
     return res.json(await poOut(await loadPo(nid), true, req.staff));
   }
   const [[r]] = await pool.query(`${PR_SELECT} WHERE r.id = ?`, [req.body.prId]);
@@ -184,12 +189,19 @@ router.post('/orders', guardRole('purchase', 'manager'), wrap(async (req, res) =
   const lines = [{ qty: r.qty, unitPrice: q.unit_price }];
   const t = totals(lines);
   const due = new Date(Date.now() + 6 * 3600e3 + q.delivery_days * 864e5).toISOString().slice(0, 10);
-  await pool.query(
-    `INSERT INTO field_purchase_orders (id, pr_id, vendor_id, staff_id, status, subtotal, vat, freight, grand_total, deliver_by, payment_terms, deliver_to)
-     VALUES (?,?,?,?, 'Draft', ?,?,?,?,?, '15 days', ?)`, [id, r.id, q.vendor_id, req.staff.id, t.subtotal, t.vat, t.freight, t.grand, due, TO[0]]);
-  await pool.query('INSERT INTO field_purchase_order_items (po_id, product_id, name, sku, qty, unit_price) VALUES (?,?,?,?,?,?)',
-    [id, r.product_id, r.product_name, (/\(([^)]+)\)/.exec(r.product_name) || [])[1] || '', r.qty, q.unit_price]);
-  await pool.query("UPDATE field_purchase_requests SET status = 'Ordered' WHERE id = ?", [r.id]);
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    const [[lock]] = await conn.query('SELECT status FROM field_purchase_requests WHERE id = ? FOR UPDATE', [r.id]);
+    if (lock.status !== 'Open') throw fail(409, `This requisition is already ${lock.status.toLowerCase()}, so a new purchase order cannot be created from it`);
+    await conn.query(
+      `INSERT INTO field_purchase_orders (id, pr_id, vendor_id, staff_id, status, subtotal, vat, freight, grand_total, deliver_by, payment_terms, deliver_to, client_ref)
+       VALUES (?,?,?,?, 'Draft', ?,?,?,?,?, '15 days', ?, ?)`, [id, r.id, q.vendor_id, req.staff.id, t.subtotal, t.vat, t.freight, t.grand, due, TO[0], ref]);
+    await conn.query('INSERT INTO field_purchase_order_items (po_id, product_id, name, sku, qty, unit_price) VALUES (?,?,?,?,?,?)',
+      [id, r.product_id, r.product_name, (/\(([^)]+)\)/.exec(r.product_name) || [])[1] || '', r.qty, q.unit_price]);
+    await conn.query("UPDATE field_purchase_requests SET status = 'Ordered' WHERE id = ?", [r.id]);
+    await conn.commit();
+  } catch (e) { await conn.rollback(); throw e; } finally { conn.release(); }
   res.json(await poOut(await loadPo(id), true, req.staff));
 }));
 

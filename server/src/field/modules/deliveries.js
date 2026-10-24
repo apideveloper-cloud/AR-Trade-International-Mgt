@@ -93,12 +93,14 @@ router.post('/:id/otp', guardSales, wrap(async (req, res) => {
   await pool.query('UPDATE field_deliveries SET otp_hash = ? WHERE id = ?', [otpHash(d.id, code), d.id]);
   const p = digits(d.phone).slice(-11);
   if (!PROD) console.log(`[field] delivery ${d.id} OTP: ${code}`);
-  res.json({ to: p.length === 11 ? `+880 ${p.slice(1, 3)}•• ••• ${p.slice(-3)}` : 'the customer', ...(PROD ? {} : { devCode: code }) });
+  // there is no SMS gateway yet: outside production the code is only returned as devCode, in production nothing is sent at all
+  res.json({ to: p.length === 11 ? `+880 ${p.slice(1, 3)}•• ••• ${p.slice(-3)}` : 'the customer', smsSent: false, ...(PROD ? {} : { devCode: code }) });
 }));
 
 router.put('/:id/confirm', guardSales, wrap(async (req, res) => {
   const d = await find(req);
   if (d.status === 'Delivered') throw fail(409, 'This delivery is already confirmed');
+  if (d.approval_status !== 'Approved') throw fail(409, 'Order is awaiting approval');
   const [items] = await pool.query('SELECT id, product_id, qty FROM field_sales_order_items WHERE order_id = ?', [d.order_id]);
   const checked = new Set((Array.isArray(req.body.checked) ? req.body.checked : []).map(Number));
   if (!items.every(i => checked.has(i.id))) throw fail(400, 'Check every item before confirming');
@@ -123,7 +125,14 @@ router.put('/:id/confirm', guardSales, wrap(async (req, res) => {
     await conn.beginTransaction();
     const [[lock]] = await conn.query('SELECT status FROM field_deliveries WHERE id = ? FOR UPDATE', [d.id]);
     if (lock.status === 'Delivered') throw fail(409, 'This delivery is already confirmed');
-    for (const i of items) await conn.query('UPDATE products SET stock = GREATEST(stock - ?, 0) WHERE id = ?', [i.qty, i.product_id]);
+    const [[ord]] = await conn.query('SELECT approval_status, status FROM field_sales_orders WHERE id = ? FOR UPDATE', [d.order_id]);
+    if (ord.approval_status !== 'Approved' || ord.status === 'Cancelled') throw fail(409, 'Order is awaiting approval');
+    const need = new Map();
+    for (const i of items) need.set(i.product_id, (need.get(i.product_id) || 0) + i.qty);
+    const [stock] = need.size ? await conn.query('SELECT id, name, stock FROM products WHERE id IN (?) FOR UPDATE', [[...need.keys()]]) : [[]];
+    const short = stock.filter(p => p.stock < need.get(p.id));
+    if (short.length) throw fail(409, 'Not enough stock: ' + short.map(p => `${p.name} (need ${need.get(p.id)}, have ${p.stock})`).join(', '));
+    for (const [pid, qty] of need) await conn.query('UPDATE products SET stock = stock - ? WHERE id = ?', [qty, pid]);
     await conn.query('INSERT INTO field_invoices (id, order_id, order_ref, customer_id, total, paid, due_date, created_at) VALUES (?,?,?,?,?,0, DATE_ADD(UTC_DATE(), INTERVAL 30 DAY), UTC_TIMESTAMP())', [invoiceId, d.order_id, d.order_id, d.customer_id, d.total]);
     await conn.query('UPDATE field_deliveries SET status = "Delivered", delivered_at = UTC_TIMESTAMP(), received_by = ?, lat = ?, lng = ?, proof_photo = ?, signature = ?, otp_ok = ?, invoice_id = ?, staff_id = COALESCE(staff_id, ?) WHERE id = ?',
       [receivedBy, lat, lng, photo, sign, otpOk ? 1 : 0, invoiceId, req.staff.id, d.id]);

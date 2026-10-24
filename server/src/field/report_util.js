@@ -90,5 +90,5 @@ export async function setting(key, fallback) {
 /** Managers, accountants and admins see the whole team; everyone else only their own figures. */
 export const seesAll = staff => isApprover(staff) || ['manager', 'accountant', 'admin'].includes(roleKey(staff.role));
 
-export const CSV = rows => rows.map(r => r.map(c => { const s = String(c ?? ''); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }).join(',')).join('\n');
+export const CSV = rows => rows.map(r => r.map(c => { let s = String(c ?? ''); if (typeof c === 'string' && /^[=+\-@\t\r]/.test(s)) s = "'" + s; return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }).join(',')).join('\n');
 export { WD, MON, DAY, BD };

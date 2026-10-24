@@ -54,6 +54,7 @@ const limit = (name, max, windowMs) => async (req, res, next) => {
 app.use(compression()); // the catalogue JSON is large; gzip keeps first load fast
 if (process.env.NODE_ENV !== 'production') app.use(cors()); // production serves the app and API from one origin
 app.use('/api/admin', express.json({ limit: '10mb' })); // image uploads (base64) are staff-only
+app.use('/api/field/expenses', express.json({ limit: '8mb' })); // voucher photos (base64, up to 4 MB as a file) arrive in the expense claim; parsed here first so the global 3mb parser skips it
 app.use(express.json({ limit: '3mb' })); // everything else: small bodies (CV uploads are capped at 2 MB)
 // blog images live in the project (server/uploads/blog) and are served through /api so the Vite dev proxy covers them too
 app.use('/api/media', express.static(path.resolve(here, '../uploads/blog'), { maxAge: '7d', fallthrough: false })); // old blog image links

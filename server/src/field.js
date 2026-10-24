@@ -12,7 +12,7 @@ import { can } from './permissions.js';
 import { pathToFileURL } from 'node:url';
 import { ensureFieldSchema } from './field/migrate.js';
 import { moduleGate, ensureModuleTable } from './field/gate.js';
-import { staffOut, roleKey, ROLE_LABELS, notify, staffIdsByRole, todayBD } from './field/common.js';
+import { staffOut, roleKey, ROLE_LABELS, notify, staffIdsByRole, todayBD, clientRefOf } from './field/common.js';
 
 // REST API for the AR Trade mobile app: attendance, live GPS tracking and expenses.
 const router = Router();
@@ -78,6 +78,8 @@ router.put('/password', guard(), wrap(async (req, res) => {
 }));
 
 // ---------- attendance ----------
+/** The phone's clock is only trusted within 5 minutes of the server's; otherwise the server clock (UTC) is used. */
+const serverTime = t => { const now = Date.now(), v = t ? new Date(t).getTime() : NaN; return Number.isFinite(v) && Math.abs(v - now) <= 5 * 60000 ? v : now; };
 router.post('/attendance', guard(), wrap(async (req, res) => {
   const type = req.body.type;
   if (!['Clocked In', 'Clocked Out'].includes(type)) throw fail(400, 'Invalid attendance type');
@@ -87,7 +89,7 @@ router.post('/attendance', guard(), wrap(async (req, res) => {
   if ((last?.type || 'Clocked Out') === type) throw fail(409, type === 'Clocked In' ? 'You are already clocked in.' : 'You are not clocked in.');
   const lat = req.body.lat == null ? null : coord(req.body.lat, 90);
   const lng = req.body.lng == null ? null : coord(req.body.lng, 180);
-  await pool.query('INSERT INTO field_attendance (staff_id,type,at,lat,lng) VALUES (?,?,?,?,?)', [req.staff.id, type, mysqlDate(req.body.time || Date.now()), lat, lng]);
+  await pool.query('INSERT INTO field_attendance (staff_id,type,at,lat,lng) VALUES (?,?,?,?,?)', [req.staff.id, type, mysqlDate(serverTime(req.body.time)), lat, lng]);
   res.json({ ok: true });
 }));
 
@@ -133,9 +135,13 @@ router.get('/attendance/report', guard('field.approve'), wrap(async (req, res) =
 router.post('/track', guard(), wrap(async (req, res) => {
   const pts = Array.isArray(req.body.points) ? req.body.points.slice(0, 500) : [];
   if (!pts.length) throw fail(400, 'No points');
-  const rows = pts.map(p => [req.staff.id, coord(p.lat, 90), coord(p.lng, 180), mysqlDate(p.time)]);
-  await pool.query('INSERT INTO field_track (staff_id,lat,lng,at) VALUES ?', [rows]);
-  res.json({ ok: true, saved: rows.length });
+  const rows = [];
+  for (const p of pts) { // a malformed point is skipped, it never fails the batch
+    try { rows.push([req.staff.id, coord(p?.lat, 90), coord(p?.lng, 180), mysqlDate(p?.time)]); } catch { /* skip */ }
+  }
+  if (rows.length) await pool.query('INSERT INTO field_track (staff_id,lat,lng,at) VALUES ?', [rows]);
+  // `accepted` = how many points from the START of the sent list were taken in (at most 500 are read): the app drops exactly those; bad points among them are counted in `skipped`
+  res.json({ ok: true, saved: rows.length, accepted: pts.length, skipped: pts.length - rows.length });
 }));
 
 // latest position of everyone who is on duty (office view)
@@ -164,6 +170,11 @@ router.post('/expenses', guard(), wrap(async (req, res) => {
   const category = String(req.body.category || '').trim().slice(0, 60);
   const amount = Number(req.body.amount);
   if (!title || !category || !(amount > 0) || amount > 10000000) throw fail(400, 'Description, category and a valid amount are required');
+  const ref = clientRefOf(req.body);
+  if (ref) { // retry of a claim this person already submitted: return it again
+    const [[dup]] = await pool.query(`SELECT e.*, ${UTC('CONVERT_TZ(e.created_at, @@session.time_zone, "+00:00")')} created_utc, s.name FROM field_expenses e JOIN staff s ON s.id = e.staff_id WHERE e.staff_id = ? AND e.client_ref = ? LIMIT 1`, [req.staff.id, ref]);
+    if (dup) return res.json(expenseOut(dup));
+  }
   let file = null;
   if (req.body.voucher) {
     const m = /^data:(image\/(?:jpeg|png|webp));base64,(.+)$/.exec(req.body.voucher);
@@ -173,7 +184,7 @@ router.post('/expenses', guard(), wrap(async (req, res) => {
     file = crypto.randomBytes(8).toString('hex') + { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp' }[m[1]];
     fs.writeFileSync(path.join(VOUCHERS, file), buf);
   }
-  const [r] = await pool.query('INSERT INTO field_expenses (staff_id,title,category,amount,voucher) VALUES (?,?,?,?,?)', [req.staff.id, title, category, amount, file]);
+  const [r] = await pool.query('INSERT INTO field_expenses (staff_id,title,category,amount,voucher,client_ref) VALUES (?,?,?,?,?,?)', [req.staff.id, title, category, amount, file, ref]);
   const [[e]] = await pool.query(`SELECT e.*, ${UTC('CONVERT_TZ(e.created_at, @@session.time_zone, "+00:00")')} created_utc, s.name FROM field_expenses e JOIN staff s ON s.id = e.staff_id WHERE e.id = ?`, [r.insertId]);
   staffIdsByRole('manager', 'accountant', 'admin').then(ids => notify(ids.filter(i => i !== req.staff.id), {
     icon: 'receipt_long', cat: 'Approvals', title: 'Expense waiting for approval', sub: `${req.staff.name} · ${title} · ৳ ${amount.toLocaleString('en-IN')}`,

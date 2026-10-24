@@ -5,7 +5,7 @@
 // Partial payments are allowed: the amount (capped at the selected invoices' dues) settles the OLDEST selected invoice first.
 // A cheque is recorded as ChequePending (it counts against the dues straight away, like in the design).
 import { Router } from 'express';
-import { pool, fail, wrap, guardRole, nextSeq, notify, staffIdsByRole, UTC } from '../common.js';
+import { pool, fail, wrap, guardRole, nextSeq, notify, staffIdsByRole, UTC, clientRefOf } from '../common.js';
 import { bdDayStartUtc, customerById, seesAll } from '../sales_util.js';
 
 const router = Router();
@@ -33,7 +33,23 @@ router.get('/customers', guardSales, wrap(async (req, res) => {
   res.json({ withDue: customers.filter(c => c.due > 0).length, customers });
 }));
 
+const receiptOut = async (p, customer) => {
+  const [[bal]] = await pool.query('SELECT COALESCE(SUM(total - paid), 0) due FROM field_invoices WHERE customer_id = ?', [p.customer_id]);
+  const [[at]] = await pool.query(`SELECT ${UTC('created_at')} at FROM field_payments WHERE id = ?`, [p.id]);
+  return { id: p.id, customer: customer.name, customerId: p.customer_id, method: p.method, referenceLabel: REF_LABEL[p.method], reference: p.reference, amount: p.amount,
+    invoices: String(p.invoice_refs || '').split(', ').filter(Boolean), status: p.status, by: '', at: at.at, balance: Number(bal.due) };
+};
+
 router.post('/', guardSales, wrap(async (req, res) => {
+  const ref = clientRefOf(req.body);
+  if (ref) { // a retry of a payment this person already posted: return the same receipt, do not post it twice
+    const [[dup]] = await pool.query('SELECT * FROM field_payments WHERE staff_id = ? AND client_ref = ? LIMIT 1', [req.staff.id, ref]);
+    if (dup) {
+      const [[c]] = await pool.query('SELECT name FROM field_customers WHERE id = ?', [dup.customer_id]);
+      const r = await receiptOut(dup, { name: c?.name || '' });
+      return res.json({ ...r, by: req.staff.name });
+    }
+  }
   const customer = await customerById(parseInt(req.body.customerId, 10));
   const method = METHODS.includes(req.body.method) ? req.body.method : null;
   if (!method) throw fail(400, 'Choose a payment method');
@@ -67,8 +83,8 @@ router.post('/', guardSales, wrap(async (req, res) => {
       left -= pay;
     }
     const status = method === 'Cheque' ? 'ChequePending' : 'Received';
-    await conn.query('INSERT INTO field_payments (id, invoice_id, invoice_refs, customer_id, staff_id, method, amount, reference, status, created_at) VALUES (?,?,?,?,?,?,?,?,?, UTC_TIMESTAMP())',
-      [id, open[0].id, parts.join(', '), customer.id, req.staff.id, method, amount, reference, status]);
+    await conn.query('INSERT INTO field_payments (id, invoice_id, invoice_refs, customer_id, staff_id, method, amount, reference, status, client_ref, created_at) VALUES (?,?,?,?,?,?,?,?,?,?, UTC_TIMESTAMP())',
+      [id, open[0].id, parts.join(', '), customer.id, req.staff.id, method, amount, reference, status, ref]);
     const [[bal]] = await conn.query('SELECT COALESCE(SUM(total - paid), 0) due FROM field_invoices WHERE customer_id = ?', [customer.id]);
     await conn.commit();
     receipt = { id, customer: customer.name, customerId: customer.id, method, referenceLabel: REF_LABEL[method], reference, amount, invoices: parts, status, by: req.staff.name, at: new Date().toISOString(), balance: Number(bal.due) };

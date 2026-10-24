@@ -82,3 +82,6 @@ export async function addColumn(table, column, ddl) {
   const [[c]] = await pool.query('SELECT COUNT(*) n FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?', [table, column]);
   if (!c.n) await pool.query(`ALTER TABLE \`${table}\` ADD COLUMN \`${column}\` ${ddl}`);
 }
+
+/** Optional idempotency key from the app: a short string, or null when absent / unusable. */
+export const clientRefOf = body => { const v = body && body.clientRef; return typeof v === 'string' && v.trim() ? v.trim().slice(0, 64) : null; };
