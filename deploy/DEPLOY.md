@@ -99,3 +99,10 @@ systemctl stop artrade-api            # or: pm2 stop artrade-api
 
 ## Updating later
 Rebuild locally (`npm run build`), upload a new `artrade-release.tar.gz`, unpack over `/var/www/html/artradeint_mgt`, `cd server && npm ci --omit=dev && systemctl restart artrade-api`. Uploads and `.env` are never overwritten. Do not re-import the full SQL file on a live site.
+
+### Upgrading from v1.0.x to v1.1.0
+- Run `npm ci --omit=dev` again: the invoice PDF needs new packages (`pdfkit`, Noto Sans fonts).
+- The database upgrades itself on the first start (role permissions, staff details, category pictures). Nothing to import. Back up the database first anyway.
+- Roles are now permission based; the existing Master Admin stays the only Master Admin. Review **Roles** in the admin console after the first sign-in.
+- Optional: set `SMTP_*` in `server/.env` to email invoices to customers (see `env.production.example`).
+- Pictures are uploaded files only; web addresses are rejected by the server.
