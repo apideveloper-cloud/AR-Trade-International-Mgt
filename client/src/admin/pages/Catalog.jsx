@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { adm, fmtMoney, slNo, useTable } from '../adminApi.js';
-import { Empty, Modal, Pager, Summary, Switch, Toolbar, ViewToggle, useView } from '../ui.jsx';
+import { Empty, Modal, Pager, Summary, Switch, Toolbar, ViewToggle, alertBox, confirmBox, useView } from '../ui.jsx';
 
 const BLANK = { name: '', brand: '', cat: '', price: '', old: '', stock: 10, img: '', part: '', tech: '', color: '', yield: '', compat: '', spec: '', description: '', gallery: [], metaTitle: '', metaDesc: '', metaKeywords: '' };
 const readFile = f => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(f); });
@@ -130,7 +130,7 @@ export function Products({ cats }) {
   const t = useTable('/products', { cat: '', stock: '', live: '' });
   const [view, setView] = useView('products');
   const [edit, setEdit] = useState(null); // null | 'new' | product
-  const patch = async (p, body) => { try { await adm.put('/products/' + p.id, body); t.reload(); } catch (e) { window.alert(e.message); } };
+  const patch = async (p, body) => { try { await adm.put('/products/' + p.id, body); t.reload(); } catch (e) { alertBox(e.message); } };
   const catName = id => cats.find(c => c.id === id)?.title || id;
   const cols = '44px 52px minmax(200px,1fr) 120px 110px 110px 80px 150px 70px';
   return (
@@ -194,7 +194,7 @@ export function Categories({ onChanged }) {
     setBusy('');
   };
   const clear = async c => {
-    if (!window.confirm('Remove the picture of “' + c.title + '”? The store goes back to the automatic picture.')) return;
+    if (!(await confirmBox('Remove the picture of “' + c.title + '”? The store goes back to the automatic picture.', { danger: true, confirmLabel: 'Remove picture' }))) return;
     setErr(''); setBusy(c.id);
     try { await adm.put('/categories/' + c.id, { image: '' }); await load(); onChanged?.(); } catch (e) { setErr(e.message); }
     setBusy('');

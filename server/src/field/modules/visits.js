@@ -10,7 +10,7 @@
 import path from 'node:path';
 import { Router } from 'express';
 import { pool, guard, guardRole, wrap, fail, roleKey, coord } from '../common.js';
-import { PROOFS, saveImage, removeFile } from '../sales_util.js';
+import { PROOFS, saveImage } from '../sales_util.js';
 import { bdDate, bdToDate, utcSql, addDays, dateOk, timeOk, VISIT_SQL, visitOut, loadVisit } from '../crm_util.js';
 
 const router = Router();

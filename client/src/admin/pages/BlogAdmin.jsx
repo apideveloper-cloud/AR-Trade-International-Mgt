@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { adm, dateF, useTable } from '../adminApi.js';
-import { Empty, Pager, Pill, Toolbar, ViewToggle, useView } from '../ui.jsx';
+import { Empty, Pager, Pill, Toolbar, ViewToggle, alertBox, confirmBox, useView } from '../ui.jsx';
 
 const today = () => new Date().toISOString().slice(0, 10);
 const readFile = f => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(f); });
@@ -122,7 +122,7 @@ export function BlogAdmin({ staff }) {
   const [view, setView] = useView('blog');
   const [edit, setEdit] = useState(null); // null = list, 'new' or an id
   const isWriter = staff.role === 'Content writer';
-  const del = async r => { if (window.confirm(`Delete “${r.title}” permanently?`)) { try { await adm.del('/blog/' + r.id); t.reload(); } catch (e) { window.alert(e.message); } } };
+  const del = async r => { if (await confirmBox(`Delete “${r.title}” permanently?`, { danger: true, confirmLabel: 'Delete' })) { try { await adm.del('/blog/' + r.id); t.reload(); } catch (e) { alertBox(e.message); } } };
   if (edit) return <Editor id={edit === 'new' ? null : edit} cats={t.data.categories || []} onDone={id => { setEdit(id || null); t.reload(); }} />;
   return (
     <>

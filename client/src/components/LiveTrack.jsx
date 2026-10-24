@@ -4,7 +4,6 @@ import { api, fmt, fmtTime } from '../api.js';
 export const FLOW = ['Placed', 'Verification', 'Confirmed', 'Packed', 'Out for delivery', 'Delivered'];
 export const FLOW_COLOR = { Placed: '#7a869f', Verification: 'oklch(0.72 0.14 75)', Confirmed: 'oklch(0.55 0.16 255)', Packed: 'oklch(0.52 0.17 295)', 'Out for delivery': 'oklch(0.6 0.12 200)', Delivered: 'oklch(0.58 0.15 150)', Cancelled: 'oklch(0.58 0.19 20)', Returned: 'oklch(0.6 0.18 350)', 'Attempt failed': 'oklch(0.7 0.15 55)' };
 
-const box = { background: '#fff', border: '1px solid #e3e8f2', borderRadius: 18, padding: 18, display: 'flex', flexDirection: 'column', gap: 12 };
 
 /** Customer-facing live tracking (also embedded in the Delivery Hub). `d` is the /api/live payload. */
 export default function LiveTrack({ d, phone, onChanged }) {

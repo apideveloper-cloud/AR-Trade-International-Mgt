@@ -8,7 +8,8 @@
 // a delivery (DN-nnnn, status Ready) is created and managers are notified. Stock is NOT touched here: it is reduced when the
 // delivery is confirmed (deliveries.js).
 import { Router } from 'express';
-import { pool, fail, wrap, guard, guardRole, nextSeq, notify, staffIdsByRole, UTC } from '../common.js';
+import { pool, fail, wrap, guard, guardRole, nextSeq, notify, staffIdsByRole, UTC, parseJson } from '../common.js';
+import { buildSalesOrderPdf } from '../../salesorder.js';
 import { bdDayStartUtc, creditOf, customerById, customerOut, mailCustomer, seesAll } from '../sales_util.js';
 import { skuOf } from './products.js';
 
@@ -107,6 +108,18 @@ router.get('/:id', guard(), wrap(async (req, res) => {
   if (o.staff_id !== req.staff.id && !seesAll(req.staff)) throw fail(403, 'Your role cannot do this');
   const c = await customerById(o.customer_id);
   res.json({ ...(await orderOut(o)), customerInfo: customerOut(c, await creditOf(c.id)) });
+}));
+
+// the sales order as a PDF (preview in the admin console, print or save); same visibility as the order itself
+router.get('/:id/pdf', guard(), wrap(async (req, res) => {
+  const [[o]] = await pool.query(`${ORDER_SELECT} WHERE o.id = ?`, [req.params.id]);
+  if (!o) throw fail(404, 'Order not found');
+  if (o.staff_id !== req.staff.id && !seesAll(req.staff)) throw fail(403, 'Your role cannot do this');
+  const c = await customerById(o.customer_id);
+  const ap = o.approved_by ? (await pool.query('SELECT name FROM staff WHERE id = ?', [o.approved_by]))[0][0] : null;
+  const site = parseJson((await pool.query('SELECT v FROM settings WHERE k = "site"'))[0][0]?.v) || {};
+  const pdf = await buildSalesOrderPdf({ ...(await orderOut(o)), customerInfo: customerOut(c), approvedBy: ap?.name || '' }, site);
+  res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': `inline; filename="${o.id}.pdf"`, 'Cache-Control': 'no-store' }).send(pdf);
 }));
 
 router.put('/:id/approve', guardRole('manager'), wrap(async (req, res) => {

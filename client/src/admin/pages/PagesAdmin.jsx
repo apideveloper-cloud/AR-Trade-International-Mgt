@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { adm, can } from '../adminApi.js';
-import { Pill } from '../ui.jsx';
+import { Pill, confirmBox } from '../ui.jsx';
 
 const GROUPS = [['servicing', 'Servicing details', 'Shown on the Servicing page'], ['clients', 'Corporate clients', 'Shown on the About page'], ['company', 'Company profile', 'Profile, mission and vision']];
 const readFile = f => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(f); });
@@ -89,7 +89,7 @@ export function PagesAdmin({ staff }) {
   const [edit, setEdit] = useState(null); // null | { id } | { group } for new
   const load = () => adm.get('/pages').then(setRows).catch(() => setRows([]));
   useEffect(() => { load(); }, []);
-  const del = async r => { if (window.confirm(`Delete “${r.title}”?`)) { await adm.del('/pages/' + r.id); load(); } };
+  const del = async r => { if (await confirmBox(`Delete “${r.title}”?`, { danger: true, confirmLabel: 'Delete' })) { await adm.del('/pages/' + r.id); load(); } };
   if (edit) return <PageEditor id={edit.id} group={edit.group || rows.find(r => r.id === edit.id)?.group} onDone={id => { setEdit(id ? { id } : null); load(); }} />;
   if (!rows) return <div className="a-card">Loading…</div>;
   const isAdmin = can(staff, 'pages.delete');

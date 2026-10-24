@@ -11,9 +11,10 @@
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { Router } from 'express';
-import { pool, fail, wrap, guardRole, nextSeq, notify, staffIdsByRole, UTC, digits, coord } from '../common.js';
+import { pool, fail, wrap, guardRole, nextSeq, notify, staffIdsByRole, UTC, digits, coord, parseJson } from '../common.js';
 import { secret } from '../../util.js';
 import { PROOFS, mailCustomer, removeFile, saveImage, seesAll } from '../sales_util.js';
+import { buildDeliveryNotePdf } from '../../salesorder.js';
 
 const router = Router();
 const guardSales = guardRole('rm', 'manager', 'accountant');
@@ -67,6 +68,15 @@ router.get('/:id', guardSales, wrap(async (req, res) => {
     ...out(d), terms: 'Credit · 30 days', gps: d.lat != null, hasPhoto: !!d.proof_photo, hasSignature: !!d.signature, otpOk: !!d.otp_ok,
     lines: items.map(i => ({ id: i.id, productId: i.product_id, name: i.name, sku: i.sku, price: i.price, qty: i.qty }))
   });
+}));
+
+// the delivery note as a PDF (preview, print or save); same visibility as the delivery itself
+router.get('/:id/pdf', guardSales, wrap(async (req, res) => {
+  const d = await find(req);
+  const [items] = await pool.query('SELECT id, name, sku, price, qty FROM field_sales_order_items WHERE order_id = ? ORDER BY id', [d.order_id]);
+  const site = parseJson((await pool.query('SELECT v FROM settings WHERE k = ?', ['site']))[0][0]?.v) || {};
+  const pdf = await buildDeliveryNotePdf({ ...out(d), terms: 'Credit · 30 days', gps: d.lat != null, hasPhoto: !!d.proof_photo, hasSignature: !!d.signature, otpOk: !!d.otp_ok, lines: items.map(i => ({ id: i.id, name: i.name, sku: i.sku, price: i.price, qty: i.qty })) }, site);
+  res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': 'inline; filename="' + d.id + '.pdf"', 'Cache-Control': 'no-store' }).send(pdf);
 }));
 
 router.put('/:id/start', guardSales, wrap(async (req, res) => {

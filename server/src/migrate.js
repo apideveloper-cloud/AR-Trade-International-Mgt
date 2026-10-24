@@ -14,4 +14,12 @@ export async function ensureSchema() {
     await pool.query('ALTER TABLE categories ADD COLUMN img VARCHAR(500) NULL');
     console.log('Added categories.img (category pictures)');
   }
+  // contact-form messages are worked through in the admin Inbox: a status, a private note and who handled it
+  const [mc] = await pool.query("SELECT COLUMN_NAME c FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'messages'");
+  if (mc.length) {
+    const have = new Set(mc.map(r => r.c));
+    for (const [c, def] of [['status', "VARCHAR(12) NOT NULL DEFAULT 'New'"], ['note', "VARCHAR(1000) NOT NULL DEFAULT ''"], ['handled_by', "VARCHAR(120) NOT NULL DEFAULT ''"], ['handled_at', 'TIMESTAMP NULL']]) {
+      if (!have.has(c)) { await pool.query(`ALTER TABLE messages ADD COLUMN ${c} ${def}`); console.log('Added messages.' + c); }
+    }
+  }
 }

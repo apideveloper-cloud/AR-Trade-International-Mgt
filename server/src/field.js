@@ -12,7 +12,7 @@ import { can } from './permissions.js';
 import { pathToFileURL } from 'node:url';
 import { ensureFieldSchema } from './field/migrate.js';
 import { moduleGate, ensureModuleTable } from './field/gate.js';
-import { staffOut, roleKey, ROLE_LABELS, notify, staffIdsByRole } from './field/common.js';
+import { staffOut, roleKey, ROLE_LABELS, notify, staffIdsByRole, todayBD } from './field/common.js';
 
 // REST API for the AR Trade mobile app: attendance, live GPS tracking and expenses.
 const router = Router();
@@ -95,6 +95,38 @@ router.post('/attendance', guard(), wrap(async (req, res) => {
 router.get('/attendance', guard(), wrap(async (req, res) => {
   const [rows] = await pool.query(`SELECT type, ${UTC('at')} at, lat, lng FROM field_attendance WHERE staff_id = ? AND at >= ? AND at <= ? ORDER BY at, id`, [req.staff.id, ...range(req.query)]);
   res.json(rows.map(r => ({ type: r.type, time: r.at, lat: r.lat == null ? null : Number(r.lat), lng: r.lng == null ? null : Number(r.lng) })));
+}));
+
+// office view (approvers): everyone's attendance for one day in Bangladesh time, plus how many days each person clocked in this month
+router.get('/attendance/report', guard('field.approve'), wrap(async (req, res) => {
+  const today = todayBD();
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.date || '')) && !isNaN(Date.parse(req.query.date + 'T00:00:00Z')) ? String(req.query.date) : today;
+  const dayStart = new Date(Date.parse(date + 'T00:00:00Z') - 6 * 3600e3); // 00:00 in Bangladesh is 18:00 UTC the evening before
+  const dayEnd = new Date(dayStart.getTime() + 864e5);
+  const monthStart = new Date(Date.parse(date.slice(0, 8) + '01T00:00:00Z') - 6 * 3600e3);
+  const [staff] = await pool.query("SELECT id, name, role, phone FROM staff WHERE status = 'Active' ORDER BY name");
+  const [rows] = await pool.query(`SELECT staff_id, type, ${UTC('at')} at FROM field_attendance WHERE at >= ? AND at < ? ORDER BY at, id`, [mysqlDate(dayStart), mysqlDate(dayEnd)]);
+  const [leave] = await pool.query("SELECT DISTINCT staff_id FROM field_leave_requests WHERE status = 'Approved' AND from_date <= ? AND to_date >= ?", [date, date]);
+  const [month] = await pool.query("SELECT staff_id, COUNT(DISTINCT DATE(CONVERT_TZ(at, '+00:00', '+06:00'))) days FROM field_attendance WHERE type = 'Clocked In' AND at >= ? AND at < ? GROUP BY staff_id", [mysqlDate(monthStart), mysqlDate(dayEnd)]);
+  const onLeave = new Set(leave.map(l => l.staff_id));
+  const monthDays = new Map(month.map(m => [m.staff_id, Number(m.days)]));
+  const weeklyOff = new Date(date + 'T00:00:00Z').getUTCDay() === 5; // Friday
+  const future = date > today;
+  const out = staff.map(s => {
+    const mine = rows.filter(r => r.staff_id === s.id);
+    const firstIn = mine.find(r => r.type === 'Clocked In')?.at || null;
+    const lastOut = [...mine].reverse().find(r => r.type === 'Clocked Out' && firstIn && r.at > firstIn)?.at || null;
+    let minutes = 0, open = null;
+    for (const r of mine) {
+      if (r.type === 'Clocked In') open = open || Date.parse(r.at);
+      else if (open) { minutes += (Date.parse(r.at) - open) / 60000; open = null; }
+    }
+    const onDuty = open !== null && date === today;
+    if (onDuty) minutes += (Date.now() - open) / 60000;
+    const status = onLeave.has(s.id) ? 'On leave' : onDuty ? 'On duty' : firstIn ? 'Present' : future ? '—' : weeklyOff ? 'Weekly off' : 'Absent';
+    return { id: s.id, name: s.name, role: roleKey(s.role), roleLabel: s.role, phone: s.phone, status, firstIn, lastOut, minutes: Math.round(minutes), monthDays: monthDays.get(s.id) || 0 };
+  });
+  res.json({ date, today, weeklyOff, rows: out });
 }));
 
 // ---------- live GPS tracking ----------

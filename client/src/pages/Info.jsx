@@ -4,6 +4,7 @@ import ProductCard from '../components/ProductCard.jsx';
 import { api, offPct } from '../api.js';
 import { DEFAULT_ABOUT, DEFAULT_FOOTER, withDefaults } from '../data.js';
 import { useStore } from '../store.jsx';
+import { CodeArt } from './ErrorPages.jsx';
 
 const wrap = { maxWidth: 1600, margin: '0 auto', padding: '28px 28px 72px', display: 'flex', flexDirection: 'column', gap: 28 };
 
@@ -14,24 +15,8 @@ export function NotFound() {
   const [q, setQ] = useState('');
   const submit = e => { e.preventDefault(); nav('/shop/all' + (q.trim() ? '?q=' + encodeURIComponent(q.trim()) : '')); };
   return (
-    <section className="nf">
-      <div className="nf-art" aria-hidden="true">
-        <span className="nf-d">4</span>
-        <svg className="nf-cart" viewBox="0 0 120 150" role="img">
-          <defs>
-            <linearGradient id="nfg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="oklch(0.7 0.14 235)" /><stop offset="1" stopColor="oklch(0.45 0.17 258)" /></linearGradient>
-          </defs>
-          <rect x="14" y="30" width="92" height="104" rx="16" fill="url(#nfg)" />
-          <rect x="26" y="14" width="68" height="26" rx="9" fill="#0b1631" />
-          <rect x="30" y="52" width="60" height="42" rx="9" fill="rgba(255,255,255,.18)" />
-          <circle cx="60" cy="73" r="15" fill="#fff" />
-          <path d="M54 68a6.5 6.5 0 1 1 8.6 6.1c-1.8.8-2.6 1.7-2.6 3.4" fill="none" stroke="oklch(0.45 0.17 258)" strokeWidth="3.4" strokeLinecap="round" />
-          <circle cx="60" cy="84" r="2.2" fill="oklch(0.45 0.17 258)" />
-          <rect x="34" y="106" width="52" height="7" rx="3.5" fill="rgba(255,255,255,.4)" />
-          <rect x="34" y="118" width="34" height="7" rx="3.5" fill="rgba(255,255,255,.25)" />
-        </svg>
-        <span className="nf-d">4</span>
-      </div>
+    <section className="nf" style={{ '--nf-h': 238 }}>
+      <CodeArt a="4" b="4" glyph="question" />
       <h1>We couldn't find that page</h1>
       <p>The link may be old or mistyped, or the product is no longer listed. Try a search, pick a category, or head back home.</p>
       <code className="nf-path" title="The address you opened">{pathname.length > 70 ? pathname.slice(0, 70) + '…' : pathname}</code>

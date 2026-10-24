@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import './admin.css';
-import { adm, can, getAdminToken, setAdminToken, setUnauthorizedHandler } from './adminApi.js';
+import { adm, can, fld, getAdminToken, setAdminToken, setUnauthorizedHandler } from './adminApi.js';
 import { Categories, Products } from './pages/Catalog.jsx';
 import { Careers, Inbox, Marketing, Reviews, Services } from './pages/Engage.jsx';
 import { BlogAdmin } from './pages/BlogAdmin.jsx';
@@ -9,9 +9,13 @@ import { PagesAdmin } from './pages/PagesAdmin.jsx';
 import { ContentAdmin } from './pages/ContentAdmin.jsx';
 import { Customers, Deliveries, Orders } from './pages/Sales.jsx';
 import { Dashboard } from './pages/Dashboard.jsx';
+import { FieldApprovals, FieldAttendance, FieldModules, FieldTeamMap } from './pages/Field.jsx';
+import { FieldContacts, FieldCustomers, FieldDeliveries, FieldOrders, FieldVisits } from './pages/FieldSales.jsx';
+import { AccCollections, AccExpenses, AccOverview, AccPurchase, AccReceivables, AccReports } from './pages/Accounts.jsx';
 import { Settings, Team } from './pages/System.jsx';
 import { Roles } from './pages/Roles.jsx';
 import { AdminFooter, TopBar } from './AdminChrome.jsx';
+import { DialogHost } from './ui.jsx';
 
 // [page, label, icon, permission(s) from the role matrix: any one opens the page]
 const NAV = [
@@ -19,11 +23,16 @@ const NAV = [
   ['Sales', [['orders', 'Orders', '▤', 'orders.view'], ['deliveries', 'Deliveries', '⚑', ['hub.view', 'hub.deliver']], ['customers', 'Customers', '☺', 'customers.view']]],
   ['Catalog', [['products', 'Products', '▣', 'products.view'], ['categories', 'Categories', '☰', 'products.view']]],
   ['Engage', [['services', 'Servicing', '✦', 'services.manage'], ['blog', 'Blog', '✎', 'blog.manage'], ['pages', 'Site pages', '❏', 'pages.manage'], ['content', 'Site content', '▧', 'pages.manage'], ['reviews', 'Reviews', '★', 'reviews.moderate'], ['inbox', 'Inbox', '✉', 'messages.manage'], ['marketing', 'Marketing', '✺', 'marketing.manage'], ['careers', 'Careers', '☷', 'careers.manage']]],
+  ['Field team', [['field-map', 'Team map', '◎', 'field.approve'], ['field-attendance', 'Attendance', '◷', 'field.approve'], ['field-approvals', 'Approvals', '✔', 'field.approve'], ['field-modules', 'Field modules', '⚙', 'settings.manage']]],
+  ['Field sales', [['field-customers', 'Field customers', '☺', 'field.approve'], ['field-visits', 'Visits & follow-ups', '⚑', 'field.approve'], ['field-orders', 'Field orders', '▤', 'field.approve'], ['field-deliveries', 'Field deliveries', '⛟', 'field.approve'], ['field-contacts', 'Contacts', '☎', 'field.approve']]],
+  ['Accounts', [['acc-overview', 'Accounts overview', '◈', ['field.approve', 'hub.cash']], ['acc-receivables', 'Receivables', '⇣', ['field.approve', 'hub.cash']], ['acc-collections', 'Collections', '⇡', ['field.approve', 'hub.cash']], ['acc-expenses', 'Expenses', '₿', ['field.approve', 'hub.cash']], ['acc-purchase', 'Purchase orders', '▥', ['field.approve', 'hub.cash']], ['acc-reports', 'Reports', '▦', ['field.approve', 'hub.cash']]]],
   ['System', [['team', 'Team', '☻', 'team.manage'], ['roles', 'Roles', '⚿', 'roles.manage'], ['settings', 'Settings', '⚙', 'settings.manage']]]
 ];
+// the field-app module behind a menu page (a page is hidden when the module is off for the signed-in role)
+const MODULE_OF = { 'field-map': 'team', 'field-attendance': 'attendance', 'field-approvals': 'approvals', 'field-customers': 'customers', 'field-visits': 'visits', 'field-orders': 'sales', 'field-deliveries': 'delivery', 'field-contacts': 'contacts', 'acc-collections': 'collection', 'acc-purchase': 'purchase', 'acc-reports': 'reports', 'acc-expenses': 'expenses' };
 // roles anyone may ask for on the "Request access" form (the Master Admin and Admin roles are never self-service)
 const REQUEST_ROLES = ['Delivery rider', 'Marketing manager', 'Content writer', 'Field Officer', 'RM', 'Purchase Officer', 'Accountant', 'Manager'];
-const TITLES = { dashboard: 'Dashboard', orders: 'Orders', deliveries: 'Deliveries', customers: 'Customers', products: 'Products', categories: 'Categories', services: 'Service requests', blog: 'Blog articles', pages: 'Servicing, clients & company pages', content: 'Storefront content (slider, logos, FAQs, policies)', reviews: 'Product reviews', inbox: 'Inbox', marketing: 'Marketing', careers: 'Careers', team: 'Team & accounts', roles: 'Roles & permissions', settings: 'Settings' };
+const TITLES = { 'field-customers': 'Field customers', 'field-visits': 'Visits & follow-ups', 'field-orders': 'Field sales orders', 'field-deliveries': 'Field deliveries', 'field-contacts': 'Contacts', 'acc-overview': 'Accounts overview', 'acc-receivables': 'Receivables', 'acc-collections': 'Collections', 'acc-expenses': 'Expense ledger', 'acc-purchase': 'Purchase orders', 'acc-reports': 'Accounts reports', 'field-map': 'Team live map', 'field-attendance': 'Attendance', 'field-approvals': 'Field approvals', 'field-modules': 'Field app modules', dashboard: 'Dashboard', orders: 'Orders', deliveries: 'Deliveries', customers: 'Customers', products: 'Products', categories: 'Categories', services: 'Service requests', blog: 'Blog articles', pages: 'Servicing, clients & company pages', content: 'Storefront content (slider, logos, FAQs, policies)', reviews: 'Product reviews', inbox: 'Inbox', marketing: 'Marketing', careers: 'Careers', team: 'Team & accounts', roles: 'Roles & permissions', settings: 'Settings' };
 
 /** Password box with a show / hide eye, so a mistyped password can be checked before signing in. */
 function PasswordInput({ name, autoComplete, minLength }) {
@@ -110,9 +119,33 @@ export default function AdminApp() {
   const [site, setSite] = useState(null);
   const [cats, setCats] = useState([]);
   const [menuQ, setMenuQ] = useState(''); // left-menu search
+  // left menu behaves as an accordion: one group open at a time, and the group of the page you are on opens by itself
+  const [openG, setOpenG] = useState('');
+  const [mods, setMods] = useState(null); // field-app modules this role may use: the menu hides pages whose module is off for them
   const nav = useNavigate();
   const { pathname } = useLocation();
 
+  const pageKey = pathname.split('/')[2] || '';
+  useEffect(() => { const g = NAV.find(([, items]) => items.some(i => i[0] === pageKey)); if (g) setOpenG(g[0]); }, [pageKey]);
+  useEffect(() => { // keep the current page's link in view in a long menu (after the group has finished opening)
+    const t = setTimeout(() => document.querySelector('.adm-nav a.on')?.scrollIntoView({ block: 'nearest' }), 260);
+    return () => clearTimeout(t);
+  }, [pageKey]);
+  const navKeys = e => { // arrow keys walk the menu, Left / Right fold / unfold a group, Home / End jump to the ends
+    const items = [...e.currentTarget.querySelectorAll('.nav-g, .nav-grp:not(.shut) .nav-items a')];
+    const i = items.indexOf(document.activeElement);
+    if (i < 0) return;
+    const move = n => { e.preventDefault(); items[(n + items.length) % items.length]?.focus(); };
+    if (e.key === 'ArrowDown') move(i + 1);
+    else if (e.key === 'ArrowUp') move(i - 1);
+    else if (e.key === 'Home') move(0);
+    else if (e.key === 'End') move(items.length - 1);
+    else if (e.key === 'ArrowRight' && items[i].classList.contains('nav-g') && items[i].getAttribute('aria-expanded') === 'false') { e.preventDefault(); items[i].click(); }
+    else if (e.key === 'ArrowLeft') {
+      const head = items[i].classList.contains('nav-g') ? items[i] : items[i].closest('.nav-grp')?.querySelector('.nav-g');
+      if (head && items[i].classList.contains('nav-g') && head.getAttribute('aria-expanded') === 'true') { e.preventDefault(); head.click(); } else if (head) { e.preventDefault(); head.focus(); }
+    }
+  };
   const logout = useCallback(() => { setAdminToken(null); setStaff(null); }, []);
   useEffect(() => { setUnauthorizedHandler(logout); }, [logout]);
   useEffect(() => {
@@ -123,11 +156,12 @@ export default function AdminApp() {
   useEffect(() => { loadMeta(); }, [loadMeta]);
   const loadCats = useCallback(() => adm.get('/categories').then(r => setCats(r.map(c => ({ id: c.id, title: c.title })))).catch(() => {}), []);
   useEffect(() => { if (staff && can(staff, 'products.view')) loadCats(); }, [staff, loadCats]);
+  useEffect(() => { if (staff) fld.get('/modules/me').then(r => setMods(r.modules)).catch(() => setMods(null)); else setMods(null); }, [staff]);
 
   if (!ready) return <div style={{ padding: 80, textAlign: 'center' }}><span className="spin" /></div>;
   if (!staff) return <Login onDone={s => { setStaff(s); }} />;
 
-  const groups = NAV.map(([g, items]) => [g, items.filter(i => can(staff, i[3]))]).filter(([, i]) => i.length);
+  const groups = NAV.map(([g, items]) => [g, items.filter(i => can(staff, i[3]) && (!MODULE_OF[i[0]] || !mods || mods.includes(MODULE_OF[i[0]])))]).filter(([, i]) => i.length);
   if (!groups.length) {
     return (
       <div style={{ padding: 60, textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 14, alignItems: 'center' }}>
@@ -154,19 +188,32 @@ export default function AdminApp() {
             onKeyDown={e => { if (e.key === 'Escape') setMenuQ(''); if (e.key === 'Enter' && shown[0]) { go(shown[0][1][0][0]); setMenuQ(''); } }} />
           {menuQ && <button type="button" onClick={() => setMenuQ('')} aria-label="Clear the search">✕</button>}
         </div>
-        <nav className="adm-nav">
+        <nav className="adm-nav" aria-label="Admin menu" onKeyDown={navKeys}>
           {!shown.length && <span className="nav-none">No menu item matches “{menuQ}”.</span>}
-          {shown.map(([g, items]) => (
-            <div key={g} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <h6>{g}</h6>
-              {items.map(([k, t, ic]) => <Link key={k} to={'/admin/' + k} className={page === k ? 'on' : ''}><span className="ic">{ic}</span><span className="tx">{t}</span></Link>)}
-            </div>
-          ))}
+          {shown.map(([g, items], gi) => {
+            const here = items.some(i => i[0] === page);
+            const open = mq ? true : openG === g;
+            const id = 'nav-g-' + gi;
+            return (
+              <div key={g} className={'nav-grp' + (open ? '' : ' shut')}>
+                <button type="button" className="nav-g" id={id + '-h'} aria-expanded={open} aria-controls={id} onClick={() => !mq && setOpenG(open ? '' : g)} title={open ? 'Fold this group' : 'Open this group'}>
+                  <span>{g}</span>{!open && here && <i className="dot" />}<em>{items.length}</em>
+                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+                </button>
+                <div className="nav-items-wrap">
+                  <div className="nav-items" id={id} role="group" aria-labelledby={id + '-h'}>
+                    {items.map(([k, t, ic]) => <Link key={k} to={'/admin/' + k} className={page === k ? 'on' : ''} aria-current={page === k ? 'page' : undefined}><span className="ic">{ic}</span><span className="tx">{t}</span></Link>)}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </nav>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div className="adm-user"><span className="av">{staff.name[0]}</span><div style={{ minWidth: 0, flex: 1, lineHeight: 1.25 }}><b>{staff.name}</b><small>{staff.role}</small></div><button onClick={logout} title="Sign out">⏻</button></div>
         </div>
       </aside>
+      <DialogHost />
       <main className="adm-main">
         <TopBar staff={staff} groups={groups} page={page} title={TITLES[page] || 'Admin'} go={go} logout={logout} />
         <div className="adm-body" key={page}>
@@ -186,6 +233,21 @@ export default function AdminApp() {
             <Route path="inbox" element={<Inbox />} />
             <Route path="marketing" element={<Marketing />} />
             <Route path="careers" element={<Careers />} />
+            <Route path="field-customers" element={<FieldCustomers />} />
+            <Route path="field-visits" element={<FieldVisits />} />
+            <Route path="field-orders" element={<FieldOrders />} />
+            <Route path="field-deliveries" element={<FieldDeliveries />} />
+            <Route path="field-contacts" element={<FieldContacts />} />
+            <Route path="acc-overview" element={<AccOverview go={go} />} />
+            <Route path="acc-receivables" element={<AccReceivables />} />
+            <Route path="acc-collections" element={<AccCollections />} />
+            <Route path="acc-expenses" element={<AccExpenses />} />
+            <Route path="acc-purchase" element={<AccPurchase />} />
+            <Route path="acc-reports" element={<AccReports />} />
+            <Route path="field-map" element={<FieldTeamMap />} />
+            <Route path="field-attendance" element={<FieldAttendance />} />
+            <Route path="field-approvals" element={<FieldApprovals staff={staff} />} />
+            <Route path="field-modules" element={<FieldModules />} />
             <Route path="team" element={<Team me={staff} />} />
             <Route path="roles" element={<Roles />} />
             <Route path="settings" element={<Settings />} />

@@ -587,7 +587,21 @@ router.delete('/reviews/:id', guard('reviews.moderate'), wrap(async (req, res) =
 
 router.get('/messages', guard('messages.manage'), wrap(async (req, res) => {
   const [rows] = await pool.query('SELECT * FROM messages ORDER BY created_at DESC LIMIT 200');
-  res.json({ chat: rows.filter(m => m.subject === 'Live chat').map(m => ({ id: m.id, text: m.body, at: m.created_at })), contact: rows.filter(m => m.subject !== 'Live chat').map(m => ({ id: m.id, name: m.name, contact: m.contact, company: m.company, body: m.body, at: m.created_at })) });
+  res.json({ chat: rows.filter(m => m.subject === 'Live chat').map(m => ({ id: m.id, text: m.body, at: m.created_at })), contact: rows.filter(m => m.subject !== 'Live chat').map(m => ({ id: m.id, name: m.name, contact: m.contact, company: m.company, subject: m.subject, body: m.body, at: m.created_at, status: m.status || 'New', note: m.note || '', handledBy: m.handled_by || '', handledAt: m.handled_at })) });
+}));
+// work a message: its status (New, Read, Replied, Closed) and a private note for the team
+router.put('/messages/:id', guard('messages.manage'), wrap(async (req, res) => {
+  const [[m]] = await pool.query('SELECT id, status FROM messages WHERE id = ?', [req.params.id]);
+  if (!m) throw fail(404, 'Message not found');
+  const sets = [], vals = [];
+  if ('status' in req.body) {
+    if (!['New', 'Read', 'Replied', 'Closed'].includes(req.body.status)) throw fail(400, 'Unknown status');
+    sets.push('status = ?', 'handled_by = ?', 'handled_at = NOW()'); vals.push(req.body.status, req.body.status === 'New' ? '' : req.staff.name);
+  }
+  if ('note' in req.body) { sets.push('note = ?'); vals.push(String(req.body.note || '').trim().slice(0, 1000)); }
+  if (!sets.length) throw fail(400, 'Nothing to update');
+  await pool.query(`UPDATE messages SET ${sets.join(', ')} WHERE id = ?`, [...vals, m.id]);
+  res.json({ ok: true });
 }));
 router.delete('/messages/:id', guard('messages.manage'), wrap(async (req, res) => { await pool.query('DELETE FROM messages WHERE id = ?', [req.params.id]); res.json({ ok: true }); }));
 

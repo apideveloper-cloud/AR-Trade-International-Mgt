@@ -509,6 +509,7 @@ app.post('/api/jobs/:id/apply', limit('apply', 5, 3600000), wrap(async (req, res
 
 app.use(['/api/admin/login', '/api/admin/register'], limit('stafflogin', 15, 10 * 60000));
 app.use('/api/field/login', limit('fieldlogin', 15, 10 * 60000));
+app.use('/api/field/forgot', limit('fieldforgot', 20, 30 * 60000)); // security-code requests and guesses, per IP
 app.use('/api/live', limit('live', 40, 10 * 60000)); // order lookup / return by order id + mobile number
 app.use('/api/admin', adminRouter);
 app.use('/api/account', accountRouter);

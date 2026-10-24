@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { STATUS_COLORS } from './adminApi.js';
 
 export function Pill({ s, label }) {
@@ -62,11 +62,11 @@ export function Drawer({ title, sub, onClose, children }) {
 }
 
 /** Dialog. With `side` it slides in from the right as a full-height panel (used for the bigger forms). */
-export function Modal({ kicker, title, onClose, onSubmit, children, footer, side }) {
+export function Modal({ kicker, title, onClose, onSubmit, children, footer, side, narrow, cls = '' }) {
   return (
     <>
-      <div className="a-scrim" style={{ background: 'rgba(11,22,49,.55)' }} onClick={onClose} />
-      <form className={'a-modal' + (side ? ' slide' : '')} onSubmit={onSubmit}>
+      <div className={'a-scrim' + (cls ? ' ' + cls : '')} style={{ background: 'rgba(11,22,49,.55)' }} onClick={onClose} />
+      <form className={'a-modal' + (side ? ' slide' : '') + (narrow ? ' narrow' : '') + (cls ? ' ' + cls : '')} onSubmit={onSubmit}>
         <div className="hd"><div><small>{kicker}</small><b>{title}</b></div><button type="button" className="a-x" onClick={onClose}>✕</button></div>
         <div className="bd">{children}</div>
         {footer && <div className="ft">{footer}</div>}
@@ -125,6 +125,45 @@ export function ViewToggle({ view, setView }) {
     <div className="vt" role="group" aria-label="Layout">
       <button type="button" className={view === 'list' ? 'on' : ''} aria-pressed={view === 'list'} onClick={() => setView('list')} title="List view"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg>List</button>
       <button type="button" className={view === 'grid' ? 'on' : ''} aria-pressed={view === 'grid'} onClick={() => setView('grid')} title="Grid view"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinejoin="round" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5" rx="1.5" /><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5" /><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5" /><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5" /></svg>Grid</button>
+    </div>
+  );
+}
+
+/* ---- confirm / alert dialogs in the console's own style (instead of the browser's grey boxes) ---- */
+let showDialog = null;
+const ask = req => new Promise(resolve => {
+  if (!showDialog) { resolve(req.kind === 'confirm' ? window.confirm(req.message) : (window.alert(req.message), true)); return; }
+  showDialog({ ...req, resolve });
+});
+/** await confirmBox('Delete this?', { danger: true, confirmLabel: 'Delete' }) -> true / false */
+export const confirmBox = (message, opts = {}) => ask({ kind: 'confirm', message, ...opts });
+/** await alertBox('Something went wrong') */
+export const alertBox = (message, opts = {}) => ask({ kind: 'alert', message, ...opts });
+
+/** Mounted once in the admin frame: shows whichever dialog confirmBox / alertBox asked for. */
+export function DialogHost() {
+  const [d, setD] = useState(null);
+  useEffect(() => { showDialog = setD; return () => { showDialog = null; }; }, []);
+  useEffect(() => {
+    if (!d) return undefined;
+    const key = e => { if (e.key === 'Escape') { setD(null); d.resolve(d.kind === 'confirm' ? false : true); } };
+    window.addEventListener('keydown', key);
+    return () => window.removeEventListener('keydown', key);
+  }, [d]);
+  if (!d) return null;
+  const done = v => { setD(null); d.resolve(v); };
+  const tone = d.danger || d.kind === 'alert' ? 'bad' : 'info';
+  return (
+    <div className="a-dlg-bg" onMouseDown={e => { if (e.target === e.currentTarget) done(d.kind === 'confirm' ? false : true); }}>
+      <div className="a-dlg" role={d.kind === 'alert' ? 'alertdialog' : 'dialog'} aria-modal="true" aria-label={d.title || (d.kind === 'alert' ? 'Notice' : 'Please confirm')}>
+        <span className={'ic ' + tone}>{tone === 'bad' ? '!' : '?'}</span>
+        <h3>{d.title || (d.kind === 'alert' ? 'Something needs your attention' : 'Please confirm')}</h3>
+        <p>{d.message}</p>
+        <div className="acts">
+          {d.kind === 'confirm' && <button type="button" className="a-btn ghost" onClick={() => done(false)}>{d.cancelLabel || 'Cancel'}</button>}
+          <button type="button" autoFocus className={'a-btn' + (d.danger ? ' danger' : '')} onClick={() => done(true)}>{d.confirmLabel || (d.kind === 'alert' ? 'OK' : 'Yes, continue')}</button>
+        </div>
+      </div>
     </div>
   );
 }

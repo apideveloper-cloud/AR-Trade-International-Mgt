@@ -27,9 +27,33 @@ const PW_LABEL = ['', 'Weak', 'Fair', 'Good', 'Strong'];
 
 const blankMember = roles => ({ name: '', email: '', phone: '', role: (roles.find(r => r.assignable && !r.legacy && r.name !== 'Master Admin' && r.name !== 'Admin') || roles.find(r => r.assignable) || {}).name || '', password: genPassword(), show: true, nid: '', presentAddress: '', contactAddress: '', same: false, refName: '', refPhone: '' });
 
+/** The one-way hand-over of the Master Admin role: the person must type TRANSFER to confirm. */
+function TransferModal({ to, onClose }) {
+  const [word, setWord] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const submit = async e => {
+    e.preventDefault();
+    if (word.trim().toUpperCase() !== 'TRANSFER') return;
+    setBusy(true); setErr('');
+    try { await adm.post('/staff/' + to.id + '/make-master', { confirm: 'TRANSFER' }); window.location.reload(); } catch (er) { setErr(er.message); setBusy(false); }
+  };
+  return (
+    <Modal narrow kicker="Master Admin" title="Hand over the Master Admin role" onClose={onClose} onSubmit={submit}
+      footer={<><button type="button" className="a-btn ghost" onClick={onClose}>Cancel</button><button className="a-btn danger" disabled={word.trim().toUpperCase() !== 'TRANSFER' || busy}>{busy ? 'Transferring…' : 'Transfer role'}</button></>}>
+      <p className="pwm-note" style={{ color: '#3a4558', fontSize: 14 }}>There is only one Master Admin. This makes <b>{to.name}</b> the Master Admin and turns <b>you</b> into an Admin. You can't undo it yourself; only the new Master Admin can hand it back.</p>
+      <label className="a-lbl"><span>Type <b>TRANSFER</b> to confirm</span>
+        <input className="a-input" value={word} onChange={e => setWord(e.target.value)} placeholder="TRANSFER" autoFocus autoComplete="off" />
+      </label>
+      {err && <div className="a-msg err">{err}</div>}
+    </Modal>
+  );
+}
+
 export function Team({ me }) {
   const [add, setAdd] = useState(null); // null | { id?, name, email, phone, role, password, show, nid, presentAddress, contactAddress, same, refName, refPhone, busy, err, done }
   const [copied, setCopied] = useState(false);
+  const [transferFor, setTransferFor] = useState(null);
   const [rows, setRows] = useState([]);
   const [roles, setRoles] = useState([]);
   const [err, setErr] = useState('');
@@ -40,6 +64,7 @@ export function Team({ me }) {
   const pending = rows.filter(r => r.status === 'Pending').length;
   return (
     <>
+      {transferFor && <TransferModal to={transferFor} onClose={() => setTransferFor(null)} />}
       <Summary items={[
         ['Team members', rows.length, rows.filter(r => r.status === 'Active').length + ' active', 'blue', 'users'],
         ['Waiting for approval', pending, pending ? 'Open the list below to approve' : 'Nobody is waiting', 'amber', 'clock'],
@@ -83,7 +108,7 @@ export function Team({ me }) {
             <Pill s={a.status === 'Pending' ? 'New' : a.status} label={a.status} />
             <button type="button" className="a-btn sm ghost" onClick={() => setAdd({ id: a.id, name: a.name, email: a.email, phone: a.phone, role: a.role, nid: a.nid, presentAddress: a.presentAddress, contactAddress: a.contactAddress, same: !!a.presentAddress && a.presentAddress === a.contactAddress, refName: a.refName, refPhone: a.refPhone })}>Details</button>
             {a.id !== me.id && a.status !== 'Active' && <button className="a-btn sm" onClick={() => act(a.id, { status: 'Active' })}>Approve</button>}
-            {me.role === 'Master Admin' && a.id !== me.id && a.status === 'Active' && <button type="button" className="a-btn sm ghost" title="Make this person the Master Admin; you become an Admin" onClick={async () => { const c = window.prompt('There is only one Master Admin. This makes ' + a.name + ' the Master Admin and turns you into an Admin.\n\nType TRANSFER to confirm.'); if (c === null) return; try { await adm.post('/staff/' + a.id + '/make-master', { confirm: c.trim() }); window.location.reload(); } catch (e) { setErr(e.message); } }}>★ Make Master</button>}
+            {me.role === 'Master Admin' && a.id !== me.id && a.status === 'Active' && <button type="button" className="a-btn sm ghost" title="Make this person the Master Admin; you become an Admin" onClick={() => setTransferFor(a)}>★ Make Master</button>}
             {a.id !== me.id && a.status === 'Active' && <button className="a-btn sm ghost" onClick={() => act(a.id, { status: 'Disabled' })}>Disable</button>}
           </div>
         ))}

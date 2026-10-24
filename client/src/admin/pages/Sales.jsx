@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { adm, can, downloadFile, viewFile, dateF, dateTimeF, fmtMoney, slNo, STATUS_COLORS, useTable } from '../adminApi.js';
-import { Drawer, Empty, Modal, Pager, Pill, Summary, Toolbar } from '../ui.jsx';
+import { adm, can, downloadFile, dateF, dateTimeF, fmtMoney, slNo, STATUS_COLORS, useTable } from '../adminApi.js';
+import { Drawer, Empty, Modal, Pager, Pill, Summary, Toolbar, alertBox, confirmBox } from '../ui.jsx';
+import { PdfIcon, PdfPreview } from '../fieldKit.jsx';
 
 const STATUSES = ['Pending', 'Confirmed', 'Packed', 'Shipped', 'Delivered', 'Cancelled'];
 const AREA = { inside: 'Inside Dhaka', suburb: 'Dhaka suburbs', outside: 'Outside Dhaka' };
@@ -9,12 +10,15 @@ function OrderDrawer({ id, site, onClose, onChanged, canDelete, riderOnly }) {
   const [o, setO] = useState(null);
   const [err, setErr] = useState('');
   const [mail, setMail] = useState(null); // { to, message, busy, err, done }
+  const [showPdf, setShowPdf] = useState(false);
   useEffect(() => { adm.get('/orders/' + id).then(setO).catch(e => setErr(e.message)); }, [id]);
   const setStatus = async status => {
     try { const n = await adm.put(`/orders/${id}/status`, { status }); setO(n); onChanged(); } catch (e) { setErr(e.message); }
   };
-  const del = async () => { if (!window.confirm('Delete order ' + id + '? This cannot be undone.')) return; await adm.del('/orders/' + id); onChanged(); onClose(); };
+  const del = async () => { if (!(await confirmBox('Delete order ' + id + '? This cannot be undone.', { danger: true, confirmLabel: 'Delete order' }))) return; await adm.del('/orders/' + id); onChanged(); onClose(); };
   return (
+    <>
+    {showPdf && <PdfPreview url={`/api/admin/orders/${id}/invoice.pdf`} title={'INV-' + id.replace(/^\D+/, '')} filename={'INV-' + id.replace(/^\D+/, '') + '.pdf'} onClose={() => setShowPdf(false)} />}
     <Drawer title={id} sub={o ? dateTimeF(o.date) : ''} onClose={onClose}>
       {err && <div className="a-msg err">{err}</div>}
       {!o ? <span className="spin" /> : (
@@ -32,7 +36,7 @@ function OrderDrawer({ id, site, onClose, onChanged, canDelete, riderOnly }) {
             <div className="inv-card">
               <div className="inv-t"><span className="inv-ic">📄</span><div><b>INV-{id.replace(/^\D+/, '')}</b><small>{o.payStatus === 'Paid' ? 'Paid' : 'Payment due'} · {fmtMoney(o.total)}</small></div></div>
               <div className="inv-act">
-                <button type="button" className="a-btn sm" onClick={() => viewFile(`/orders/${id}/invoice.pdf`).catch(e => setErr(e.message))}>👁 View PDF</button>
+                <button type="button" className="a-btn sm" onClick={() => setShowPdf(true)}><PdfIcon size={16} /> View PDF</button>
                 <button type="button" className="a-btn sm" onClick={() => downloadFile(`/orders/${id}/invoice.pdf`, 'INV-' + id.replace(/^\D+/, '') + '.pdf').catch(e => setErr(e.message))}>⤓ Download</button>
                 <button type="button" className="a-btn sm grad" onClick={() => setMail({ to: o.customer.email || '', message: '' })}>✉ Email to customer</button>
               </div>
@@ -92,6 +96,7 @@ function OrderDrawer({ id, site, onClose, onChanged, canDelete, riderOnly }) {
         </Modal>
       )}
     </Drawer>
+    </>
   );
 }
 
@@ -169,6 +174,51 @@ export function Deliveries() {
   );
 }
 
+const PW_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz';
+const newPassword = () => {
+  const a = new Uint32Array(10); crypto.getRandomValues(a);
+  return [...a.slice(0, 8)].map(n => PW_CHARS[n % PW_CHARS.length]).join('') + [...a.slice(8)].map(n => '23456789'[n % 8]).join('');
+};
+
+/** Set a customer's password: live rule check, a generator and a copy button, in the console's own dialog. */
+function SetPasswordModal({ c, onClose, onDone }) {
+  const [pw, setPw] = useState('');
+  const [show, setShow] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const [saved, setSaved] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const rules = [['At least 8 characters', pw.length >= 8], ['A letter', /[A-Za-z]/.test(pw)], ['A number', /\d/.test(pw)]];
+  const valid = rules.every(r => r[1]);
+  const copy = async () => { try { await navigator.clipboard.writeText(pw); setCopied(true); } catch { setErr('Could not copy. Select the password and copy it by hand.'); } };
+  const submit = async e => {
+    e.preventDefault();
+    if (!valid) return;
+    setBusy(true); setErr('');
+    try { await adm.put(`/customers/${c.userId}/password`, { password: pw }); setSaved(true); onDone(); } catch (er) { setErr(er.message); }
+    setBusy(false);
+  };
+  return (
+    <Modal narrow kicker="Customer account" title={saved ? 'Password updated' : 'Set a new password'} onClose={onClose} onSubmit={submit}
+      footer={saved
+        ? <button type="button" className="a-btn" onClick={onClose}>Done</button>
+        : <><button type="button" className="a-btn ghost" onClick={onClose}>Cancel</button><button className="a-btn" disabled={!valid || busy}>{busy ? 'Saving…' : 'Set password'}</button></>}>
+      <p className="pwm-who"><b>{c.name}</b>{c.phone ? ' · ' + c.phone : ''}</p>
+      <p className="pwm-note">{saved ? 'Tell the customer this password now. It is not shown again, and they can change it from their account.' : 'Choose a password and share it with the customer. They can change it from their account.'}</p>
+      <div className="pwm-field">
+        <input className="a-input" type={show ? 'text' : 'password'} value={pw} onChange={e => { setPw(e.target.value); setCopied(false); }} placeholder="New password" autoFocus readOnly={saved} autoComplete="new-password" aria-label="New password" />
+        <button type="button" className="pwm-eye" onClick={() => setShow(s => !s)} aria-pressed={show} title={show ? 'Hide' : 'Show'}>{show ? 'Hide' : 'Show'}</button>
+      </div>
+      <div className="pwm-acts">
+        {!saved && <button type="button" className="a-mini" onClick={() => { setPw(newPassword()); setShow(true); setCopied(false); }}>✦ Generate a strong one</button>}
+        <button type="button" className="a-mini" disabled={!pw} onClick={copy}>{copied ? 'Copied ✓' : 'Copy'}</button>
+      </div>
+      {!saved && <ul className="pwm-rules">{rules.map(([t, ok]) => <li key={t} className={ok ? 'ok' : ''}>{ok ? '✓' : '○'} {t}</li>)}</ul>}
+      {err && <div className="a-msg err">{err}</div>}
+    </Modal>
+  );
+}
+
 export function Customers() {
   const t = useTable('/customers');
   const [reqs, setReqs] = useState([]);
@@ -177,16 +227,14 @@ export function Customers() {
   const loadReqs = () => adm.get('/password-resets').then(setReqs).catch(() => {});
   useEffect(() => { loadReqs(); }, []);
   const makeLink = async c => {
-    try { const r = await adm.post(`/customers/${c.userId}/reset-link`); setLink({ name: c.name, phone: c.phone, url: window.location.origin + r.path, hours: r.hours }); loadReqs(); } catch (e) { window.alert(e.message); }
+    try { const r = await adm.post(`/customers/${c.userId}/reset-link`); setLink({ name: c.name, phone: c.phone, url: window.location.origin + r.path, hours: r.hours }); loadReqs(); } catch (e) { alertBox(e.message); }
   };
-  const setPw = async c => {
-    const pw = window.prompt(`New password for ${c.name} (min 6 characters). Tell the customer this password; they can change it from their account.`);
-    if (!pw) return;
-    try { await adm.put(`/customers/${c.userId}/password`, { password: pw }); window.alert('Password updated.'); loadReqs(); } catch (e) { window.alert(e.message); }
-  };
+  const [pwFor, setPwFor] = useState(null);
+  const setPw = c => setPwFor(c);
   const cols = '44px minmax(180px,1fr) 140px 70px 110px 110px 250px';
   return (
     <>
+      {pwFor && <SetPasswordModal c={pwFor} onClose={() => setPwFor(null)} onDone={loadReqs} />}
       {reqs.length > 0 && (
         <div className="a-card" style={{ background: 'oklch(0.97 0.03 85)', borderColor: 'oklch(0.9 0.06 85)' }}>
           <h3>🔑 Password reset requests ({reqs.length})</h3>

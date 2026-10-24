@@ -14,10 +14,14 @@ async function call(method, url, body, base = '/api/admin') {
   const headers = { 'Content-Type': 'application/json' };
   const t = getAdminToken();
   if (t) headers.Authorization = 'Bearer ' + t;
-  const res = await fetch(base + url, { method, headers, body: body ? JSON.stringify(body) : undefined });
+  let res;
+  try { res = await fetch(base + url, { method, headers, body: body ? JSON.stringify(body) : undefined }); } catch { throw Object.assign(new Error("Can't reach the server. Check your internet connection and try again."), { status: 0 }); }
   const data = await res.json().catch(() => ({}));
   if (res.status === 401 && t) onUnauthorized();
-  if (!res.ok) throw Object.assign(new Error(data.error || 'Something went wrong'), { status: res.status });
+  if (!res.ok) {
+    const fallback = res.status >= 502 && res.status <= 504 ? 'The server is restarting or busy. Please try again in a moment.' : res.status >= 500 ? 'The server had a problem with this request. Please try again.' : res.status === 404 ? 'We could not find what you asked for.' : 'Something went wrong';
+    throw Object.assign(new Error(data.error || fallback), { status: res.status });
+  }
   return data;
 }
 
@@ -50,6 +54,34 @@ export async function viewFile(url) {
     if (w) w.location.href = href; else window.location.href = href;
     setTimeout(() => URL.revokeObjectURL(href), 60000);
   } catch (e) { if (w) w.close(); throw e; }
+}
+
+/** The field-app API (attendance, tracking, approvals): the web console signs in with the same staff token. */
+export const fld = {
+  get: url => call('GET', url, undefined, '/api/field'),
+  post: (url, body) => call('POST', url, body, '/api/field'),
+  put: (url, body) => call('PUT', url, body, '/api/field')
+};
+
+/** Opens a private field-app file (an expense voucher photo) in a new tab, fetched with the staff token. */
+export async function viewFieldFile(url) {
+  const w = window.open('', '_blank');
+  try {
+    const t = getAdminToken();
+    const res = await fetch(url, { headers: t ? { Authorization: 'Bearer ' + t } : {} });
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Could not open the file');
+    const href = URL.createObjectURL(await res.blob());
+    if (w) w.location.href = href; else window.location.href = href;
+    setTimeout(() => URL.revokeObjectURL(href), 60000);
+  } catch (e) { if (w) w.close(); throw e; }
+}
+
+/** Fetches a private PDF with the staff token and returns a temporary address the page can show in a frame (the caller revokes it). */
+export async function fetchBlobUrl(url) {
+  const t = getAdminToken();
+  const res = await fetch(url, { headers: t ? { Authorization: 'Bearer ' + t } : {} });
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Could not open the document');
+  return URL.createObjectURL(await res.blob());
 }
 
 export const mktApi = {

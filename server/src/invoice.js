@@ -5,23 +5,51 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import PDFDocument from 'pdfkit';
+import QRCode from 'qrcode';
 
 const require = createRequire(import.meta.url);
 const here = path.dirname(fileURLToPath(import.meta.url));
 const fonts = pkg => path.join(path.dirname(require.resolve(`@fontsource/${pkg}/package.json`)), 'files');
 const LATIN = fonts('noto-sans'), BENGALI = fonts('noto-sans-bengali');
-const FONT_FILES = {
+export const FONT_FILES = {
   r: path.join(LATIN, 'noto-sans-latin-400-normal.woff'), b: path.join(LATIN, 'noto-sans-latin-700-normal.woff'),
   br: path.join(BENGALI, 'noto-sans-bengali-bengali-400-normal.woff'), bb: path.join(BENGALI, 'noto-sans-bengali-bengali-700-normal.woff')
 };
-const LOGO = path.resolve(here, '../uploads/site/ar-icon-round.png');
+export const LOGO = path.resolve(here, '../uploads/site/ar-icon-round.png');
 
-const W = 595.28, H = 841.89, M = 40, RIGHT = W - M;
-const NAVY = '#0b1631', BLUE = '#2f7fd6', INK = '#16181d', MUTED = '#6b7388', LINE = '#e1e7f0', SOFT = '#f4f7fc';
+export const W = 595.28, H = 841.89, M = 40, RIGHT = W - M;
+export const NAVY = '#0b1631', BLUE = '#2f7fd6', INK = '#16181d', MUTED = '#6b7388', LINE = '#e1e7f0', SOFT = '#f4f7fc';
+
+/** A QR code as PNG bytes (no margin: the header leaves its own white space). */
+export const qrPng = text => QRCode.toBuffer(String(text), { margin: 0, width: 240, errorCorrectionLevel: 'M', color: { dark: '#0b1631', light: '#ffffff' } });
+export const siteBase = () => (process.env.SITE_URL || '').replace(/\/$/, '') || 'https://artradeinternational.birgroupholdings.net';
+
+/** The header of every document: no filled band, just the logo, the company, the document title and a QR code, with a thin accent line under it. */
+export function drawHeader(doc, { title, number, date, site = {}, qr, caption = 'Scan to open' }) {
+  let tx = M;
+  if (fs.existsSync(LOGO)) { doc.image(LOGO, M, 22, { width: 54 }); tx = M + 68; }
+  put(doc, 'AR TRADE INTERNATIONAL', tx, 25, { size: 17, bold: true, color: NAVY });
+  put(doc, site.address || '159 Santinagar, Dhaka-1217', tx, 48, { size: 8.5, color: MUTED });
+  put(doc, [site.phone, site.email].filter(Boolean).join('   ·   '), tx, 61, { size: 8.5, color: MUTED });
+  const qx = RIGHT - 64;
+  if (qr) {
+    doc.image(qr, qx, 20, { width: 64 });
+    put(doc, caption, qx + 32, 87, { size: 6.5, color: MUTED, align: 'center' });
+  }
+  const tr = qr ? qx - 14 : RIGHT;
+  // the title shrinks until it clears the company name (a long title like DELIVERY NOTE would run into it)
+  const leftEnd = tx + measure(doc, 'AR TRADE INTERNATIONAL', 17, true) + 18;
+  let ts = 24;
+  while (ts > 15 && measure(doc, title, ts, true) > tr - leftEnd) ts -= 1;
+  put(doc, title, tr, 20 + (24 - ts) / 2, { size: ts, bold: true, color: NAVY, align: 'right' });
+  put(doc, number, tr, 52, { size: 11, bold: true, color: BLUE, align: 'right' });
+  if (date) put(doc, date, tr, 68, { size: 8.5, color: MUTED, align: 'right' });
+  doc.moveTo(M, 100).lineTo(RIGHT, 100).lineWidth(2).strokeColor(BLUE).stroke();
+}
 
 export const invoiceNo = id => 'INV-' + String(id).replace(/^\D+/, '');
-const money = n => '৳ ' + Math.round(Number(n) || 0).toLocaleString('en-US');
-const when = (d, time = true) => {
+export const money = n => '৳ ' + Math.round(Number(n) || 0).toLocaleString('en-US');
+export const when = (d, time = true) => {
   const x = new Date(d);
   if (isNaN(x)) return '';
   return x.toLocaleString('en-GB', { timeZone: 'Asia/Dhaka', day: 'numeric', month: 'short', year: 'numeric', ...(time ? { hour: '2-digit', minute: '2-digit', hour12: false } : {}) });
@@ -37,10 +65,10 @@ function runs(str) {
   return out;
 }
 const face = (bn, bold) => (bn ? (bold ? 'bb' : 'br') : (bold ? 'b' : 'r'));
-const measure = (doc, str, size, bold) => runs(str).reduce((w, r) => w + doc.font(face(r.bn, bold)).fontSize(size).widthOfString(r.t), 0);
+export const measure = (doc, str, size, bold) => runs(str).reduce((w, r) => w + doc.font(face(r.bn, bold)).fontSize(size).widthOfString(r.t), 0);
 
 /** One line of text; align 'left' (x = left edge), 'right' (x = right edge) or 'center' (x = middle). */
-function put(doc, str, x, y, { size = 10, bold = false, color = INK, align = 'left' } = {}) {
+export function put(doc, str, x, y, { size = 10, bold = false, color = INK, align = 'left' } = {}) {
   const total = measure(doc, str, size, bold);
   let cx = align === 'right' ? x - total : align === 'center' ? x - total / 2 : x;
   doc.fillColor(color);
@@ -52,7 +80,7 @@ function put(doc, str, x, y, { size = 10, bold = false, color = INK, align = 'le
 }
 
 /** Word-wraps text into lines no wider than maxW. */
-function wrap(doc, str, maxW, size, bold) {
+export function wrap(doc, str, maxW, size, bold) {
   const lines = [];
   let cur = '';
   for (const word of String(str ?? '').replace(/[\r\n\t]+/g, ' ').split(' ').filter(Boolean)) {
@@ -72,7 +100,9 @@ function wrap(doc, str, maxW, size, bold) {
 }
 
 /** Builds the invoice for order `o` (the shape returned by the admin orders API) and resolves to the PDF bytes. */
-export function buildInvoicePdf(o, site = {}) {
+export async function buildInvoicePdf(o, site = {}) {
+  const phone = String(o.customer?.phone || '').replace(/\D/g, '');
+  const qr = await qrPng(`${siteBase()}/track?id=${encodeURIComponent(o.id)}${phone ? '&phone=' + phone : ''}`);
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ size: 'A4', margin: 0, bufferPages: true, info: { Title: `${invoiceNo(o.id)} - AR Trade International`, Author: 'AR Trade International' } });
     const chunks = [];
@@ -84,17 +114,7 @@ export function buildInvoicePdf(o, site = {}) {
     const inv = invoiceNo(o.id);
     const paid = o.payStatus === 'Paid';
 
-    // ---- header band ----
-    doc.rect(0, 0, W, 98).fill(NAVY);
-    doc.rect(0, 98, W, 4).fill(BLUE);
-    let tx = M;
-    if (fs.existsSync(LOGO)) { doc.image(LOGO, M, 22, { width: 54 }); tx = M + 68; }
-    put(doc, 'AR TRADE INTERNATIONAL', tx, 24, { size: 17, bold: true, color: '#ffffff' });
-    put(doc, site.address || '159 Santinagar, Dhaka-1217', tx, 48, { size: 8.5, color: '#b9c6e2' });
-    put(doc, [site.phone, site.email].filter(Boolean).join('   ·   '), tx, 61, { size: 8.5, color: '#b9c6e2' });
-    put(doc, 'INVOICE', RIGHT, 20, { size: 26, bold: true, color: '#ffffff', align: 'right' });
-    put(doc, inv, RIGHT, 53, { size: 11, bold: true, color: '#8fc2ff', align: 'right' });
-    put(doc, when(o.date), RIGHT, 69, { size: 8.5, color: '#b9c6e2', align: 'right' });
+    drawHeader(doc, { title: 'INVOICE', number: inv, date: when(o.date), site, qr, caption: 'Scan to track the order' });
 
     // ---- billed to / order details ----
     const colW = (RIGHT - M - 14) / 2;

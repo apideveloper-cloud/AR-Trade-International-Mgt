@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { adm, downloadFile, dateF, dateTimeF, mktApi, slNo, useTable } from '../adminApi.js';
-import { Empty, Modal, Pager, Pill, Toolbar, Summary, ViewToggle, hueOf, useView } from '../ui.jsx';
+import { Empty, Modal, Pager, Pill, Toolbar, Summary, ViewToggle, alertBox, confirmBox, hueOf, useView } from '../ui.jsx';
+import { Av, Chip, Tabs, usePaged } from '../fieldKit.jsx';
 
 export function Services() {
   const t = useTable('/services', { status: '' });
@@ -31,7 +32,7 @@ export function Reviews() {
   const t = useTable('/reviews', { status: '' });
   const [view, setView] = useView('reviews');
   const set = async (id, status) => { await adm.put('/reviews/' + id, { status }); t.reload(); };
-  const del = async id => { if (window.confirm('Delete this review permanently?')) { await adm.del('/reviews/' + id); t.reload(); } };
+  const del = async id => { if (await confirmBox('Delete this review permanently?', { danger: true, confirmLabel: 'Delete' })) { await adm.del('/reviews/' + id); t.reload(); } };
   const btn = (bg, fg) => ({ border: 0, borderRadius: 999, padding: '8px 14px', fontSize: 12.5, fontWeight: 700, background: bg, color: fg, cursor: 'pointer' });
   return (
     <>
@@ -63,32 +64,87 @@ export function Reviews() {
   );
 }
 
-export function Inbox() {
-  const [d, setD] = useState({ chat: [], contact: [] });
-  const load = () => adm.get('/messages').then(setD);
-  useEffect(() => { load(); }, []);
-  const archive = async id => { await adm.del('/messages/' + id); load(); };
+const MSG_TONE = { New: 'amber', Read: 'blue', Replied: 'ok', Closed: 'off' };
+const waLink = c => { const d = String(c || '').replace(/\D/g, ''); return /^01\d{9}$/.test(d) ? 'https://wa.me/88' + d : null; };
+
+/** One contact-form message: read it, reply by email / WhatsApp / phone, set its status and keep a private note. */
+function MessageCard({ m, onSaved, onError }) {
+  const [note, setNote] = useState(m.note);
+  const [busy, setBusy] = useState(false);
+  const isMail = /@/.test(m.contact), wa = waLink(m.contact), isPhone = !isMail && /\d{6,}/.test(m.contact);
+  const save = async patch => {
+    setBusy(true);
+    try { await adm.put('/messages/' + m.id, patch); await onSaved(); } catch (e) { onError(e.message); }
+    setBusy(false);
+  };
+  const remove = async () => {
+    if (!(await confirmBox('Delete the message from ' + m.name + ' permanently?', { danger: true, confirmLabel: 'Delete message' }))) return;
+    try { await adm.del('/messages/' + m.id); await onSaved(); } catch (e) { onError(e.message); }
+  };
   return (
-    <div className="grid2">
-      <div className="a-card">
-        <h3>Live chat · storefront visitors</h3>
-        <div style={{ maxHeight: 420, overflow: 'auto', background: '#f6f5f2', borderRadius: 12, padding: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {!d.chat.length && <span style={{ color: '#5d6270' }}>No chat yet. Messages from the storefront chat widget appear here.</span>}
-          {d.chat.map(m => <div key={m.id} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}><div style={{ maxWidth: '85%', padding: '9px 12px', borderRadius: 12, background: '#fff', lineHeight: 1.45 }}>{m.text}</div><span style={{ fontSize: 10, color: '#8a8f9b' }}>Visitor · {dateTimeF(m.at)}</span></div>)}
+    <div className={'ib-msg' + (m.status === 'New' ? ' new' : '')}>
+      <Av name={m.name} />
+      <div className="ib-body">
+        <div className="ib-head"><b>{m.name}</b><Chip tone={MSG_TONE[m.status]}>{m.status}</Chip><small>{dateTimeF(m.at)}</small></div>
+        <div className="ib-meta">{[m.contact, m.company].filter(Boolean).join(' · ')}{m.subject ? ' · ' + m.subject : ''}</div>
+        <p className="ib-text">{m.body}</p>
+        {m.handledBy && m.status !== 'New' && <small className="ib-by">{m.status} by {m.handledBy}{m.handledAt ? ' · ' + dateTimeF(m.handledAt) : ''}</small>}
+        <textarea className="a-input" rows={2} placeholder="Private note for the team (customers never see this)" value={note} onChange={e => setNote(e.target.value)} onBlur={() => note !== m.note && save({ note })} aria-label="Private note" />
+        <div className="ib-acts">
+          {isMail && <a className="a-mini" href={'mailto:' + m.contact + '?subject=' + encodeURIComponent('Re: your message to AR Trade International') + '&body=' + encodeURIComponent('Dear ' + m.name + ',\n\n')} onClick={() => m.status === 'New' && save({ status: 'Read' })}>✉ Reply by email</a>}
+          {wa && <a className="a-mini" href={wa} target="_blank" rel="noreferrer" onClick={() => m.status === 'New' && save({ status: 'Read' })}>WhatsApp</a>}
+          {isPhone && <a className="a-mini" href={'tel:' + m.contact.replace(/[^\d+]/g, '')} onClick={() => m.status === 'New' && save({ status: 'Read' })}>☎ Call</a>}
+          {m.status === 'New' && <button type="button" className="a-mini" disabled={busy} onClick={() => save({ status: 'Read' })}>Mark read</button>}
+          {m.status !== 'Replied' && m.status !== 'Closed' && <button type="button" className="a-mini ok" disabled={busy} onClick={() => save({ status: 'Replied' })}>Mark replied</button>}
+          {m.status !== 'Closed' ? <button type="button" className="a-mini" disabled={busy} onClick={() => save({ status: 'Closed' })}>Close</button> : <button type="button" className="a-mini" disabled={busy} onClick={() => save({ status: 'New' })}>Reopen</button>}
+          <button type="button" className="a-mini bad-o" onClick={remove}>Delete</button>
         </div>
-        <span style={{ fontSize: 12, color: '#6b7080' }}>Replies are not sent from here yet — call or WhatsApp the visitor.</span>
-      </div>
-      <div className="a-card">
-        <h3>Contact messages</h3>
-        {!d.contact.length && <span style={{ color: '#5d6270' }}>No messages. Submissions from the storefront Contact page appear here.</span>}
-        {d.contact.map(m => (
-          <div key={m.id} style={{ borderTop: '1px solid #efede8', paddingTop: 10, display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}><b>{m.name} · {m.contact}</b><button onClick={() => archive(m.id)} style={{ border: 0, background: 'transparent', color: '#5d6270', fontSize: 12, textDecoration: 'underline' }}>Archive</button></div>
-            <span style={{ color: '#5d6270', fontSize: 12 }}>{m.company} {dateTimeF(m.at)}</span><span style={{ lineHeight: 1.5 }}>{m.body}</span>
-          </div>
-        ))}
       </div>
     </div>
+  );
+}
+
+export function Inbox() {
+  const [d, setD] = useState({ chat: [], contact: [] });
+  const [tab, setTab] = useState('open');
+  const [q, setQ] = useState('');
+  const [err, setErr] = useState('');
+  const load = () => adm.get('/messages').then(r => { setD(r); setErr(''); }).catch(e => setErr(e.message));
+  useEffect(() => { load(); }, []);
+  const n = s => d.contact.filter(m => m.status === s).length;
+  const list = d.contact.filter(m => (tab === 'all' || (tab === 'open' ? ['New', 'Read'].includes(m.status) : m.status === tab)) && (!q.trim() || (m.name + ' ' + m.contact + ' ' + m.company + ' ' + m.body).toLowerCase().includes(q.trim().toLowerCase())));
+  const pg = usePaged(list);
+  return (
+    <>
+      <Summary items={[
+        ['New', n('New'), 'not opened yet', 'amber', 'mail'],
+        ['Waiting for a reply', n('New') + n('Read'), 'new or read', 'blue', 'clock'],
+        ['Replied', n('Replied'), 'answered', 'green', 'check'],
+        ['Closed', n('Closed'), 'finished', 'violet', 'tag'],
+        ['Chat messages', d.chat.length, 'from the shop chat', 'blue', 'users']
+      ]} />
+      {err && <div className="a-msg err">{err}</div>}
+      <section className="a-card">
+        <div className="card-hd"><div><h3>Messages and quote requests</h3><small style={{ color: '#6b7388' }}>Sent from the storefront Contact page. Saved in the database and handled here.</small></div></div>
+        <div className="fd-bar">
+          <Tabs value={tab} onChange={setTab} items={[['open', 'To answer', n('New') + n('Read')], ['New', 'New', n('New')], ['Replied', 'Replied', n('Replied')], ['Closed', 'Closed', n('Closed')], ['all', 'All', d.contact.length]]} />
+          <input className="a-input fd-q" placeholder="Search name, contact or text…" value={q} onChange={e => setQ(e.target.value)} aria-label="Search messages" />
+        </div>
+        <div className="ib-list">
+          {pg.items.map(m => <MessageCard key={m.id + m.status + m.note} m={m} onSaved={load} onError={setErr} />)}
+          {!list.length && <div className="a-empty">{d.contact.length ? 'Nothing in this view.' : 'No messages yet. Submissions from the storefront Contact page appear here.'}</div>}
+        </div>
+        {pg.bar}
+      </section>
+      <section className="a-card">
+        <h3>Live chat · storefront visitors</h3>
+        <div style={{ maxHeight: 360, overflow: 'auto', background: '#f6f5f2', borderRadius: 12, padding: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {!d.chat.length && <span style={{ color: '#5d6270' }}>No chat yet. Messages from the storefront chat widget appear here.</span>}
+          {d.chat.map(m => <div key={m.id} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}><div style={{ maxWidth: '85%', padding: '9px 12px', borderRadius: 12, background: '#fff', lineHeight: 1.45 }}>{m.text}</div><small style={{ color: '#6b7388', fontSize: 11 }}>{dateTimeF(m.at)}</small></div>)}
+        </div>
+        <span style={{ fontSize: 12, color: '#6b7080' }}>Replies are not sent from here yet: call or WhatsApp the visitor.</span>
+      </section>
+    </>
   );
 }
 
@@ -225,7 +281,7 @@ export function Careers() {
   const load = () => { adm.get('/jobs').then(setJobs); adm.get('/applications').then(setApps); };
   useEffect(() => { load(); }, []);
   const setSt = async (id, s) => { await adm.put('/applications/' + id, { stage: s }); load(); };
-  const delJob = async j => { if (window.confirm(`Delete "${j.title}" and its ${j.apps} applications?`)) { await adm.del('/jobs/' + j.id); load(); } };
+  const delJob = async j => { if (await confirmBox(`Delete "${j.title}" and its ${j.apps} applications?`, { danger: true, confirmLabel: 'Delete' })) { await adm.del('/jobs/' + j.id); load(); } };
   const shown = apps.filter(a => !stage || a.stage === stage);
   return (
     <>
@@ -251,7 +307,7 @@ export function Careers() {
                 <span>{a.jobTitle} · {a.exp || '—'} · expects ৳{a.salary || '—'}</span>
                 <span><a href={'tel:' + a.phone}>{a.phone}</a>{a.email && <> · {a.email}</>}{a.link && <> · <a href={a.link} target="_blank" rel="noreferrer">link</a></>}</span>
                 {a.note && <span style={{ color: '#5d6270' }}>“{a.note}”</span>}
-                <span style={{ color: '#8a8f9b', fontSize: 12 }}>CV: <button type="button" className="a-btn sm ghost" style={{ padding: '2px 8px' }} onClick={() => downloadFile('/applications/' + a.id + '/cv', a.cv).catch(e => window.alert(e.message))}>{a.cv || 'Download'}</button> · applied {dateF(a.at)}</span>
+                <span style={{ color: '#8a8f9b', fontSize: 12 }}>CV: <button type="button" className="a-btn sm ghost" style={{ padding: '2px 8px' }} onClick={() => downloadFile('/applications/' + a.id + '/cv', a.cv).catch(e => alertBox(e.message))}>{a.cv || 'Download'}</button> · applied {dateF(a.at)}</span>
               </div>
               <select className="a-input" value={a.stage} onChange={e => setSt(a.id, e.target.value)} style={{ borderRadius: 999, fontWeight: 700, width: 'auto' }}>{STAGES.map(s => <option key={s}>{s}</option>)}</select>
             </div>

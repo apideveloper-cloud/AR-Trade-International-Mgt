@@ -182,7 +182,7 @@ export default function Shop() {
           <div ref={more} className="loadmore">
             {(boot || hasMore) && (
               <>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#5d6270', fontSize: 13, fontWeight: 600 }}><span className="spin" />Loading more products…</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#5d6270', fontSize: 13, fontWeight: 600 }}><span className="spin sm" />Loading more products…</div>
                 <div className="bar"><i style={{ width: items.length ? Math.round(shown.length / items.length * 100) + '%' : '0%' }} /></div>
                 <span style={{ fontFamily: 'var(--mono)', fontSize: 11, color: '#8a93a6' }}>Showing {shown.length} of {items.length}</span>
               </>

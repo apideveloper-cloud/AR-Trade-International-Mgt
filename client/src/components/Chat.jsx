@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { api, fmt } from '../api.js';
 import { useStore } from '../store.jsx';
 
@@ -8,8 +9,32 @@ const time = t => new Date(t).toLocaleTimeString('en-GB', { hour: '2-digit', min
 const WELCOME = 'Assalamu alaikum! 👋 Welcome to AR Trade International. How can we help you today?';
 const QUICK = ['Find toner for my printer', 'Delivery charges', 'Book printer servicing', 'Track my order'];
 
+// words that say what the visitor wants, not which product: they are ignored when matching product names
+const STOP = new Set(('a an the of for to is are me my you your i we us please pls give tell show what whats how much price prices cost rate quote need want have has any available stock in with and or about buy get can could would do does this that it on at from there find looking look hi hello hey thanks thank ok okay'
+  + ' দাম কত আছে লাগবে চাই').split(' '));
+const squash = s => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+/** Looks the visitor's words up in the catalogue: a model number (MX-235AT, CF279A, 12A) must match, or two or more plain words that narrow it to a few products. */
+export function findProducts(text, products) {
+  const words = (String(text).toLowerCase().match(/[a-z0-9][a-z0-9\-/.]*/g) || []).map(squash).filter(Boolean);
+  const models = words.filter(w => w.length >= 3 && /\d/.test(w) && /[a-z]/.test(w));
+  const plain = words.filter(w => w.length >= 3 && !STOP.has(w) && !/^\d+$/.test(w) && !models.includes(w));
+  if (!models.length && plain.length < 2) return [];
+  const hits = [];
+  for (const p of products) {
+    const label = p.name + ' ' + (p.part || '') + ' ' + (p.sku || '') + ' ' + (p.brand || '');
+    const hay = squash(label), hayWords = label.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+    // short model codes (12A, T372) must be a whole word, or they would match inside other numbers (W2412A); longer ones may span a hyphen (MX-235AT)
+    const hasModel = m => hayWords.includes(m) || (m.length >= 6 && hay.includes(m));
+    if (models.length ? !models.every(hasModel) : !plain.every(w => hay.includes(w))) continue;
+    hits.push({ p, score: plain.filter(w => hay.includes(w)).length * 2 + (p.stock > 0 ? 1 : 0) + (p.price > 0 ? 1 : 0) });
+  }
+  if (!models.length && hits.length > 6) return []; // too general to be a particular product
+  return hits.sort((a, b) => b.score - a.score).slice(0, 3).map(h => h.p);
+}
+
 export default function Chat() {
-  const { site } = useStore();
+  const { site, products } = useStore();
   const [open, setOpen] = useState(false);
   const [msgs, setMsgs] = useState([]);
   const [text, setText] = useState('');
@@ -38,7 +63,7 @@ export default function Chat() {
   useEffect(() => { if (open && box.current) box.current.scrollTop = box.current.scrollHeight; }, [msgs, typing, open]);
   useEffect(() => () => clearTimeout(timer.current), []);
 
-  const reply = t => {
+  const canned = t => {
     t = t.toLowerCase();
     if (/toner|cartridge|ink|টোনার|কার্টিজ/.test(t)) return 'We stock original HP, Canon, Toshiba and Sharp toner. Share your printer model (e.g. HP M12w) and we will confirm the exact cartridge and today\'s price.';
     if (/deliver|shipping|ডেলিভারি/.test(t)) return `Inside Dhaka: ${site.insideFee ? fmt(site.insideFee) : 'free'} delivery with cash on delivery. Outside Dhaka: ${fmt(site.outsideFee)} via courier. Order before 2 PM for same-day dispatch.`;
@@ -48,6 +73,23 @@ export default function Chat() {
     return `Thanks for your message! A team member will reply here shortly. For anything urgent, call ${site.phone}.`;
   };
 
+  const reply = t => {
+    const lower = t.toLowerCase();
+    if (/^\s*(hi|hii|hello|hey|salam|assalamu|হাই|হ্যালো|সালাম|আসসালামু)/.test(lower) && lower.length < 24) return { text: 'Hello! 👋 Ask me about any product: type its model (for example MX-235AT or CF279A) and I will show the price and stock. For anything else, our team will reply here.' };
+    if (/^\s*(thanks|thank you|thx|ধন্যবাদ)/.test(lower)) return { text: 'You are welcome! Anything else I can help with?' };
+    const items = findProducts(t, products);
+    if (items.length) {
+      const stockTxt = p => (p.stock > 0 ? 'in stock' : 'out of stock right now (call us and we will arrange it)');
+      const top = items[0];
+      const text = items.length === 1
+        ? (top.price > 0 ? `${top.name}: ${fmt(top.price)}, ${stockTxt(top)}. Tap the card to open it or add it to your cart.`
+          : `${top.name} is ${stockTxt(top)}. Its price is on request, so please call ${site.phone} or WhatsApp us and we will quote it today.`)
+        : `I found ${items.length} matching products.${items.some(p => !(p.price > 0)) ? ` Where the price says "on request", call ${site.phone} or WhatsApp us for today's quote.` : ''}`;
+      return { text, items: items.map(p => ({ id: p.id, name: p.name, img: p.img, price: p.price, stock: p.stock })) };
+    }
+    return { text: canned(t) };
+  };
+
   const send = t => {
     t = (t || '').trim();
     if (!t) return;
@@ -55,7 +97,7 @@ export default function Chat() {
     setText(''); setTyping(true);
     api.post('/chat', { text: t }).catch(() => {});
     clearTimeout(timer.current);
-    timer.current = setTimeout(() => { setMsgs(m => [...m, { from: 'agent', text: reply(t), at: Date.now() }]); setTyping(false); }, 1300);
+    timer.current = setTimeout(() => { const r = reply(t); setMsgs(m => [...m, { from: 'agent', text: r.text, items: r.items, at: Date.now() }]); setTyping(false); }, 1300);
   };
 
   const agentN = msgs.filter(m => m.from === 'agent').length;
@@ -88,6 +130,16 @@ export default function Chat() {
         {all.map((m, i) => (
           <div key={i} className={'m ' + (m.from === 'me' ? 'me' : '')}>
             <div className="bub">{m.text}</div>
+            {m.items?.length > 0 && (
+              <div className="cpcs">
+                {m.items.map(p => (
+                  <Link key={p.id} to={'/product/' + p.id} className="cpc" onClick={() => { setOpen(false); setSeen(agentN); }}>
+                    <span className="im" style={{ backgroundImage: p.img ? `url('${p.img}')` : 'none' }} />
+                    <span className="tx"><b>{p.name}</b><em className={p.price > 0 ? '' : 'rq'}>{p.price > 0 ? fmt(p.price) : 'Price on request'}</em><small>{p.stock > 0 ? 'In stock' : 'Out of stock'}</small></span>
+                  </Link>
+                ))}
+              </div>
+            )}
             <small>{m.from === 'me' ? 'You' : 'AR Support'} · {time(m.at)}</small>
           </div>
         ))}

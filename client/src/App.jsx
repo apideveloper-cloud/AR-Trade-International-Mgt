@@ -6,6 +6,7 @@ import { useStore } from './store.jsx';
 import Header from './components/Header.jsx';
 import Footer from './components/Footer.jsx';
 import Chat from './components/Chat.jsx';
+import { ForbiddenPage, LoadFailedPage, MaintenancePage, OfflinePage, ServerErrorPage } from './pages/ErrorPages.jsx';
 import { CartDrawer, CompareBar, LoginModal, NewsletterPopup, OptInMail, PromoPopup, Toast } from './components/Overlays.jsx';
 import Home from './pages/Home.jsx';
 import Shop from './pages/Shop.jsx';
@@ -29,11 +30,13 @@ export default function App() {
   useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
 
   const spin = <div style={{ padding: 80, textAlign: 'center' }}><span className="spin" /></div>;
+  const errorScreens = { '/server-error': <ServerErrorPage />, '/forbidden': <ForbiddenPage />, '/maintenance': <MaintenancePage />, '/offline': <OfflinePage /> };
+  if (errorScreens[pathname]) return errorScreens[pathname];
   if (pathname.startsWith('/prefs/')) return <Suspense fallback={spin}><Routes><Route path="/prefs/:token" element={<Prefs />} /></Routes></Suspense>;
   if (pathname.startsWith('/email')) return <Suspense fallback={spin}><Routes><Route path="/email/*" element={<EmailApp />} /></Routes></Suspense>;
   if (pathname.startsWith('/hub')) return <Suspense fallback={<div style={{ padding: 80, textAlign: 'center' }}><span className="spin" /></div>}><Routes><Route path="/hub/*" element={<HubApp />} /></Routes></Suspense>;
   if (pathname.startsWith('/admin')) return <Suspense fallback={<div style={{ padding: 80, textAlign: 'center' }}><span className="spin" /></div>}><Routes><Route path="/admin/*" element={<AdminApp />} /></Routes></Suspense>;
-  if (error) return <div style={{ padding: 40 }}><div className="err">Could not reach the server: {error}. Start the API with <b>npm run dev</b>.</div></div>;
+  if (error) return <LoadFailedPage />;
   if (!data) return <div style={{ padding: 80, textAlign: 'center' }}><span className="spin" /></div>;
 
   return (

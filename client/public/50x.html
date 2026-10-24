@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<meta http-equiv="refresh" content="30">
+<title>We'll be back shortly · AR Trade International</title>
+<style>
+  :root { --navy: #0b1631; --muted: #5d6270; --line: #e3e9f3; }
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100vh; display: flex; flex-direction: column; background: #f6f5f2; color: #16181d; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif; }
+  header { padding: 14px 24px; background: #fff; border-bottom: 1px solid var(--line); font-weight: 800; font-size: 17px; color: var(--navy); }
+  main { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 32px 24px 64px; text-align: center; }
+  .art { display: flex; align-items: flex-end; justify-content: center; gap: clamp(6px, 2vw, 18px); line-height: .8; }
+  .d { font-weight: 800; font-size: clamp(96px, 20vw, 190px); letter-spacing: -.06em; background: linear-gradient(160deg, oklch(0.66 0.14 205), oklch(0.4 0.17 229)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  svg { width: clamp(78px, 15vw, 150px); height: auto; margin-bottom: clamp(6px, 1.4vw, 14px); filter: drop-shadow(0 18px 18px rgba(19, 38, 90, .28)); }
+  h1 { margin: 6px 0 0; font-weight: 800; font-size: clamp(26px, 4.4vw, 40px); letter-spacing: -.025em; color: var(--navy); }
+  p { margin: 0; max-width: 520px; color: var(--muted); font-size: 16px; line-height: 1.6; }
+  .row { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 10px; }
+  a.btn, button { font: inherit; font-weight: 800; padding: 14px 24px; border-radius: 999px; border: 1px solid transparent; cursor: pointer; text-decoration: none; background: #16181d; color: #fff; }
+  a.alt { background: #fff; color: var(--navy); border-color: var(--line); }
+  small { color: #6b7388; }
+</style>
+</head>
+<body>
+<header>AR TRADE INTERNATIONAL</header>
+<main>
+  <div class="art" aria-hidden="true">
+    <span class="d">5</span>
+    <svg viewBox="0 0 120 150" role="img">
+      <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="oklch(0.7 0.14 205)"/><stop offset="1" stop-color="oklch(0.45 0.17 228)"/></linearGradient></defs>
+      <rect x="14" y="30" width="92" height="104" rx="16" fill="url(#g)"/>
+      <rect x="26" y="14" width="68" height="26" rx="9" fill="#0b1631"/>
+      <rect x="30" y="52" width="60" height="42" rx="9" fill="rgba(255,255,255,.18)"/>
+      <circle cx="60" cy="73" r="15" fill="#fff"/>
+      <circle cx="60" cy="73" r="9" fill="none" stroke="#1d6e82" stroke-width="3.2"/>
+      <path d="M60 68v5.5l3.6 2.2" fill="none" stroke="#1d6e82" stroke-width="3.2" stroke-linecap="round"/>
+      <rect x="34" y="106" width="52" height="7" rx="3.5" fill="rgba(255,255,255,.4)"/>
+      <rect x="34" y="118" width="34" height="7" rx="3.5" fill="rgba(255,255,255,.25)"/>
+    </svg>
+    <span class="d">3</span>
+  </div>
+  <h1>We'll be back shortly</h1>
+  <p>The shop is taking a short break and could not be reached just now. This page tries again by itself every 30 seconds. Need something right now? Call or WhatsApp us.</p>
+  <div class="row">
+    <button type="button" onclick="location.reload()">Try again</button>
+    <a class="btn alt" href="https://wa.me/8801977554401">WhatsApp us</a>
+    <a class="btn alt" href="tel:+8801977554401">Call +880 1977-554401</a>
+  </div>
+  <small>Your cart and orders are safe.</small>
+</main>
+</body>
+</html>

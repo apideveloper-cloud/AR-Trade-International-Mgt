@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { adm, dateTimeF } from '../adminApi.js';
-import { ROLE_HUE } from '../ui.jsx';
+import { ROLE_HUE, confirmBox } from '../ui.jsx';
 
 const hue = r => ROLE_HUE[r] ?? 250;
 const GROUP_ICON = { Overview: '📊', Sales: '🧾', Catalog: '📦', Delivery: '🚚', Engage: '📣', 'Field & mobile app': '📍', System: '⚙️' };
@@ -43,7 +43,7 @@ export function Roles() {
     setBusy(false);
   };
   const reset = async name => {
-    if (!window.confirm(`Reset "${name}" to its default access?`)) return;
+    if (!(await confirmBox(`Reset "${name}" to its default access?`, { confirmLabel: 'Reset access' }))) return;
     setErr(''); setMsg('');
     try { await adm.post(`/roles/${encodeURIComponent(name)}/reset`); await load(); setMsg(`"${name}" is back to its default access.`); } catch (e) { setErr(e.message); }
   };
