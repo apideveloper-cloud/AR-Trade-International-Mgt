@@ -6,6 +6,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { pool, fail, roleKey } from './common.js';
+import { sendMail, mailReady } from '../mailer.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 /** Private folder (never served by /api/uploads): delivery proof photos and signatures. */
@@ -52,3 +53,22 @@ export function saveImage(dataUrl, prefix, { png = false, maxMb = 2.5 } = {}) {
 }
 
 export const removeFile = f => { if (f) fs.rm(path.join(PROOFS, f), { force: true }, () => {}); };
+
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+/**
+ * Mails the customer's e-mail address on file (confirmation / receipt). Returns true ONLY when a message was really handed to
+ * the SMTP server; false when SMTP is not configured, the customer has no valid e-mail, or sending failed. Never throws and
+ * never waits longer than 9 seconds, so the app can show the "mailed to customer" line honestly.
+ */
+export async function mailCustomer(customerId, subject, lines) {
+  try {
+    if (!mailReady()) return false;
+    const [[c]] = await pool.query('SELECT name, email FROM field_customers WHERE id = ?', [customerId]);
+    if (!c || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c.email || '')) return false;
+    const text = [`Dear ${c.name},`, '', ...lines, '', 'AR Trade International'].join('\n');
+    const html = `<p>Dear ${esc(c.name)},</p>${lines.map(l => `<p style="margin:4px 0">${esc(l)}</p>`).join('')}<p>AR Trade International</p>`;
+    const sent = await Promise.race([sendMail({ to: c.email, subject, text, html }), new Promise(r => setTimeout(() => r(false), 9000))]);
+    return sent === true;
+  } catch (e) { console.error('customer mail failed:', e.message); return false; }
+}

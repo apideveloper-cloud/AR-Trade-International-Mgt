@@ -1,5 +1,5 @@
 // Product search for the field app: price + stock. READ-ONLY view of the web shop's `products` table.
-//   GET /api/field/products?q=&brand=&mode=stock&level=low|out&sort=name|price|stock&limit=40&offset=0
+//   GET /api/field/products?q=&brand=&mode=stock&level=low|out&sort=name|price|price_asc|stock&limit=40&offset=0
 //     -> { total, brands: [{ name, count }], items: [{ id, name, sku, brand, price, stock, img }] }
 // Products priced 0 ("ask for a quotation" in the shop) are hidden from sales unless mode=stock (Purchase Officer's stock view).
 // Stock is NOT reduced when an order is placed; it is reduced when the delivery is confirmed (see deliveries.js).
@@ -34,7 +34,7 @@ router.get('/', guard(), wrap(async (req, res) => {
   if (req.query.level === 'low') where.push('stock > 0 AND stock <= 5');
   if (req.query.level === 'out') where.push('stock <= 0');
   if (q) { where.push('(name LIKE ? OR sku LIKE ?)'); args.push(`%${q}%`, `%${q}%`); }
-  const order = { price: 'price DESC', stock: 'stock ASC, name', name: 'name' }[req.query.sort] || (stockMode ? 'stock ASC, name' : 'popular DESC, name');
+  const order = { price: 'price DESC', price_asc: 'price ASC, name', stock: 'stock ASC, name', name: 'name' }[req.query.sort] || (stockMode ? 'stock ASC, name' : 'popular DESC, name');
   const [[{ n }]] = await pool.query(`SELECT COUNT(*) n FROM products WHERE ${where.join(' AND ')}`, args);
   const [rows] = await pool.query(`SELECT id, name, sku, brand, price, stock, img FROM products WHERE ${where.join(' AND ')} ORDER BY ${order} LIMIT ? OFFSET ?`, [...args, limit, offset]);
   res.json({ total: n, brands, items: rows.map(productOut) });

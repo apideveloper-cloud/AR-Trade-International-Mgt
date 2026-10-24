@@ -1,11 +1,12 @@
 // Team live map and internal chat.
 //   GET  /api/field/team                  every active staff member with status, last position, km today, visits n/m (managers / approvers)
-//   GET  /api/field/team/me               my own km, on-road minutes, visits n/m and next stop (for the Tracking screen)
+//   (my own km / next stop / street name moved to /api/field/mytrack so every role can use the Tracking screen)
 //   GET  /api/field/team/:id/route        today's GPS polyline (me, or any staff for approvers)
 //   GET  /api/field/team/:id/messages     chat thread between me and :id (marks theirs as read)
 //   POST /api/field/team/:id/messages     { body }
 import { Router } from 'express';
 import { pool, wrap, fail, guard, isApprover, roleKey, ROLE_LABELS, UTC, todayBD, notify } from '../common.js';
+import { placeNow } from './mytrack.js';
 
 const router = Router();
 
@@ -60,7 +61,7 @@ router.get('/', guard(), allowed, wrap(async (req, res) => {
   const [staff] = await pool.query('SELECT id, name, role, phone, email FROM staff WHERE status = "Active" ORDER BY name');
   const [last] = await pool.query(
     `SELECT a.staff_id, a.type FROM field_attendance a
-     JOIN (SELECT staff_id, MAX(id) mid FROM field_attendance GROUP BY staff_id) m ON m.mid = a.id`);
+     WHERE a.id = (SELECT b.id FROM field_attendance b WHERE b.staff_id = a.staff_id ORDER BY b.at DESC, b.id DESC LIMIT 1)`);
   const [firstIn] = await pool.query(`SELECT staff_id, ${UTC('MIN(at)')} at FROM field_attendance WHERE type = 'Clocked In' AND at >= ? GROUP BY staff_id`, [from]);
   const [pts] = await pool.query('SELECT staff_id, lat, lng, at FROM field_track WHERE at >= ? ORDER BY staff_id, at', [from]);
   const [latest] = await pool.query(
@@ -85,7 +86,7 @@ router.get('/', guard(), allowed, wrap(async (req, res) => {
     return {
       id: s.id, name: s.name, role: roleKey(s.role), roleLabel: s.role, phone: s.phone, email: s.email,
       status: statusOf({ clocked: on, pos, atClient: !!v?.live }),
-      online: on, lat: pos?.lat ?? null, lng: pos?.lng ?? null, ageSec: l ? Number(l.age) : null, seenAt: l?.iso ?? null,
+      online: on, lat: pos?.lat ?? null, lng: pos?.lng ?? null, place: on ? placeNow(pos) : null, ageSec: l ? Number(l.age) : null, seenAt: l?.iso ?? null,
       km: pathKm(byStaff.get(s.id) || []),
       visits: visits ? { done: v?.done || 0, total: v?.total || 0 } : null,
       clockIn: firstMap.get(s.id) || null,
@@ -93,27 +94,6 @@ router.get('/', guard(), allowed, wrap(async (req, res) => {
     };
   });
   res.json({ updatedAt: new Date().toISOString(), office: OFFICE, members });
-}));
-
-router.get('/me', guard(), wrap(async (req, res) => {
-  const from = mysql(dayStart());
-  const [pts] = await pool.query('SELECT lat, lng, at FROM field_track WHERE staff_id = ? AND at >= ? ORDER BY at', [req.staff.id, from]);
-  const points = pts.map(p => ({ lat: Number(p.lat), lng: Number(p.lng), t: new Date(p.at + 'Z').getTime() }));
-  let onRoadSec = 0;
-  for (let i = 1; i < points.length; i++) {
-    const gap = (points[i].t - points[i - 1].t) / 1000;
-    if (gap > 0 && gap <= 600 && distKm(points[i - 1], points[i]) > 0.03) onRoadSec += gap;
-  }
-  let visits = null, nextStop = null;
-  try {
-    const [vs] = await pool.query(
-      `SELECT v.status, v.purpose, v.visit_time, c.name, c.area, c.address FROM field_visits v LEFT JOIN field_customers c ON c.id = v.customer_id
-       WHERE v.staff_id = ? AND v.visit_date = ? ORDER BY v.visit_time`, [req.staff.id, todayBD()]);
-    visits = { done: vs.filter(v => v.status === 'Done').length, total: vs.length };
-    const next = vs.find(v => v.status !== 'Done');
-    if (next) nextStop = { client: next.name || '', area: next.area || next.address || '', purpose: next.purpose || '', time: String(next.visit_time).slice(0, 5) };
-  } catch { /* visits module not installed */ }
-  res.json({ km: pathKm(points), onRoadSec: Math.round(onRoadSec), visits, nextStop });
 }));
 
 router.get('/:id/route', guard(), wrap(async (req, res) => {

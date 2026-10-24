@@ -13,7 +13,7 @@ import crypto from 'node:crypto';
 import { Router } from 'express';
 import { pool, fail, wrap, guardRole, nextSeq, notify, staffIdsByRole, UTC, digits, coord } from '../common.js';
 import { secret } from '../../util.js';
-import { PROOFS, removeFile, saveImage, seesAll } from '../sales_util.js';
+import { PROOFS, mailCustomer, removeFile, saveImage, seesAll } from '../sales_util.js';
 
 const router = Router();
 const guardSales = guardRole('rm', 'manager', 'accountant');
@@ -64,7 +64,7 @@ router.get('/:id', guardSales, wrap(async (req, res) => {
   const d = await find(req);
   const [items] = await pool.query('SELECT id, product_id, name, sku, price, qty FROM field_sales_order_items WHERE order_id = ? ORDER BY id', [d.order_id]);
   res.json({
-    ...out(d), terms: 'Credit · 30 days', hasPhoto: !!d.proof_photo, hasSignature: !!d.signature, otpOk: !!d.otp_ok,
+    ...out(d), terms: 'Credit · 30 days', gps: d.lat != null, hasPhoto: !!d.proof_photo, hasSignature: !!d.signature, otpOk: !!d.otp_ok,
     lines: items.map(i => ({ id: i.id, productId: i.product_id, name: i.name, sku: i.sku, price: i.price, qty: i.qty }))
   });
 }));
@@ -130,7 +130,11 @@ router.put('/:id/confirm', guardSales, wrap(async (req, res) => {
     icon: 'local_shipping', cat: 'Updates', title: 'Delivery confirmed', sub: `${d.id} · ${d.customer} received`,
     body: `Delivery ${d.id} was received by ${receivedBy || d.customer}. Invoice ${invoiceId} was posted to accounts.`,
     rows: [['Client', d.customer], ['Delivery', d.id], ['Invoice', invoiceId], ['Delivered by', req.staff.name], ['Proof', otpOk ? 'Photo + OTP' : 'Photo + signature']], a1: 'View proof', a1Icon: 'verified' });
-  res.json({ ok: true, invoiceId, deliveredAt: new Date().toISOString(), receivedBy, gps: lat != null });
+  // `mailed` is true only when the receipt really left through SMTP
+  const mailed = await mailCustomer(d.customer_id, `Delivery ${d.id} received - AR Trade International`, [
+    `Your order ${d.order_id} was delivered (delivery note ${d.id}) and received by ${receivedBy || 'your team'}.`,
+    `Invoice ${invoiceId} - Tk ${Number(d.total).toLocaleString('en-IN')} - payable within 30 days.`]);
+  res.json({ ok: true, invoiceId, deliveredAt: new Date().toISOString(), receivedBy, gps: lat != null, mailed, stockReduced: true });
 }));
 
 router.get('/:id/proof/:kind', guardSales, wrap(async (req, res) => {

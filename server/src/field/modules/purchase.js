@@ -48,11 +48,11 @@ async function quotesOf(prId) {
 }
 
 const prOut = (r, extra = {}) => ({
-  id: r.id, productId: r.product_id, product: r.product_name, qty: r.qty, needBy: r.need_by, requestedBy: r.requested_by,
+  id: r.id, productId: r.product_id, product: r.product_name, img: r.img || '', qty: r.qty, needBy: r.need_by, requestedBy: r.requested_by,
   requestedAt: r.created_at, status: r.status.toLowerCase(),
   stock: { now: r.stock_now, min: r.stock_min, low: r.stock_now < r.stock_min }, ...extra
 });
-const PR_SELECT = `SELECT r.id, r.product_id, r.product_name, r.qty, ${D('r.need_by')} need_by, r.stock_now, r.stock_min, r.requested_by, r.status, ${T('r.created_at')} created_at FROM field_purchase_requests r`;
+const PR_SELECT = `SELECT (SELECT p.img FROM products p WHERE p.id = r.product_id) img, r.id, r.product_id, r.product_name, r.qty, ${D('r.need_by')} need_by, r.stock_now, r.stock_min, r.requested_by, r.status, ${T('r.created_at')} created_at FROM field_purchase_requests r`;
 
 function totals(lines, freight = FREIGHT) {
   const subtotal = lines.reduce((t, l) => t + l.qty * l.unitPrice, 0);
@@ -93,8 +93,8 @@ export async function poOut(p, withLines = true, staff = null) {
     };
   }
   if (withLines) {
-    const [lines] = await pool.query('SELECT id, product_id, name, sku, qty, unit_price FROM field_purchase_order_items WHERE po_id = ? ORDER BY id', [p.id]);
-    out.lines = lines.map(l => ({ id: l.id, productId: l.product_id, name: l.name, sku: l.sku, qty: l.qty, unitPrice: l.unit_price, total: l.qty * l.unit_price }));
+    const [lines] = await pool.query('SELECT i.id, i.product_id, i.name, i.sku, i.qty, i.unit_price, (SELECT p.img FROM products p WHERE p.id = i.product_id) img FROM field_purchase_order_items i WHERE i.po_id = ? ORDER BY i.id', [p.id]);
+    out.lines = lines.map(l => ({ id: l.id, productId: l.product_id, img: l.img || '', name: l.name, sku: l.sku, qty: l.qty, unitPrice: l.unit_price, total: l.qty * l.unit_price }));
   }
   return out;
 }

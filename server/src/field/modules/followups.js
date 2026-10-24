@@ -75,7 +75,8 @@ router.put('/:id/reschedule', guardRole('rm', 'manager'), wrap(async (req, res) 
   const remarks = String(req.body.remarks || '').trim().slice(0, 255);
   if (!remarks) throw fail(400, 'Please add remarks before rescheduling');
   await pool.query('UPDATE field_followups SET due_at = ?, rescheduled_from = COALESCE(rescheduled_from, ?) WHERE id = ?', [utcSql(due), utcSql(new Date(f.due_at)), f.id]);
-  await push(f.id, { k: 'Rescheduled', t: `${reason ? reason + ' — ' : ''}${remarks}` });
+  const extras = [req.body.remind ? 'reminder 30 min before' : '', req.body.sms ? 'client SMS requested' : ''].filter(Boolean);
+  await push(f.id, { k: 'Rescheduled', t: `${reason ? reason + ' — ' : ''}${remarks}${extras.length ? ' (' + extras.join(', ') + ')' : ''}` });
   res.json(out(await load(f.id)));
 }));
 

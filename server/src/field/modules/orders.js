@@ -9,7 +9,7 @@
 // delivery is confirmed (deliveries.js).
 import { Router } from 'express';
 import { pool, fail, wrap, guard, guardRole, nextSeq, notify, staffIdsByRole, UTC } from '../common.js';
-import { bdDayStartUtc, creditOf, customerById, customerOut, seesAll } from '../sales_util.js';
+import { bdDayStartUtc, creditOf, customerById, customerOut, mailCustomer, seesAll } from '../sales_util.js';
 import { skuOf } from './products.js';
 
 const router = Router();
@@ -80,7 +80,13 @@ router.post('/', guardRole('rm', 'manager'), wrap(async (req, res) => {
     rows: [['Order', id], ['Customer', customer.name], ['Total', '৳ ' + (subtotal - discount).toLocaleString('en-IN')], ['Created by', req.staff.name]], a1: 'Open orders', a1Icon: 'shopping_bag' }));
 
   const [[o]] = await pool.query(`${ORDER_SELECT} WHERE o.id = ?`, [id]);
-  res.json({ ...(await orderOut(o)), deliveryId: dn });
+  const out = await orderOut(o);
+  // `mailed` is true only when the confirmation really left through SMTP (the app shows the "mailed to customer" line from it)
+  const mailed = await mailCustomer(customer.id, `Order ${id} received - AR Trade International`, [
+    `Thank you for your order ${id}.`,
+    ...out.lines.map(l => `${l.name} x ${l.qty}`),
+    `Total: Tk ${out.total.toLocaleString('en-IN')} (after ${DISCOUNT_PCT}% discount). It will be delivered after our manager approves it.`]);
+  res.json({ ...out, deliveryId: dn, mailed });
 }));
 
 router.get('/', guardRole('rm', 'manager', 'accountant'), wrap(async (req, res) => {

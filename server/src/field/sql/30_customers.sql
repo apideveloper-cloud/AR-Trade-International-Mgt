@@ -62,3 +62,11 @@ CREATE TABLE IF NOT EXISTS field_followups (
   KEY idx_staff_due (staff_id, due_at),
   KEY idx_customer (customer_id)
 );
+
+CREATE TABLE IF NOT EXISTS field_visit_files (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  visit_id INT NOT NULL,
+  file VARCHAR(200) NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_visit (visit_id)
+);

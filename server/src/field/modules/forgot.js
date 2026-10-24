@@ -63,6 +63,7 @@ router.post('/reset', wrap(async (req, res) => {
   checkPassword(req.body.password);
   const [[s]] = await pool.query('SELECT * FROM staff WHERE id = ?', [t.sid]);
   if (!s) throw fail(404, 'Account not found');
+  if (s.password_hash && await bcrypt.compare(String(req.body.password), s.password_hash)) throw fail(400, 'Choose a password you have not used before');
   await pool.query('UPDATE staff SET password_hash = ? WHERE id = ?', [await bcrypt.hash(String(req.body.password), 10), s.id]);
   await pool.query('UPDATE field_reset_codes SET used = 1 WHERE staff_id = ?', [s.id]);
   await notify(s.id, { icon: 'verified_user', title: 'Password changed', sub: 'Your password was reset from the app', cat: 'Alerts',

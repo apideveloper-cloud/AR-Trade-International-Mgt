@@ -81,7 +81,9 @@ router.put('/password', guard(), wrap(async (req, res) => {
 router.post('/attendance', guard(), wrap(async (req, res) => {
   const type = req.body.type;
   if (!['Clocked In', 'Clocked Out'].includes(type)) throw fail(400, 'Invalid attendance type');
-  const [[last]] = await pool.query('SELECT type FROM field_attendance WHERE staff_id = ? ORDER BY at DESC, id DESC LIMIT 1', [req.staff.id]);
+  // only today's (Bangladesh time) rows count: a forgotten clock-out from an earlier day must not block today's clock-in
+  const bdStart = new Date(Date.now() + 6 * 3600e3); bdStart.setUTCHours(0, 0, 0, 0);
+  const [[last]] = await pool.query('SELECT type FROM field_attendance WHERE staff_id = ? AND at >= ? ORDER BY at DESC, id DESC LIMIT 1', [req.staff.id, mysqlDate(new Date(bdStart.getTime() - 6 * 3600e3))]);
   if ((last?.type || 'Clocked Out') === type) throw fail(409, type === 'Clocked In' ? 'You are already clocked in.' : 'You are not clocked in.');
   const lat = req.body.lat == null ? null : coord(req.body.lat, 90);
   const lng = req.body.lng == null ? null : coord(req.body.lng, 180);
