@@ -30,8 +30,6 @@ const NAV = [
 ];
 // the field-app module behind a menu page (a page is hidden when the module is off for the signed-in role)
 const MODULE_OF = { 'field-map': 'team', 'field-attendance': 'attendance', 'field-approvals': 'approvals', 'field-customers': 'customers', 'field-visits': 'visits', 'field-orders': 'sales', 'field-deliveries': 'delivery', 'field-contacts': 'contacts', 'acc-collections': 'collection', 'acc-purchase': 'purchase', 'acc-reports': 'reports', 'acc-expenses': 'expenses' };
-// roles anyone may ask for on the "Request access" form (the Master Admin and Admin roles are never self-service)
-const REQUEST_ROLES = ['Delivery rider', 'Marketing manager', 'Content writer', 'Field Officer', 'RM', 'Purchase Officer', 'Accountant', 'Manager'];
 const TITLES = { 'field-customers': 'Field customers', 'field-visits': 'Visits & follow-ups', 'field-orders': 'Field sales orders', 'field-deliveries': 'Field deliveries', 'field-contacts': 'Contacts', 'acc-overview': 'Accounts overview', 'acc-receivables': 'Receivables', 'acc-collections': 'Collections', 'acc-expenses': 'Expense ledger', 'acc-purchase': 'Purchase orders', 'acc-reports': 'Accounts reports', 'field-map': 'Team live map', 'field-attendance': 'Attendance', 'field-approvals': 'Field approvals', 'field-modules': 'Field app modules', dashboard: 'Dashboard', orders: 'Orders', deliveries: 'Deliveries', customers: 'Customers', products: 'Products', categories: 'Categories', services: 'Service requests', blog: 'Blog articles', pages: 'Servicing, clients & company pages', content: 'Storefront content (slider, logos, FAQs, policies)', reviews: 'Product reviews', inbox: 'Inbox', marketing: 'Marketing', careers: 'Careers', team: 'Team & accounts', roles: 'Roles & permissions', settings: 'Settings' };
 
 /** Password box with a show / hide eye, so a mistyped password can be checked before signing in. */
@@ -52,37 +50,25 @@ function PasswordInput({ name, autoComplete, minLength }) {
 }
 
 export function Login({ onDone }) {
-  const [mode, setMode] = useState('login');
   const [err, setErr] = useState('');
-  const [ok, setOk] = useState('');
   const [busy, setBusy] = useState(false);
   const submit = async e => {
-    e.preventDefault(); setErr(''); setOk('');
+    e.preventDefault(); setErr('');
     // our own validation instead of the browser's grey "Please fill out this field" bubble
     for (const el of e.target.querySelectorAll('input[required]')) {
       const v = el.value.trim();
       const label = (el.closest('label')?.firstChild?.textContent || 'this field').trim().toLowerCase();
-      const problem = !v ? `Please enter your ${label}.`
-        : el.type === 'email' && !/^\S+@\S+\.\S+$/.test(v) ? 'Enter a valid email address, like name@company.com.'
-        : el.pattern && !new RegExp('^(?:' + el.pattern + ')$').test(v) ? 'Enter a valid 11-digit mobile number (01XXXXXXXXX).'
-        : el.minLength > 0 && v.length < el.minLength ? `The ${label} must be at least ${el.minLength} characters.` : '';
+      const problem = !v ? `Please enter your ${label}.` : el.minLength > 0 && v.length < el.minLength ? `The ${label} must be at least ${el.minLength} characters.` : '';
       if (problem) { el.setAttribute('aria-invalid', 'true'); el.focus(); setErr(problem); return; }
     }
     const d = Object.fromEntries(new FormData(e.target).entries());
     setBusy(true);
     try {
-      if (mode === 'register') {
-        if (d.pass !== d.pass2) throw new Error('Passwords do not match.');
-        await adm.post('/register', { name: d.name, email: d.email, phone: d.phone, password: d.pass, role: d.role });
-        setOk('Request sent. An admin must approve your account before you can sign in.'); setMode('login');
-      } else {
-        const r = await adm.post('/login', { id: d.id, password: d.pass });
-        setAdminToken(r.token); onDone(r.staff);
-      }
+      const r = await adm.post('/login', { id: d.id, password: d.pass });
+      setAdminToken(r.token); onDone(r.staff);
     } catch (er) { setErr(er.message); }
     setBusy(false);
   };
-  const reg = mode === 'register';
   return (
     <div className="adm-login">
       <div className="box">
@@ -91,19 +77,12 @@ export function Login({ onDone }) {
           <span className="mono" style={{ fontSize: 11, letterSpacing: '.22em', color: 'oklch(0.78 0.1 230)' }}>ADMIN CONSOLE</span>
         </div>
         <div className="card">
-          <div><span style={{ fontFamily: 'var(--disp)', fontWeight: 800, fontSize: 24, letterSpacing: '-.02em', display: 'block' }}>{reg ? 'Request access' : 'Welcome back'}</span><span style={{ fontSize: 13, color: '#8f9bb8' }}>{reg ? 'Riders, marketing staff and content writers can register; an admin approves you.' : 'Sign in with your mobile number or work email.'}</span></div>
-          <div className="tabs">{[['login', 'Sign in'], ['register', 'Register']].map(([k, l]) => <button key={k} className={mode === k ? 'on' : ''} onClick={() => { if (k !== mode) { setMode(k); setErr(''); setOk(''); } }}>{l}</button>)}</div>
-          <form key={mode} onSubmit={submit} noValidate onInput={ev => { ev.target.removeAttribute?.('aria-invalid'); setErr(''); }} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {reg && <label>Full name<input type="text" name="name" required /></label>}
-            {!reg && <label>Mobile or email<input type="text" name="id" required placeholder="01XXXXXXXXX or email" autoComplete="username" /></label>}
-            {reg && <label>Mobile number<input type="tel" name="phone" required pattern="0?1[3-9][0-9]{8}" maxLength={11} placeholder="01XXXXXXXXX" /></label>}
-            {reg && <label>Work email<input type="email" name="email" required /></label>}
-            {reg && <label>Role you need<select name="role" defaultValue="Delivery rider" style={{ width: '100%' }}>{REQUEST_ROLES.map(r => <option key={r}>{r}</option>)}</select></label>}
+          <div><span style={{ fontFamily: 'var(--disp)', fontWeight: 800, fontSize: 24, letterSpacing: '-.02em', display: 'block' }}>Welcome back</span><span style={{ fontSize: 13, color: '#8f9bb8' }}>Sign in with your mobile number or work email.</span></div>
+          <form onSubmit={submit} noValidate onInput={ev => { ev.target.removeAttribute?.('aria-invalid'); setErr(''); }} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <label>Mobile or email<input type="text" name="id" required placeholder="01XXXXXXXXX or email" autoComplete="username" /></label>
             <label>Password<PasswordInput name="pass" minLength={8} autoComplete="current-password" /></label>
-            {reg && <label>Confirm password<PasswordInput name="pass2" minLength={8} autoComplete="new-password" /></label>}
             {err && <span className="lerr" role="alert" style={{ background: 'oklch(0.35 0.1 25 / .5)', border: '1px solid oklch(0.55 0.15 25 / .6)', color: '#ffd9d2', borderRadius: 10, padding: '10px 12px', fontSize: 13 }}>⚠ {err}</span>}
-            {ok && <span style={{ background: 'oklch(0.35 0.08 150 / .5)', border: '1px solid oklch(0.6 0.12 150 / .6)', color: '#d5f5e0', borderRadius: 10, padding: '10px 12px', fontSize: 13 }}>{ok}</span>}
-            <button className="go" disabled={busy}>{reg ? 'Request access' : 'Sign in'} →</button>
+            <button className="go" disabled={busy}>Sign in →</button>
           </form>
         </div>
         <Link to="/" style={{ textAlign: 'center', color: '#8f9bb8', fontSize: 13 }}>← Back to storefront</Link>
