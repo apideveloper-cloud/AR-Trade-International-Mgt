@@ -51,6 +51,9 @@ router.post('/login', wrap(async (req, res) => {
   const id = String(req.body.id || '').trim().toLowerCase();
   const [[s]] = await pool.query('SELECT * FROM staff WHERE email = ? OR (phone <> "" AND phone = ?)', [id, digits(id)]);
   if (!s || !(await bcrypt.compare(req.body.password || '', s.password_hash))) throw fail(401, 'Wrong mobile/email or password.');
+  // the role picked on the sign-in page has to be this account's role (checked only once the password is right, so it reveals nothing to a guesser)
+  const want = String(req.body.role || '').trim();
+  if (want && want !== s.role) throw fail(403, `This account is not ${/^[AEIOU]/i.test(want) ? 'an' : 'a'} ${want}. It is registered as ${s.role}. Pick ${s.role} and sign in again.`);
   if (s.status === 'Pending') throw fail(403, 'Your account is waiting for an admin to approve it.');
   if (s.status !== 'Active') throw fail(403, 'This account is disabled.');
   res.json({ token: sign(s), staff: meOut(s) });

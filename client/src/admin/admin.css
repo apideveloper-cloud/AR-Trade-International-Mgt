@@ -933,3 +933,19 @@ a.rl2:hover { transform: translateY(-3px); border-color: oklch(0.72 0.12 var(--h
 /* graphical error banners: the red .a-msg.err everywhere gets an icon and a softer card */
 .a-msg.err { display: flex; align-items: center; gap: 12px; padding: 13px 16px 13px 13px; border-radius: 16px; border: 1px solid #f3c9c3; background: linear-gradient(135deg, #fff3f1, #fff 75%); color: #7a1d14; font-weight: 600; line-height: 1.45; overflow-wrap: anywhere; }
 .a-msg.err::before { content: "!"; flex: none; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font: 800 18px/1 var(--disp); color: #fff; background: linear-gradient(135deg, oklch(0.68 0.19 35), oklch(0.55 0.22 25)); box-shadow: 0 6px 14px -6px oklch(0.55 0.22 25 / .8); }
+/* sign-in: graphical role combo box */
+.adm-login .rl-l { display: block; margin-bottom: 5px; font-size: 10.5px; font-weight: 700; color: #8f9bb8; letter-spacing: .08em; text-transform: uppercase; }
+.adm-login .rc { position: relative; }
+.adm-login .rc-btn { width: 100%; display: flex; align-items: center; gap: 12px; padding: 8px 12px; min-height: 54px; border-radius: 12px; border: 1px solid #26314e; background: #0c1429; color: #fff; text-align: left; cursor: pointer; font: inherit; transition: border-color .15s, box-shadow .15s; }
+.adm-login .rc-btn:hover { border-color: #3a4a72; } .adm-login .rc.open .rc-btn, .adm-login .rc-btn:focus-visible { border-color: oklch(0.68 0.12 235); box-shadow: 0 0 0 3px oklch(0.6 0.13 240 / .18); outline: 0; }
+.adm-login .rc-ic { flex: none; width: 36px; height: 36px; border-radius: 11px; display: grid; place-items: center; font-style: normal; font-size: 17px; color: #fff; background: linear-gradient(135deg, oklch(0.64 0.15 var(--h, 250)), oklch(0.46 0.16 var(--h, 250))); box-shadow: 0 8px 16px -10px oklch(0.55 0.16 var(--h, 250) / .9); }
+.adm-login .rc-ic.none { background: #17213f; color: #8f9bb8; box-shadow: none; font-weight: 800; }
+.adm-login .rc-tx { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.25; } .adm-login .rc-tx b { font-size: 14px; color: #fff; } .adm-login .rc-tx b.muted { color: #aeb9d3; } .adm-login .rc-tx small { font-size: 11.5px; color: #7f8cab; font-weight: 500; text-transform: none; letter-spacing: 0; }
+.adm-login .rc-car { flex: none; color: #8f9bb8; transition: transform .18s; } .adm-login .rc.open .rc-car { transform: rotate(180deg); }
+.adm-login .rc-list { position: absolute; z-index: 30; left: 0; right: 0; top: calc(100% + 6px); margin: 0; padding: 6px; list-style: none; max-height: 430px; overflow: auto; color-scheme: dark; scrollbar-width: thin; scrollbar-color: #2c3a5e transparent; border-radius: 14px; border: 1px solid #2c3a5e; background: #0d1630; box-shadow: 0 24px 50px -16px rgba(0, 0, 0, .85); animation: rcIn .14s ease both; }
+.adm-login .rc-row { position: relative; display: flex; align-items: center; gap: 11px; padding: 8px 10px; border-radius: 10px; cursor: pointer; } .adm-login .rc-row .rc-ic { width: 32px; height: 32px; border-radius: 10px; font-size: 15px; }
+.adm-login .rc-row.hi { background: oklch(0.3 0.07 var(--h) / .55); } .adm-login .rc-row.on { box-shadow: inset 3px 0 0 oklch(0.7 0.14 var(--h)); } .adm-login .rc-row em { font-style: normal; font-weight: 800; font-size: 12px; color: oklch(0.78 0.15 150); }
+@keyframes rcIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+.adm-login .lerr { background: oklch(0.35 0.1 25 / .5); border: 1px solid oklch(0.55 0.15 25 / .6); color: #ffd9d2; border-radius: 10px; padding: 10px 12px; font-size: 13px; }
+.adm-login .lg-note { color: #6f7b98; font-size: 11.5px; line-height: 1.5; }
+@media (prefers-reduced-motion: reduce) { .adm-login .rc-list { animation: none; } .adm-login .rc-car { transition: none; } }
