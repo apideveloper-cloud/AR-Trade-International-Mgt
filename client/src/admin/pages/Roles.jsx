@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { adm, dateTimeF } from '../adminApi.js';
 import { ROLE_HUE } from '../ui.jsx';
 
-const MASTER = 'Master Admin';
 const hue = r => ROLE_HUE[r] ?? 250;
 const GROUP_ICON = { Overview: '📊', Sales: '🧾', Catalog: '📦', Delivery: '🚚', Engage: '📣', 'Field & mobile app': '📍', System: '⚙️' };
 const GROUP_HUE = { Overview: 250, Sales: 160, Catalog: 45, Delivery: 200, Engage: 330, 'Field & mobile app': 120, System: 300 };

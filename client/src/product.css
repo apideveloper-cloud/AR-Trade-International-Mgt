@@ -254,17 +254,7 @@
 .steps .bn { font-size: 13px; color: #5d6679; line-height: 1.5; }
 .steps em { position: absolute; right: -15px; top: 30px; z-index: 2; width: 26px; height: 26px; border-radius: 50%; background: #fff; border: 1px solid #d6e0f0; display: grid; place-items: center; font-style: normal; font-size: 13px; color: oklch(0.5 0.16 255); }
 .ship { display: flex; flex-direction: column; gap: 12px; }
-.ship-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
-.ship-grid > div { display: flex; flex-direction: column; gap: 6px; padding: 18px; border-radius: 18px; background: #f7f9fd; border: 1px solid #e6ecf6; }
-.ship-grid i { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; font-style: normal; font-size: 20px; background: #fff; border: 1px solid #dce5f3; margin-bottom: 4px; }
-.ship-grid b { font-size: 15px; color: var(--navy); }
-.ship-grid span { font-size: 13px; color: #5d6679; line-height: 1.5; }
-.ship-grid u { text-decoration: none; align-self: flex-start; margin-top: 4px; font-size: 11.5px; font-weight: 700; color: oklch(0.4 0.13 150); background: oklch(0.95 0.04 150); padding: 4px 10px; border-radius: 999px; }
-.ship-note { display: flex; align-items: center; gap: 10px; padding: 11px 14px; border-radius: 12px; font-size: 13px; background: #f1f5fb; border: 1px solid #e2e9f4; color: #4d5870; }
-.ship-note i { flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-weight: 800; font-size: 13px; color: #fff; background: oklch(0.55 0.1 250); }
-.ship-note.warn { background: oklch(0.97 0.025 25); border-color: oklch(0.9 0.05 25); color: oklch(0.42 0.14 25); }
-.ship-note.warn i { background: oklch(0.6 0.18 25); }
-@media (max-width: 900px) { .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); } .steps em { display: none; } .ship-grid { grid-template-columns: 1fr; } }
+@media (max-width: 900px) { .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); } .steps em { display: none; } }
 @media (max-width: 480px) { .steps { grid-template-columns: 1fr; } }
 
 /* how to order (content from the AR Trade website) */

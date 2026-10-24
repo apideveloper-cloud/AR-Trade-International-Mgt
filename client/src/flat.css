@@ -60,11 +60,6 @@
 .lg-sbtns .sbtn.f:hover { filter: brightness(1.08); }
 .lg-sbtns .g-slot { overflow: hidden; }
 
-/* payment / shipping strips: local text chips (no images from other websites) */
-.chips-row { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
-.chips-row li { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 999px; font-size: 13px; font-weight: 700; color: #e9eefb; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.14); }
-.chips-row li i { width: 9px; height: 9px; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 30%, transparent); }
-
 /* brand logo strip: flat cards, no drop shadow */
 .brand-logo, .brand-logo:hover { box-shadow: none; }
 .brand-marq { padding: 4px 0; }
@@ -110,7 +105,6 @@
 /* login modal: compact */
 .login { width: min(720px, 100%); border-radius: 22px; max-height: calc(100vh - 24px); overflow: auto; }
 .login .l { padding: 22px 22px; gap: 14px; }
-
 
 .lg-perks { gap: 8px; }
 .lg-perks li { padding: 8px 10px; gap: 10px; border-radius: 12px; }

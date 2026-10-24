@@ -7,7 +7,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { pool } from './db.js';
-import { digits, fail, parseJson, wrap, checkPassword, readCookie, isPrivateUploadPath, nextSeq, signCustomer, readCustomer } from './util.js';
+import { digits, fail, parseJson, wrap, checkPassword, isPrivateUploadPath, nextSeq, signCustomer, readCustomer } from './util.js';
 import adminRouter from './admin.js';
 import { mailContact, mailReady, sendMail, siteUrl } from './mailer.js';
 import { mountSeo } from './seo.js';

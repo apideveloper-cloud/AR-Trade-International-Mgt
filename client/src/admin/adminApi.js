@@ -92,13 +92,6 @@ export function useTable(path, initial = {}, deps = []) {
 /** Serial number (SL) of row `i` on the current page of a server-paged grid: continues across pages. */
 export const slNo = (t, i) => (t.params.page - 1) * t.params.size + i + 1;
 export const fmtMoney = n => '৳ ' + Math.round(n || 0).toLocaleString('en-US');
-export const ago = t => {
-  const m = Math.floor((Date.now() - new Date(t)) / 60000);
-  if (m < 1) return 'just now';
-  if (m < 60) return m + ' min ago';
-  if (m < 1440) return Math.floor(m / 60) + ' h ago';
-  return Math.floor(m / 1440) + ' d ago';
-};
 export const dateF = t => (t ? new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—');
 export const dateTimeF = t => (t ? new Date(t).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—');
 export const STATUS_COLORS = {

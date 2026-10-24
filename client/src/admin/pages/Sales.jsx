@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
-import { printInvoice } from '../../invoice.js';
-import { adm, ago, can, downloadFile, viewFile, dateF, dateTimeF, fmtMoney, slNo, STATUS_COLORS, useTable } from '../adminApi.js';
+import { adm, can, downloadFile, viewFile, dateF, dateTimeF, fmtMoney, slNo, STATUS_COLORS, useTable } from '../adminApi.js';
 import { Drawer, Empty, Modal, Pager, Pill, Summary, Toolbar } from '../ui.jsx';
 
 const STATUSES = ['Pending', 'Confirmed', 'Packed', 'Shipped', 'Delivered', 'Cancelled'];

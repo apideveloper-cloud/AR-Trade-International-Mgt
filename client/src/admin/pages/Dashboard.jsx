@@ -17,7 +17,6 @@ const ICONS = {
   coin: <><circle cx="12" cy="12" r="9" /><path d="M9 12h6M12 9v6" /></>
 };
 const Delta = ({ v, suffix = 'vs previous 30 days' }) => (v == null ? <span className="dl flat">no earlier data</span> : <span className={'dl ' + (v > 0 ? 'up' : v < 0 ? 'down' : 'flat')}>{v > 0 ? '▲' : v < 0 ? '▼' : '■'} {Math.abs(v)}% {suffix}</span>);
-const FLOW_HUE = { Placed: 250, Verification: 70, Confirmed: 200, Packed: 160, 'Out for delivery': 300 };
 
 function Card({ title, sub, chip, children, cls = '' }) {
   return (

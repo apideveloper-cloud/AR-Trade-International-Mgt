@@ -46,15 +46,6 @@
 .ch-empty { position: absolute; inset: 20px 0 30px; display: grid; place-items: center; text-align: center; padding: 0 30px; color: #6b7388; font-weight: 700; font-size: 13.5px; background: rgba(255,255,255,.6); border-radius: 12px; }
 /* smart guide */
 .db-guide { gap: 8px; border-top: 3px solid oklch(0.7 0.16 70); background: linear-gradient(180deg, oklch(0.99 0.015 85), #fff 35%); }
-.gd { display: flex; align-items: flex-start; gap: 10px; width: 100%; text-align: left; border: 1px solid #e9edf4; border-left: 4px solid var(--c, #9fb2d6); background: #fff; border-radius: 12px; padding: 9px 10px; cursor: pointer; transition: transform .12s, border-color .12s; }
-.gd:hover { transform: translateX(2px); border-color: #c8d6ec; border-left-color: var(--c); }
-.gd-warn { --c: oklch(0.65 0.2 28); } .gd-tip { --c: oklch(0.62 0.15 245); } .gd-good { --c: oklch(0.62 0.16 155); }
-.gd-ic { flex: none; width: 30px; height: 30px; border-radius: 10px; display: grid; place-items: center; font-size: 15px; background: #f3f6fb; }
-.gd-b { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.gd-b b { font-size: 13.5px; line-height: 1.3; }
-.gd-b small { font-size: 12.5px; color: #5d6a86; line-height: 1.45; font-weight: 500; }
-.gd-go { font-style: normal; color: #9aa5bd; font-weight: 800; align-self: center; }
-.gd-note { font-size: 11.5px; color: #8a93a8; line-height: 1.5; padding-top: 4px; }
 /* donut and bars */
 .dn { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 12px; align-items: center; }
 .dn svg { width: 150px; height: 150px; }
@@ -103,16 +94,8 @@
 .kp2 .kpi .sp { height: 24px; margin-top: 3px; }
 .kp2 .kpi .kic { width: 30px; height: 30px; top: 10px; right: 10px; }
 .kp2 .kpi small { padding-right: 36px; }
-/* smart guide: one full-width strip of compact tiles */
-.gd-strip { gap: 8px; padding: 12px 14px; border-top: 3px solid oklch(0.7 0.16 70); background: linear-gradient(180deg, oklch(0.99 0.015 85), #fff 45%); }
-.gd-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 8px; }
-.gd-strip .gd { height: 100%; padding: 8px 10px; }
-.gd-strip .gd-b small { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 12px; }
-.gd-strip .gd-b b { font-size: 13px; }
-.gd-strip .gd-note { padding-top: 0; }
 /* main row: lead card + stacked side column (their heights match, so there is no blank block) */
 .db-main { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap: 12px; align-items: stretch; }
-.db-main.solo { grid-template-columns: minmax(0, 1fr); }
 .db-lead, .db-side { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 .db-lead > .a-card, .db-side > .a-card { flex: 1; }
 .db-side .dn { grid-template-columns: 112px minmax(0, 1fr); } .db-side .dn svg { width: 112px; height: 112px; }
@@ -175,7 +158,6 @@
 
 /* ===== v5: left column of charts + right-hand Smart guide block ===== */
 .db-main { grid-template-columns: minmax(0, 1.75fr) minmax(330px, 1fr); align-items: start; gap: 12px; }
-.db-main.solo { grid-template-columns: minmax(0, 1fr); }
 .db-lead { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 .db-lead > div > .a-card { margin: 0; }
 .db-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: stretch; }

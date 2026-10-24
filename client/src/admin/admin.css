@@ -233,11 +233,6 @@
 .rev small { text-align: center; font-size: 11px; color: #6b7388; font-weight: 600; }
 .rev > div.today small { color: oklch(0.5 0.16 60); font-weight: 800; }
 @keyframes revGrow { from { transform: scaleY(0); } to { transform: none; } }
-.stk { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 6px 0; border-top: 1px solid #f0f3f8; }
-.stk:first-of-type { border-top: 0; }
-.stk span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.stk b { color: oklch(0.55 0.17 60); font-size: 12.5px; background: oklch(0.97 0.04 85); border-radius: 999px; padding: 3px 9px; }
-.stk b.crit { color: oklch(0.5 0.2 25); background: oklch(0.96 0.04 25); }
 .stack { display: flex; height: 14px; border-radius: 999px; overflow: hidden; gap: 3px; background: #f0f3f8; }
 .stack i { display: block; min-width: 8px; border-radius: 999px; }
 .legend { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 12.5px; color: #4b5263; }
@@ -262,9 +257,9 @@
 }
 @media (prefers-reduced-motion: reduce) { .adm-body, .pop, .rev i { animation: none !important; } }
 .rev { position: relative; }
-.rev-empty { position: absolute; inset: 0; margin: 0; display: grid; place-items: center; color: #8a93a8; font-size: 13px; font-weight: 600; pointer-events: none; padding-bottom: 28px; }
 
 /* phones and tablets: the sidebar becomes one slim scrolling strip (the header already has the account menu and shortcuts) */
+
 @media (max-width: 900px) {
   .adm-side { padding: 10px 12px; gap: 8px; flex-direction: column; }
   .adm-brand { padding: 0 2px 8px; }
@@ -338,8 +333,6 @@
 .dash-hero .qa button { padding: 6px 11px; font-size: 11.5px; }
 .grid2 { gap: 12px; }
 .rev { height: 160px; gap: 8px; background: repeating-linear-gradient(to top, transparent 0, transparent 31px, #eef2f8 31px, #eef2f8 32px); }
-.stk { padding: 4px 0; grid-template-columns: 34px minmax(0, 1fr) auto; }
-.stk .a-thumb { width: 34px !important; height: 34px !important; }
 .ro { padding: 8px 6px; font-size: 12.5px; gap: 10px; }
 .recent { padding-bottom: 4px; }
 .a-bar { padding: 7px 9px; gap: 6px; border-radius: 12px; }
@@ -559,17 +552,6 @@ table.dt th { padding: 8px 14px; text-align: left; font-family: var(--mono); fon
 table.dt td { padding: 8px 14px; border-top: 1px solid #f0f3f8; white-space: nowrap; }
 table.dt tbody tr:hover { background: #f5f8fd; }
 @media (max-width: 1000px) { .mk-grid { grid-template-columns: minmax(0, 1fr); } }
-/* ===== Team page ===== */
-.rl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; padding: 12px 16px 16px; }
-.rl-card { display: flex; flex-direction: column; gap: 6px; padding: 12px; border-radius: 14px; border: 1px solid oklch(0.9 0.04 var(--h)); border-top: 3px solid oklch(0.65 0.16 var(--h)); background: linear-gradient(180deg, oklch(0.975 0.02 var(--h)), #fff 70%); }
-.rl-top { display: flex; align-items: center; gap: 8px; }
-.rl-top b { flex: 1; min-width: 0; font-size: 13px; }
-.rl-top em { font-style: normal; font-size: 11px; font-weight: 800; min-width: 22px; text-align: center; padding: 2px 7px; border-radius: 999px; color: #fff; background: oklch(0.58 0.16 var(--h)); }
-.rl-ic { width: 28px; height: 28px; border-radius: 9px; display: grid; place-items: center; font-weight: 800; font-size: 13px; background: oklch(0.93 0.06 var(--h)); color: oklch(0.42 0.16 var(--h)); }
-.rl-desc { font-size: 11.5px; color: #4b5263; line-height: 1.4; min-height: 32px; }
-.rl-bar { height: 5px; border-radius: 999px; background: oklch(0.93 0.03 var(--h)); overflow: hidden; }
-.rl-bar i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, oklch(0.72 0.15 var(--h)), oklch(0.55 0.18 var(--h))); }
-.rl-card small { font-size: 11px; font-weight: 700; color: oklch(0.45 0.12 var(--h)); }
 .tm-row { display: flex; align-items: center; gap: 10px; padding: 8px 16px; border-top: 1px solid #f0f3f8; flex-wrap: wrap; }
 .tm-row:hover { background: #f8fafd; }
 .tm-av { width: 34px; height: 34px; font-size: 14px; }
@@ -635,7 +617,6 @@ table.dt tbody tr:hover { background: #f5f8fd; }
 .a-mini, .a-input { font-size: 13.5px; }
 .sl { font-size: 12px; }
 .chip { font-size: 11.5px; }
-.stk b { font-size: 13px; }
 .legend { font-size: 13px; }
 .muted { font-size: 13.5px; }
 table.dt { font-size: 13.5px; }
@@ -644,9 +625,6 @@ table.dt th { font-size: 10.5px; }
 .pg-meta { font-size: 12px; }
 .pg-nums small { font-size: 10.5px; }
 .mk-camp span:not(.mk-dot), .mk-hero span:not(.mk-hero-ic) { font-size: 13px; }
-.rl-top b { font-size: 14px; }
-.rl-desc { font-size: 12.5px; }
-.rl-card small { font-size: 12px; }
 .tm-who b { font-size: 14px; }
 .tm-who span { font-size: 12.5px; }
 .tm-role { font-size: 11.5px; }
@@ -655,13 +633,8 @@ table.dt th { font-size: 10.5px; }
 .cx-hero b { font-size: 18px; }
 .cx-hero span:not(.cx-hero-ic) { font-size: 13px; }
 .cx-toggle, .cx-add { font-size: 13px; }
-
-/* preview button inside a field + the big sample dialog */
-.pvf { position: relative; display: block; }
-.pvf .a-input { padding-right: 104px; }
 .pv-btn { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); border: 1px solid #c8d6ec; background: #fff; color: oklch(0.46 0.16 254); border-radius: 9px; padding: 4px 9px; font-size: 12px; font-weight: 800; cursor: pointer; white-space: nowrap; transition: background .15s, border-color .15s; }
 .pv-btn:hover { background: #eaf1fb; border-color: oklch(0.6 0.14 245); }
-.pvf.top .pv-btn { top: 8px; transform: none; }
 .pv-note { margin: 0 0 12px; font-size: 13.5px; color: #4b5263; line-height: 1.5; }
 .pv-frame { border: 1px solid #dbe3ef; border-radius: 14px; overflow: hidden; background: #fff; }
 .pv-ticker.big { border-radius: 0; font-size: 14.5px; padding: 11px 0; }
@@ -845,10 +818,6 @@ a.rl2:hover { transform: translateY(-3px); border-color: oklch(0.72 0.12 var(--h
 @media (max-width: 1280px) { .rl2-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 @media (max-width: 800px) { .rl2-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 480px) { .rl2-grid { grid-template-columns: minmax(0, 1fr); } }
-
-/* add team member panel */
-.adorn-btn { flex: none; border: 0; border-left: 1px solid #dbe3ef; background: #f3f7fd; color: oklch(0.46 0.16 254); padding: 0 12px; font-size: 12.5px; font-weight: 800; cursor: pointer; }
-.adorn-btn:hover { background: #e6effb; }
 .tm-cred { display: flex; flex-direction: column; border: 1px solid #dbe3ef; border-radius: 14px; overflow: hidden; background: #f9fbfe; }
 .tm-cred > div { display: flex; flex-direction: column; gap: 2px; padding: 10px 14px; border-top: 1px solid #e6ecf5; }
 .tm-cred > div:first-child { border-top: 0; }
