@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { adm, dateF, useTable } from '../adminApi.js';
-import { Empty, Pager, Pill, Toolbar } from '../ui.jsx';
+import { Empty, Pager, Pill, Toolbar, ViewToggle, useView } from '../ui.jsx';
 
 const today = () => new Date().toISOString().slice(0, 10);
 const readFile = f => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(f); });
@@ -119,6 +119,7 @@ function Editor({ id, cats, onDone }) {
 /** Blog management for Admins and the Content writer role. */
 export function BlogAdmin({ staff }) {
   const t = useTable('/blog', { status: '' });
+  const [view, setView] = useView('blog');
   const [edit, setEdit] = useState(null); // null = list, 'new' or an id
   const isWriter = staff.role === 'Content writer';
   const del = async r => { if (window.confirm(`Delete “${r.title}” permanently?`)) { try { await adm.del('/blog/' + r.id); t.reload(); } catch (e) { window.alert(e.message); } } };
@@ -126,12 +127,13 @@ export function BlogAdmin({ staff }) {
   return (
     <>
       <Toolbar t={t} filters={[{ key: 'status', label: 'All statuses', options: ['Published', 'Draft'] }]}>
+        <ViewToggle view={view} setView={setView} />
         <button className="a-btn grad" onClick={() => setEdit('new')}>+ New article</button>
       </Toolbar>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, opacity: t.loading ? .6 : 1 }}>
+      <div className={'vw ' + view} style={{ display: 'flex', flexDirection: 'column', gap: 10, opacity: t.loading ? .6 : 1 }}>
         {t.data.rows.map(r => (
           <div key={r.id} className="a-card" style={{ display: 'grid', gridTemplateColumns: '96px minmax(0,1fr) auto', gap: 16, alignItems: 'center', padding: '12px 16px' }}>
-            <div style={{ width: 96, height: 64, borderRadius: 10, background: `#eef3fb ${r.cover ? `url('${r.cover}')` : ''} center/cover`, border: '1px solid #e4e2dc' }} />
+            <div className="bl-cover" style={{ width: 96, height: 64, borderRadius: 10, background: `#eef3fb ${r.cover ? `url('${r.cover}')` : ''} center/cover`, border: '1px solid #e4e2dc' }} />
             <div style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}><b style={{ fontSize: 14.5 }}>{r.title}</b><Pill s={r.status === 'Published' ? 'Active' : 'Pending'} label={r.status} /></div>
               <span style={{ color: '#5d6270', fontSize: 12.5 }}>{r.category} · {dateF(r.date)} · by {r.author}{r.updated ? ' · edited' : ''}</span>

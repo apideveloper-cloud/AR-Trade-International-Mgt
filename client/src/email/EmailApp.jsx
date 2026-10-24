@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link, Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom';
+import { Link, Navigate, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { Login } from '../admin/AdminApp.jsx';
-import { adm, getAdminToken, mktApi as api, setAdminToken, setUnauthorizedHandler } from '../admin/adminApi.js';
+import { AdminFooter, TopBar } from '../admin/AdminChrome.jsx';
+import { adm, can, getAdminToken, mktApi as api, setAdminToken, setUnauthorizedHandler } from '../admin/adminApi.js';
 import { fmt, fmtDate, fmtTime } from '../api.js';
 
 const card = { background: '#fff', borderRadius: 18, boxShadow: '0 1px 2px rgba(11,22,49,.05),0 10px 24px -18px rgba(11,22,49,.3)' };
@@ -330,6 +331,7 @@ export default function EmailApp() {
   const [ready, setReady] = useState(false);
   const [setup, setSetup] = useState(null);
   const loc = useLocation();
+  const nav = useNavigate();
   const logout = useCallback(() => { setAdminToken(null); setStaff(null); }, []);
   useEffect(() => { setUnauthorizedHandler(logout); }, [logout]);
   useEffect(() => {
@@ -340,26 +342,33 @@ export default function EmailApp() {
 
   if (!ready) return <div style={{ padding: 80, textAlign: 'center' }}><span className="spin" /></div>;
   if (!staff) return <Login onDone={setStaff} />;
-  if (!['Super admin', 'Admin', 'Marketing manager'].includes(staff.role)) return <div style={{ padding: 40 }}><div className="a-msg err">Your role cannot open the Email Center.</div></div>;
+  if (!can(staff, 'marketing.manage')) return <div style={{ padding: 40 }}><div className="a-msg err">Your role cannot open the Email Center.</div></div>;
   const cur = loc.pathname.split('/')[2] || 'reports';
   const title = (TABS.find(t => t[0] === cur) || TABS[0])[1];
   const dnsOk = setup?.dns.every(r => r.ok);
+  const ICON = { reports: '▦', automations: '⚙', campaigns: '✉', templates: '❏', audience: '☺', setup: '✦' };
+  const groups = [['Email Center', TABS.map(([k, l]) => [k, l, ICON[k] || '•', 'marketing.manage'])]];
+  const status = setup ? `${setup.provider}${setup.hasKey ? ' · connected' : ' · not connected'}${dnsOk ? ' · domain verified' : ''}` : '…';
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', alignItems: 'stretch', background: '#eef1f6', color: '#16181d', fontSize: 14 }}>
-      <aside style={{ width: 250, flexShrink: 0, background: '#0b1631', color: '#fff', display: 'flex', flexDirection: 'column', gap: 22, padding: '22px 14px', position: 'sticky', top: 0, height: '100vh', overflowY: 'auto' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '0 8px' }}><img src="/api/uploads/site/ar-icon-round.png" alt="AR Trade" style={{ width: 40, height: 40, borderRadius: '50%' }} /><div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}><b style={{ fontFamily: 'var(--disp)', fontSize: 19, letterSpacing: '-.01em' }}>Email Center</b><span style={{ fontSize: 11.5, color: '#93a3c6' }}>AR Trade International</span></div></div>
-        <nav style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          {TABS.map(([k, l]) => <NavLink key={k} to={'/email/' + k} style={({ isActive }) => ({ display: 'flex', alignItems: 'center', gap: 10, color: isActive ? '#fff' : '#a9b6d3', background: isActive ? 'linear-gradient(135deg,oklch(0.58 0.14 240),oklch(0.46 0.16 256))' : 'transparent', borderRadius: 12, padding: '11px 12px', fontSize: 13.5, fontWeight: 700, boxShadow: isActive ? '0 8px 18px -10px oklch(0.55 0.16 250)' : 'none' })}><span style={{ width: 8, height: 8, borderRadius: '50%', background: cur === k ? '#fff' : 'rgba(255,255,255,.25)' }} />{l}</NavLink>)}
+    <div className="adm">
+      <aside className="adm-side">
+        <div className="adm-brand logo"><img src="/admin-logo-light.png" alt="AR Trade International" /><small>Email Center</small></div>
+        <nav className="adm-nav">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <h6>Email</h6>
+            {TABS.map(([k, l]) => <NavLink key={k} to={'/email/' + k} className={({ isActive }) => (isActive ? 'on' : '')}><span className="ic">{ICON[k]}</span><span className="tx">{l}</span></NavLink>)}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <h6>Go to</h6>
+            <Link to="/admin/marketing"><span className="ic">←</span><span className="tx">Admin console</span></Link>
+          </div>
         </nav>
-        <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, background: 'rgba(255,255,255,.07)', border: '1px solid rgba(255,255,255,.1)', borderRadius: 12, padding: '10px 12px', lineHeight: 1.35 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: setup?.hasKey && dnsOk ? 'oklch(0.75 0.16 150)' : 'oklch(0.8 0.14 80)', flexShrink: 0 }} />{setup ? `${setup.provider}${setup.hasKey ? ' · connected' : ' · not connected'}${dnsOk ? ' · domain verified' : ''}` : '…'}</span>
-          <Link to="/admin/marketing" style={{ color: '#fff', border: '1px solid rgba(255,255,255,.22)', borderRadius: 12, padding: '10px 12px', fontSize: 13, fontWeight: 700, textAlign: 'center' }}>← Admin console</Link>
-          <button onClick={logout} style={{ color: '#c9d4ea', border: '1px solid rgba(255,255,255,.14)', borderRadius: 12, padding: '9px 12px', fontSize: 12.5, fontWeight: 700, background: 'transparent' }}>Sign out ({staff.name.split(' ')[0]})</button>
-        </div>
+        <div className="em-status"><i className={setup?.hasKey && dnsOk ? 'ok' : 'warn'} />{status}</div>
+        <div className="adm-user"><span className="av">{staff.name[0]}</span><div style={{ minWidth: 0, flex: 1, lineHeight: 1.25 }}><b>{staff.name}</b><small>{staff.role}</small></div><button onClick={logout} title="Sign out">⏻</button></div>
       </aside>
-      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-        <div style={{ maxWidth: 1320, width: '100%', margin: '0 auto', padding: '26px 28px 0', display: 'flex', flexDirection: 'column', gap: 2 }}><b style={{ fontFamily: 'var(--disp)', fontSize: 28, letterSpacing: '-.02em', color: '#0b1631' }}>{title}</b><span style={{ fontSize: 13, color: '#6b7080' }}>Campaigns, automations &amp; reports</span></div>
-        <main style={{ maxWidth: 1320, width: '100%', margin: '0 auto', padding: '18px 28px 60px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <main className="adm-main">
+        <TopBar staff={staff} groups={groups} page={cur} title={title} go={k => nav('/email/' + k)} logout={logout} />
+        <div className="adm-body" key={cur}>
           <Routes>
             <Route path="reports" element={<Reports />} />
             <Route path="automations" element={<Automations />} />
@@ -369,8 +378,9 @@ export default function EmailApp() {
             <Route path="setup" element={<Setup />} />
             <Route path="*" element={<Navigate to="/email/reports" replace />} />
           </Routes>
-        </main>
-      </div>
+        </div>
+        <AdminFooter staff={staff} />
+      </main>
     </div>
   );
 }

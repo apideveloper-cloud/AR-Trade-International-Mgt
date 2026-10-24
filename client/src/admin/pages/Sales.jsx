@@ -1,58 +1,15 @@
 import { useEffect, useState } from 'react';
 import { printInvoice } from '../../invoice.js';
-import { adm, ago, dateF, dateTimeF, fmtMoney, STATUS_COLORS, useTable } from '../adminApi.js';
-import { Drawer, Empty, Pager, Pill, Toolbar } from '../ui.jsx';
+import { adm, ago, can, downloadFile, viewFile, dateF, dateTimeF, fmtMoney, slNo, STATUS_COLORS, useTable } from '../adminApi.js';
+import { Drawer, Empty, Modal, Pager, Pill, Summary, Toolbar } from '../ui.jsx';
 
 const STATUSES = ['Pending', 'Confirmed', 'Packed', 'Shipped', 'Delivered', 'Cancelled'];
 const AREA = { inside: 'Inside Dhaka', suburb: 'Dhaka suburbs', outside: 'Outside Dhaka' };
 
-export function Dashboard({ go }) {
-  const [d, setD] = useState(null);
-  const [err, setErr] = useState('');
-  useEffect(() => { adm.get('/dashboard').then(setD).catch(e => setErr(e.message)); }, []);
-  if (err) return <div className="a-msg err">{err}</div>;
-  if (!d) return <span className="spin" />;
-  const k = d.kpis;
-  const max = Math.max(...d.chart.map(c => c.value), 1);
-  return (
-    <>
-      <div className="kpis">
-        {[['Revenue · 7 days', fmtMoney(k.weekRevenue), k.weekOrders + ' orders'], ['Pending orders', k.pending, 'Need confirmation call'], ['Avg. order value', fmtMoney(k.avgOrder), 'All time'], ['Service requests', k.openServices, k.newServices + ' new']]
-          .map(([t, v, s]) => <div className="kpi" key={t}><small>{t}</small><b>{v}</b><span>{s}</span></div>)}
-      </div>
-      <div className="grid2">
-        <div className="a-card">
-          <h3>Revenue · last 7 days</h3>
-          <div className="bars">{d.chart.map(c => <div key={c.label}><span>{c.value ? Math.round(c.value / 1000) + 'k' : ''}</span><i style={{ height: Math.round(c.value / max * 100) + '%' }} /><small>{c.label}</small></div>)}</div>
-        </div>
-        <div className="a-card">
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}><h3>Low stock</h3><a href="/admin/products" onClick={e => { e.preventDefault(); go('products'); }} style={{ fontWeight: 700 }}>Manage</a></div>
-          {!d.lowStock.length && <span style={{ color: '#5d6270' }}>Nothing is running low.</span>}
-          {d.lowStock.map(p => (
-            <div key={p.id} style={{ display: 'grid', gridTemplateColumns: '40px minmax(0,1fr) auto', gap: 10, alignItems: 'center', padding: '4px 0' }}>
-              <div className="a-thumb" style={{ width: 40, height: 40, backgroundImage: p.img ? `url('${p.img}')` : 'none' }} />
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
-              <b style={{ color: 'oklch(0.5 0.2 350)' }}>{p.stock} left</b>
-            </div>
-          ))}
-        </div>
-      </div>
-      <div className="a-card" style={{ padding: '8px 20px 12px', gap: 0 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0' }}><h3>Recent orders</h3><a href="/admin/orders" onClick={e => { e.preventDefault(); go('orders'); }} style={{ fontWeight: 700 }}>All orders</a></div>
-        {!d.recent.length && <span style={{ color: '#5d6270', padding: '8px 0' }}>No orders yet.</span>}
-        {d.recent.map(o => (
-          <div key={o.id} style={{ display: 'grid', gridTemplateColumns: '100px minmax(0,1fr) 110px 110px', gap: 12, alignItems: 'center', padding: '12px 0', borderTop: '1px solid #efede8' }}>
-            <b>{o.id}</b><span>{o.customer} · <span style={{ color: '#5d6270' }}>{ago(o.at)}</span></span><Pill s={o.status} /><b style={{ textAlign: 'right' }}>{fmtMoney(o.total)}</b>
-          </div>
-        ))}
-      </div>
-    </>
-  );
-}
-
 function OrderDrawer({ id, site, onClose, onChanged, canDelete, riderOnly }) {
   const [o, setO] = useState(null);
   const [err, setErr] = useState('');
+  const [mail, setMail] = useState(null); // { to, message, busy, err, done }
   useEffect(() => { adm.get('/orders/' + id).then(setO).catch(e => setErr(e.message)); }, [id]);
   const setStatus = async status => {
     try { const n = await adm.put(`/orders/${id}/status`, { status }); setO(n); onChanged(); } catch (e) { setErr(e.message); }
@@ -72,10 +29,14 @@ function OrderDrawer({ id, site, onClose, onChanged, canDelete, riderOnly }) {
               })}
             </div>
           </div>
-          {o.status === 'Delivered' && (
-            <div style={{ borderRadius: 14, padding: 14, background: 'linear-gradient(135deg,#0b1631,#173a7a)', color: '#fff', display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'space-between' }}>
-              <b>INV-{id.replace('AR-', '')}</b>
-              <button className="a-btn sm" style={{ background: '#fff', color: '#0b1631' }} onClick={() => printInvoice(o, site)}>⎙ View invoice</button>
+          {!riderOnly && (
+            <div className="inv-card">
+              <div className="inv-t"><span className="inv-ic">📄</span><div><b>INV-{id.replace(/^\D+/, '')}</b><small>{o.payStatus === 'Paid' ? 'Paid' : 'Payment due'} · {fmtMoney(o.total)}</small></div></div>
+              <div className="inv-act">
+                <button type="button" className="a-btn sm" onClick={() => viewFile(`/orders/${id}/invoice.pdf`).catch(e => setErr(e.message))}>👁 View PDF</button>
+                <button type="button" className="a-btn sm" onClick={() => downloadFile(`/orders/${id}/invoice.pdf`, 'INV-' + id.replace(/^\D+/, '') + '.pdf').catch(e => setErr(e.message))}>⤓ Download</button>
+                <button type="button" className="a-btn sm grad" onClick={() => setMail({ to: o.customer.email || '', message: '' })}>✉ Email to customer</button>
+              </div>
             </div>
           )}
           {o.hold && <div className="a-msg" style={{ background: 'oklch(0.97 0.02 250)', color: '#0b1631' }}>⏸ {o.holdNote}</div>}
@@ -108,12 +69,35 @@ function OrderDrawer({ id, site, onClose, onChanged, canDelete, riderOnly }) {
           {canDelete && <button onClick={del} style={{ alignSelf: 'flex-start', border: 0, background: 'transparent', color: 'oklch(0.5 0.2 350)', fontSize: 13, fontWeight: 700, textDecoration: 'underline' }}>Delete order</button>}
         </>
       )}
+      {mail && o && (
+        <Modal kicker="Invoice" title={'Email INV-' + id.replace(/^\D+/, '') + ' to the customer'} onClose={() => setMail(null)}
+          onSubmit={async e => {
+            e.preventDefault();
+            setMail(m => ({ ...m, busy: true, err: '' }));
+            try { const r = await adm.post(`/orders/${id}/invoice/email`, { to: mail.to, message: mail.message }); setMail(m => ({ ...m, busy: false, done: r.to })); onChanged(); adm.get('/orders/' + id).then(setO).catch(() => {}); }
+            catch (x) { setMail(m => ({ ...m, busy: false, err: x.message })); }
+          }}
+          footer={mail.done
+            ? <button type="button" className="a-btn" onClick={() => setMail(null)}>Close</button>
+            : <><button type="button" className="a-btn ghost" onClick={() => setMail(null)}>Cancel</button><button className="a-btn grad" disabled={mail.busy}>{mail.busy ? 'Sending…' : '✉ Send invoice'}</button></>}>
+          {mail.done ? (
+            <div className="a-msg ok" style={{ fontSize: 14 }}>✓ The invoice PDF was sent to <b>{mail.done}</b>.</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <span style={{ fontSize: 13.5, color: '#4b5263', lineHeight: 1.5 }}>The PDF invoice for order <b>{id}</b> ({fmtMoney(o.total)}) is attached to the email automatically.</span>
+              <label className="a-lbl">Customer email<input className="a-input" type="email" required value={mail.to} onChange={e => setMail(m => ({ ...m, to: e.target.value }))} placeholder="customer@example.com" /></label>
+              <label className="a-lbl">Message (optional)<textarea className="a-input" rows={3} value={mail.message} onChange={e => setMail(m => ({ ...m, message: e.target.value }))} placeholder="A short note that appears above the order summary" /></label>
+              {mail.err && <div className="a-msg err">{mail.err}</div>}
+            </div>
+          )}
+        </Modal>
+      )}
     </Drawer>
   );
 }
 
 export function Orders({ site, staff }) {
-  const t = useTable('/orders', { status: '', pay: '' });
+  const t = useTable('/orders', { status: '', pay: '', summary: 1 });
   const [open, setOpen] = useState(null);
   const counts = t.data.counts || {};
   const all = Object.values(counts).reduce((a, b) => a + b, 0);
@@ -124,12 +108,23 @@ export function Orders({ site, staff }) {
         <button className={'a-chip' + (!t.params.status ? ' on' : '')} onClick={() => t.set({ status: '' })}>All · {all}</button>
         {STATUSES.map(s => <button key={s} className={'a-chip' + (t.params.status === s ? ' on' : '')} onClick={() => t.set({ status: s })}>{s} · {counts[s] || 0}</button>)}
       </div>
+      {t.data.summary && (() => {
+        const m = t.data.summary;
+        return <Summary items={[
+          ['Orders', m.total, m.cancelled + ' cancelled', 'blue', 'cart'],
+          ['Revenue', fmtMoney(m.revenue), 'Avg ' + fmtMoney(m.avg) + ' per order', 'green', 'money'],
+          ['Today', m.today, fmtMoney(m.todayRevenue) + ' today', 'violet', 'clock'],
+          ['Open orders', m.open, fmtMoney(m.openValue) + ' to deliver', 'amber', 'truck'],
+          ['To collect', fmtMoney(m.unpaid), 'Unpaid, not cancelled', 'red', 'alert']
+        ]} />;
+      })()}
       <Toolbar t={t} filters={[{ key: 'pay', label: 'All payments', options: ['bKash', 'Nagad', 'Rocket', 'Card', 'Cash on delivery', 'Bank'] }]} />
       <div className="a-table" style={{ opacity: t.loading ? .6 : 1 }}>
-        <div style={{ minWidth: 760 }}>
-          <div className="head" style={{ gridTemplateColumns: '100px minmax(160px,1fr) 120px 140px 120px 110px' }}><span>Order</span><span>Customer</span><span>Date</span><span>Payment</span><span>Status</span><span style={{ textAlign: 'right' }}>Total</span></div>
-          {t.data.rows.map(o => (
-            <button key={o.id} className="row" style={{ gridTemplateColumns: '100px minmax(160px,1fr) 120px 140px 120px 110px' }} onClick={() => setOpen(o.id)}>
+        <div style={{ minWidth: 804 }}>
+          <div className="head" style={{ gridTemplateColumns: '44px 100px minmax(160px,1fr) 120px 140px 120px 110px' }}><span>SL</span><span>Order</span><span>Customer</span><span>Date</span><span>Payment</span><span>Status</span><span style={{ textAlign: 'right' }}>Total</span></div>
+          {t.data.rows.map((o, i) => (
+            <button key={o.id} className="row" style={{ gridTemplateColumns: '44px 100px minmax(160px,1fr) 120px 140px 120px 110px' }} onClick={() => setOpen(o.id)}>
+              <span className="sl">{slNo(t, i)}</span>
               <b>{o.id}</b>
               <span style={{ display: 'flex', flexDirection: 'column' }}><b style={{ fontWeight: 600 }}>{o.customer.name}</b><span style={{ color: '#5d6270', fontSize: 12 }}>{o.customer.phone} · {AREA[o.area]}</span></span>
               <span style={{ color: '#5d6270' }}>{dateF(o.date)}</span><span>{o.payment}{o.payStatus === 'Paid' ? ' ✓' : ''}</span><Pill s={o.status} />
@@ -179,6 +174,7 @@ export function Customers() {
   const t = useTable('/customers');
   const [reqs, setReqs] = useState([]);
   const [link, setLink] = useState(null); // { name, url, phone }
+  const [copied, setCopied] = useState(false);
   const loadReqs = () => adm.get('/password-resets').then(setReqs).catch(() => {});
   useEffect(() => { loadReqs(); }, []);
   const makeLink = async c => {
@@ -189,7 +185,7 @@ export function Customers() {
     if (!pw) return;
     try { await adm.put(`/customers/${c.userId}/password`, { password: pw }); window.alert('Password updated.'); loadReqs(); } catch (e) { window.alert(e.message); }
   };
-  const cols = 'minmax(180px,1fr) 140px 70px 110px 110px 210px';
+  const cols = '44px minmax(180px,1fr) 140px 70px 110px 110px 250px';
   return (
     <>
       {reqs.length > 0 && (
@@ -205,25 +201,39 @@ export function Customers() {
         </div>
       )}
       {link && (
-        <div className="a-card" style={{ background: 'oklch(0.96 0.04 150)', borderColor: 'oklch(0.86 0.07 150)' }}>
-          <b>Reset link for {link.name} (valid {link.hours} hours, one use)</b>
-          <input className="a-input" readOnly value={link.url} onFocus={e => e.target.select()} />
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <button className="a-btn sm" onClick={() => navigator.clipboard?.writeText(link.url)}>Copy link</button>
+        <Modal kicker="Password reset" title={'Reset link for ' + link.name} onClose={() => setLink(null)}
+          footer={<>
+            <button type="button" className="a-btn sm" onClick={() => { navigator.clipboard?.writeText(link.url); setCopied(true); setTimeout(() => setCopied(false), 2000); }}>{copied ? 'Copied ✓' : 'Copy link'}</button>
             <a className="a-btn ghost sm" target="_blank" rel="noreferrer" href={`https://wa.me/88${String(link.phone || '').replace(/\D/g, '')}?text=${encodeURIComponent('AR Trade: set a new password here (valid 24 hours): ' + link.url)}`}>Send on WhatsApp</a>
-            <button className="a-btn ghost sm" onClick={() => setLink(null)}>Close</button>
+            <button type="button" className="a-btn ghost sm" onClick={() => setLink(null)}>Close</button>
+          </>}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <span style={{ fontSize: 13, color: '#4b5263', lineHeight: 1.5 }}>Send this one-time link to <b>{link.name}</b>{link.phone ? ' (' + link.phone + ')' : ''}. It stays valid for <b>{link.hours} hours</b> and works once. The customer opens it and chooses a new password.</span>
+            <input className="a-input" readOnly value={link.url} onFocus={e => e.target.select()} style={{ fontFamily: 'var(--mono)', fontSize: 12 }} />
           </div>
-        </div>
+        </Modal>
       )}
+      {t.data.summary && (() => {
+        const m = t.data.summary, pct = (a, b) => (b ? Math.round(a / b * 100) : 0);
+        return <Summary items={[
+          ['Customers', m.total, m.accounts + ' with an online account', 'blue', 'users'],
+          ['Buyers', m.buyers, pct(m.buyers, m.total) + '% have placed an order', 'green', 'check'],
+          ['Lifetime revenue', fmtMoney(m.revenue), 'Avg ' + fmtMoney(m.avg) + ' per buyer', 'violet', 'money'],
+          ['Repeat customers', m.repeat, pct(m.repeat, m.buyers) + '% of buyers ordered 2+ times', 'amber', 'repeat'],
+          ['New accounts', m.newAccounts, 'Registered in the last 30 days', 'blue', 'plus'],
+          ['Top customer', m.top ? m.top.name : '–', m.top ? fmtMoney(m.top.ltv) + ' lifetime' : 'No orders yet', 'amber', 'star']
+        ]} />;
+      })()}
       <Toolbar t={t} />
       <div className="a-table" style={{ opacity: t.loading ? .6 : 1 }}>
-        <div style={{ minWidth: 820 }}>
-          <div className="head" style={{ gridTemplateColumns: cols }}><span>Customer</span><span>Phone</span><span>Orders</span><span>Lifetime</span><span>Last order</span><span>Password</span></div>
-          {t.data.rows.map(c => (
+        <div style={{ minWidth: 904 }}>
+          <div className="head" style={{ gridTemplateColumns: cols }}><span>SL</span><span>Customer</span><span>Phone</span><span>Orders</span><span>Lifetime</span><span>Last order</span><span>Password</span></div>
+          {t.data.rows.map((c, i) => (
             <div key={c.phone + c.name} className="row" style={{ gridTemplateColumns: cols }}>
+              <span className="sl">{slNo(t, i)}</span>
               <span style={{ display: 'flex', flexDirection: 'column' }}><b>{c.name}</b><span style={{ color: '#5d6270', fontSize: 12 }}>{c.email}</span></span>
               <a href={'tel:' + c.phone}>{c.phone}</a><span>{c.n}</span><b>{fmtMoney(c.ltv)}</b><span style={{ color: '#5d6270' }}>{dateF(c.last)}</span>
-              {c.userId ? <span style={{ display: 'flex', gap: 6 }}><button className="a-btn ghost sm" onClick={() => makeLink(c)}>Reset link</button><button className="a-btn ghost sm" onClick={() => setPw(c)}>Set…</button></span> : <span style={{ color: '#8a8f9b', fontSize: 12 }}>no account</span>}
+              {c.userId ? <span style={{ display: 'flex', gap: 6, whiteSpace: 'nowrap' }}><button className="a-btn ghost sm" style={{ whiteSpace: 'nowrap' }} title="Create a one-time link the customer can use to choose a new password" onClick={() => makeLink(c)}>Reset link</button><button className="a-btn ghost sm" style={{ whiteSpace: 'nowrap' }} title="Type a new password for this customer yourself" onClick={() => setPw(c)}>Set password</button></span> : <span style={{ color: '#8a8f9b', fontSize: 12 }}>no account</span>}
             </div>
           ))}
         </div>

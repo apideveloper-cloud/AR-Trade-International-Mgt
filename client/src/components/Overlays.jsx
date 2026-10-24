@@ -5,13 +5,27 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { api, fmt, offPct } from '../api.js';
 import { useStore } from '../store.jsx';
 
+const TOAST_ICON = {
+  success: <path className="draw" d="M5 12.5l4.5 4.5L19 7.5" />,
+  error: <><path d="M12 7v6.5" /><circle cx="12" cy="17.2" r=".6" fill="currentColor" /></>,
+  info: <><path d="M12 11v6" /><circle cx="12" cy="7.6" r=".6" fill="currentColor" /></>,
+  cart: <><path d="M5 7h14l-1.4 9.2a2 2 0 0 1-2 1.8H8.4a2 2 0 0 1-2-1.8L5 7z" /><path d="M9 7V6a3 3 0 0 1 6 0v1" /></>
+};
+const TOAST_TITLE = { success: 'All done', error: 'Please check', info: 'Heads up', cart: 'Added to cart' };
+
+/** Pop-up notice: coloured icon badge, title + message, a countdown bar and a close button. */
 export function Toast() {
-  const { toast } = useStore();
+  const { toast, dismissToast } = useStore();
   if (!toast) return null;
+  const k = toast.kind || 'info';
+  const text = k === 'cart' ? toast.text.replace(/^Added:\s*/i, '') : toast.text;
   return (
-    <div className="toast" role="status">
-      <span>{toast.text}</span>
-      {toast.link && <Link to={toast.link}>View cart</Link>}
+    <div className={'toast t-' + k} key={toast.id} role={k === 'error' ? 'alert' : 'status'} aria-live="polite" style={{ '--dur': (toast.ms || 3200) + 'ms' }}>
+      <i className="ti"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{k === 'error' || k === 'info' ? <circle cx="12" cy="12" r="9.2" strokeWidth="2" /> : null}{TOAST_ICON[k]}</svg></i>
+      <div className="tx"><b>{TOAST_TITLE[k]}</b><span>{text}</span></div>
+      {toast.link && <Link to={toast.link} onClick={dismissToast}>View cart</Link>}
+      <button type="button" className="tc" onClick={dismissToast} aria-label="Dismiss">×</button>
+      <u className="tb" />
     </div>
   );
 }
@@ -199,11 +213,10 @@ export function PromoPopup() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
             <span className="brandpill"><img src="/api/uploads/site/ar-icon-round.png" alt="" />AR Trade</span><span className="lt">LIMITED TIME</span>
           </div>
-          <div style={{ textAlign: 'center', marginTop: 18, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-            <span style={{ fontFamily: 'var(--bn)', fontSize: 20, fontWeight: 600 }}>ধামাকা অফার!</span>
-            <span style={{ fontFamily: 'var(--disp)', fontWeight: 800, fontSize: 22, letterSpacing: '.02em', textTransform: 'uppercase' }}>Mega Toner Sale</span>
-            <span className="big">UP TO {src.length ? src[0].off : 20}%</span>
-            <span style={{ fontFamily: 'var(--disp)', fontWeight: 800, fontSize: 26, letterSpacing: '.3em', background: '#2b2f38', borderRadius: 8, padding: '2px 14px 2px 20px', marginTop: 6 }}>OFF</span>
+          <div className="promo-head">
+            <span className="bn">ধামাকা অফার!</span>
+            <span className="ttl">Mega Toner Sale</span>
+            <span className="bigrow"><span className="big">UP TO {src.length ? src[0].off : 20}%</span><span className="off">OFF</span></span>
           </div>
           <div className="promo-items">
             {src.slice(0, 3).map(({ p, off }) => (
@@ -219,7 +232,7 @@ export function PromoPopup() {
             <a href="tel:+8801977554401"><i>☏</i><span><small>Call / WhatsApp</small><b>{site.phone}</b></span></a>
             <a href={'mailto:' + site.email}><i>@</i><span><small>Email</small><b>{site.email}</b></span></a>
           </div>
-          <button onClick={close} style={{ display: 'block', margin: '12px auto 0', border: 0, background: 'transparent', color: 'rgba(255,255,255,.85)', fontSize: 12, textDecoration: 'underline', position: 'relative' }}>No thanks, maybe later</button>
+          <button className="promo-later" onClick={close}>No thanks, maybe later</button>
         </div>
       </div>
     </div>
@@ -230,6 +243,7 @@ export function PromoPopup() {
 export function NewsletterPopup() {
   const { content, optIn, subscribed, optMail, say } = useStore();
   const [mode, setMode] = useState(null);
+  const [err, setErr] = useState('');
   const { site } = useStore();
   const pp = content.popup || { on: true, delay: 30, exit: true };
   const pmode = site.popupMode || 'one';
@@ -258,8 +272,14 @@ export function NewsletterPopup() {
   if (!mode) return null;
   const submit = async e => {
     e.preventDefault();
-    const email = new FormData(e.target).get('email');
-    try { await optIn(email, mode === 'exit' ? 'Exit-intent popup' : 'Newsletter popup'); setMode(null); } catch (er) { say(er.message); }
+    const fd = new FormData(e.target);
+    const email = String(fd.get('email') || '').trim();
+    const bad = m => { setErr(m); say(m); }; // red message in the form and a toast
+    if (!email) return bad('Please enter your email address.');
+    if (!/^\S+@\S+\.\S+$/.test(email)) return bad('That email does not look right. Try name@company.com');
+    if (!fd.get('agree')) return bad('Please tick the box to agree to receive emails.');
+    setErr('');
+    try { await optIn(email, mode === 'exit' ? 'Exit-intent popup' : 'Newsletter popup'); setMode(null); } catch (er) { bad(er.message); }
   };
   return (
     <div className="pop-bg" style={{ zIndex: 90, background: 'rgba(8,14,32,.62)' }} onClick={() => setMode(null)}>
@@ -274,14 +294,15 @@ export function NewsletterPopup() {
           </div>
           <span style={{ fontSize: 12, color: '#8fa0c2', position: 'relative' }}>Code unlocks after you confirm your email.</span>
         </div>
-        <form className="r" onSubmit={submit}>
+        <form className="r" onSubmit={submit} noValidate>
           <h3>{mode === 'exit' ? 'Wait — before you go.' : 'Join the AR Trade list.'}</h3>
           <span style={{ fontSize: 14, lineHeight: 1.55, color: '#56607a' }}>Get 10% off your first order, plus Friday deals and refill reminders. One or two emails a week, at most.</span>
-          <input name="email" type="email" required placeholder="you@company.com" style={{ border: '1.5px solid #cfdcef', borderRadius: 14, padding: '14px 16px', fontSize: 15, outline: 0, color: '#0b1631' }} />
+          <input name="email" type="email" placeholder="you@company.com" aria-label="Email address" onChange={() => setErr('')} style={{ border: '1.5px solid ' + (err ? '#e0584b' : '#cfdcef'), borderRadius: 14, padding: '14px 16px', fontSize: 15, outline: 0, color: '#0b1631' }} />
           <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', fontSize: 12.5, lineHeight: 1.45, color: '#3a3f4b', cursor: 'pointer' }}>
-            <input type="checkbox" required style={{ marginTop: 3, width: 16, height: 16, flexShrink: 0 }} />
+            <input type="checkbox" name="agree" onChange={() => setErr('')} style={{ marginTop: 3, width: 16, height: 16, flexShrink: 0 }} />
             <span>I agree to receive marketing emails from AR Trade International. I can unsubscribe anytime. See our <Link to="/policy/privacy" onClick={() => setMode(null)} style={{ color: 'oklch(0.48 0.16 254)', fontWeight: 700 }}>privacy policy</Link>.</span>
           </label>
+          {err && <div className="form-err" role="alert" style={{ margin: 0 }}>⚠ {err}</div>}
           <button className="btn btn-grad btn-pill" style={{ padding: 15, fontSize: 15 }}>Send my 10% code</button>
           <button type="button" onClick={() => setMode(null)} style={{ border: 0, background: 'transparent', color: '#7a8090', fontSize: 12.5, textDecoration: 'underline' }}>No thanks, I'll pay full price</button>
         </form>

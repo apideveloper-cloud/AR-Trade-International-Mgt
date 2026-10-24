@@ -2,9 +2,12 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, Navigate, NavLink, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom';
 import './hub.css';
 import { Login } from '../admin/AdminApp.jsx';
-import { adm, getAdminToken, hubApi as hub, setAdminToken, setUnauthorizedHandler } from '../admin/adminApi.js';
+import { adm, can, getAdminToken, hubApi as hub, setAdminToken, setUnauthorizedHandler } from '../admin/adminApi.js';
 import LiveTrack, { FLOW, FLOW_COLOR } from '../components/LiveTrack.jsx';
 import { fmt, fmtTime } from '../api.js';
+
+/** Can run own deliveries but has no dispatch board: shown the rider app only. */
+const isRiderOnly = staff => !can(staff, 'hub.view') && can(staff, 'hub.deliver');
 
 const ago = t => { const m = Math.round((Date.now() - new Date(t)) / 6e4); return m < 60 ? m + 'm ago' : m < 1440 ? Math.round(m / 60) + 'h ago' : Math.round(m / 1440) + 'd ago'; };
 const DONE = ['Delivered', 'Cancelled', 'Returned'];
@@ -76,7 +79,7 @@ function Dispatch({ board, reload }) {
 
 function RiderApp({ staff, reload }) {
   const [riders, setRiders] = useState([]);
-  const [riderId, setRiderId] = useState(staff.role === 'Delivery rider' ? staff.id : null);
+  const [riderId, setRiderId] = useState(isRiderOnly(staff) ? staff.id : null);
   const [data, setData] = useState(null);
   const [pod, setPod] = useState(null); // order id with proof-of-delivery open
   const [mode, setMode] = useState('otp');
@@ -119,7 +122,7 @@ function RiderApp({ staff, reload }) {
   const cashRows = riders;
   return (
     <>
-      {staff.role !== 'Delivery rider' && (
+      {!isRiderOnly(staff) && (
         <div className="rider-tabs">{riders.map(r => <button key={r.id} className={r.id === riderId ? 'on' : ''} onClick={() => { setRiderId(r.id); setPod(null); }}><i>{r.name.split(' ').map(x => x[0]).join('')}</i>{r.name} · {r.jobs}</button>)}</div>
       )}
       <div className="rider-split">
@@ -289,8 +292,8 @@ export default function HubApp() {
 
   if (!ready) return <div style={{ padding: 80, textAlign: 'center' }}><span className="spin" /></div>;
   if (!staff) return <Login onDone={setStaff} />;
-  const rider = staff.role === 'Delivery rider';
-  if (!rider && !['Super admin', 'Admin'].includes(staff.role)) return <div style={{ padding: 40 }}><div className="a-msg err">Your role cannot open the Delivery Hub.</div></div>;
+  const rider = isRiderOnly(staff);
+  if (!rider && !can(staff, 'hub.view')) return <div style={{ padding: 40 }}><div className="a-msg err">Your role cannot open the Delivery Hub.</div></div>;
 
   const active = board?.orders.filter(o => !DONE.includes(o.flow)) || [];
   const nav = rider ? [['rider', 'Rider app', 0]] : [['dispatch', 'Dispatch board', active.length], ['rider', 'Rider app', board?.orders.filter(o => o.rider && o.flow === 'Out for delivery').length || 0], ['track', 'Live tracking', 0], ['returns', 'Returns & refunds', board?.returnsPending || 0], ['branches', 'Branches & couriers', 0]];
@@ -331,7 +334,7 @@ export default function HubApp() {
 function useBoard(staff) {
   const [board, setBoard] = useState(null);
   const [err, setErr] = useState('');
-  const office = staff && ['Super admin', 'Admin'].includes(staff.role);
+  const office = staff && can(staff, 'hub.view');
   const load = useCallback(() => (office ? hub.get('/board').then(b => { setBoard(b); setErr(''); }).catch(e => setErr(e.message)) : Promise.resolve()), [office]);
   useEffect(() => {
     if (!office) return undefined;

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { adm, fmtMoney, useTable } from '../adminApi.js';
-import { Empty, Modal, Pager, Switch, Toolbar } from '../ui.jsx';
+import { adm, fmtMoney, slNo, useTable } from '../adminApi.js';
+import { Empty, Modal, Pager, Summary, Switch, Toolbar, ViewToggle, useView } from '../ui.jsx';
 
 const BLANK = { name: '', brand: '', cat: '', price: '', old: '', stock: 10, img: '', part: '', tech: '', color: '', yield: '', compat: '', spec: '', description: '', gallery: [], metaTitle: '', metaDesc: '', metaKeywords: '' };
 const readFile = f => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(f); });
@@ -44,7 +44,7 @@ function Editor({ product, cats, onClose, onSaved }) {
   const removeImg = u => setF(s => { const g = (s.gallery || []).filter(x => x !== u); return { ...s, gallery: g, img: s.img === u ? g[0] || '' : s.img }; });
   const makeMain = u => setF(s => ({ ...s, img: u, gallery: [u, ...(s.gallery || []).filter(x => x !== u)] }));
   return (
-    <Modal kicker={isNew ? 'New product' : 'Edit product'} title={isNew ? 'Add a product' : f.name} onClose={onClose} onSubmit={submit}
+    <Modal side kicker={isNew ? 'New product' : 'Edit product'} title={isNew ? 'Add a product' : f.name} onClose={onClose} onSubmit={submit}
       footer={<><button type="button" className="a-btn ghost" onClick={onClose}>Cancel</button><button className="a-btn grad" disabled={busy}>{busy ? 'Saving…' : isNew ? 'Add product' : 'Save changes'}</button></>}>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 20, alignItems: 'flex-start' }}>
         <div style={{ flex: '1 1 240px', maxWidth: 300, display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -100,24 +100,64 @@ function Editor({ product, cats, onClose, onSaved }) {
   );
 }
 
+/** Grid view of the product list: one card per product, same inline editing as the table. */
+function ProductCards({ t, patch, catName, setEdit }) {
+  return (
+    <div className="pg-grid" style={{ opacity: t.loading ? .6 : 1 }}>
+      {t.data.rows.map((p, i) => (
+        <div key={p.id} className="pg-card" style={{ opacity: p.active ? 1 : .6 }}>
+          <span className="pg-sl">{slNo(t, i)}</span>
+          <button type="button" className="pg-img" style={{ backgroundImage: p.img ? `url('${p.img}')` : 'none' }} onClick={() => setEdit(p)} aria-label={'Edit ' + p.name}>{!p.img && <small>No photo</small>}</button>
+          <button type="button" className="pg-name" onClick={() => setEdit(p)}>{p.name}</button>
+          <span className="pg-meta">{p.brand} · #{p.id} · {catName(p.cat)}</span>
+          <div className="pg-nums">
+            {[['price', 'Price'], ['old', 'Regular'], ['stock', 'Stock']].map(([k, l]) => (
+              <label key={k}><small>{l}</small><input className="a-mini" type="number" min="0" defaultValue={p[k]} style={k === 'stock' && p.price && p.stock <= 5 ? { borderColor: 'oklch(0.6 0.2 350)' } : undefined} onBlur={e => { if (+e.target.value !== p[k]) patch(p, { [k]: +e.target.value }); }} /></label>
+            ))}
+          </div>
+          <div className="pg-foot">
+            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+              {[['popular', 'Popular'], ['isNew', 'New']].map(([k, l]) => <button key={k} type="button" className="a-chip" style={{ padding: '3px 8px', fontSize: 11, background: p[k] ? 'oklch(0.95 0.04 150)' : '#fff' }} onClick={() => patch(p, { [k]: !p[k] })}>{l}</button>)}
+            </div>
+            <Switch on={p.active} onChange={v => patch(p, { active: v })} title="Visible on the store" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function Products({ cats }) {
   const t = useTable('/products', { cat: '', stock: '', live: '' });
+  const [view, setView] = useView('products');
   const [edit, setEdit] = useState(null); // null | 'new' | product
   const patch = async (p, body) => { try { await adm.put('/products/' + p.id, body); t.reload(); } catch (e) { window.alert(e.message); } };
   const catName = id => cats.find(c => c.id === id)?.title || id;
-  const cols = '52px minmax(200px,1fr) 120px 110px 110px 80px 150px 70px';
+  const cols = '44px 52px minmax(200px,1fr) 120px 110px 110px 80px 150px 70px';
   return (
     <>
+      {t.data.summary && (() => {
+        const m = t.data.summary;
+        return <Summary items={[
+          ['Products', m.total, m.live + ' live · ' + m.hidden + ' hidden · ' + m.categories + ' categories', 'blue', 'box'],
+          ['Stock value', fmtMoney(m.stockValue), 'Live products at selling price', 'violet', 'money'],
+          ['Low stock', m.low, '1 to 5 left', 'amber', 'alert'],
+          ['Out of stock', m.outOfStock, 'Live, priced, none left', 'red', 'alert'],
+          ['Quotation only', m.quote, 'No price: shown as ask us', 'blue', 'tag'],
+          ['No photo', m.noImage, 'Live products without an image', 'red', 'image']
+        ]} />;
+      })()}
       <Toolbar t={t} filters={[
         { key: 'cat', label: 'All categories', options: cats.map(c => ({ v: c.id, t: c.title })) },
         { key: 'stock', label: 'Any stock', options: [{ v: 'low', t: 'Low stock (≤5)' }] },
         { key: 'live', label: 'Live + hidden', options: [{ v: '0', t: 'Hidden only' }] }
-      ]}><button className="a-btn sm" style={{ marginLeft: 4 }} onClick={() => setEdit('new')}>+ Add product</button></Toolbar>
-      <div className="a-table" style={{ opacity: t.loading ? .6 : 1 }}>
-        <div style={{ minWidth: 860 }}>
-          <div className="head" style={{ gridTemplateColumns: cols }}><span /><span>Product</span><span>Category</span><span>Price</span><span>Regular</span><span>Stock</span><span>Flags</span><span>Live</span></div>
-          {t.data.rows.map(p => (
+      ]}><ViewToggle view={view} setView={setView} /><button className="a-btn sm" style={{ marginLeft: 4 }} onClick={() => setEdit('new')}>+ Add product</button></Toolbar>
+      {view === 'grid' ? <ProductCards t={t} patch={patch} catName={catName} setEdit={setEdit} /> : <div className="a-table" style={{ opacity: t.loading ? .6 : 1 }}>
+        <div style={{ minWidth: 904 }}>
+          <div className="head" style={{ gridTemplateColumns: cols }}><span>SL</span><span /><span>Product</span><span>Category</span><span>Price</span><span>Regular</span><span>Stock</span><span>Flags</span><span>Live</span></div>
+          {t.data.rows.map((p, i) => (
             <div key={p.id} className="row" style={{ gridTemplateColumns: cols, opacity: p.active ? 1 : .55 }}>
+              <span className="sl">{slNo(t, i)}</span>
               <div className="a-thumb" style={{ backgroundImage: p.img ? `url('${p.img}')` : 'none' }} />
               <button onClick={() => setEdit(p)} style={{ textAlign: 'left', border: 0, background: 'transparent', padding: 0, display: 'flex', flexDirection: 'column', gap: 2 }}><b>{p.name}</b><span style={{ color: '#5d6270', fontSize: 12 }}>{p.brand} · #{p.id} · Edit</span></button>
               <span style={{ color: '#5d6270' }}>{catName(p.cat)}</span>
@@ -129,7 +169,7 @@ export function Products({ cats }) {
             </div>
           ))}
         </div>
-      </div>
+      </div>}
       <Empty t={t} /><Pager t={t} />
       {edit && <Editor product={edit === 'new' ? null : edit} cats={cats} onClose={() => setEdit(null)} onSaved={t.reload} />}
     </>
@@ -138,18 +178,53 @@ export function Products({ cats }) {
 
 export function Categories({ onChanged }) {
   const [rows, setRows] = useState([]);
+  const [view, setView] = useView('categories', 'grid');
+  const [busy, setBusy] = useState('');
+  const [err, setErr] = useState('');
   const load = () => adm.get('/categories').then(setRows);
   useEffect(() => { load(); }, []);
   const toggle = async c => { await adm.put('/categories/' + c.id, { hidden: !c.hidden }); await load(); onChanged?.(); };
+  const pick = async (c, file) => {
+    if (!file) return;
+    setErr(''); setBusy(c.id);
+    try {
+      const up = await adm.post('/upload-image', { folder: 'site/categories', name: c.id + '-' + file.name, data: await readFile(file) });
+      await adm.put('/categories/' + c.id, { image: up.url });
+      await load(); onChanged?.();
+    } catch (e) { setErr(e.message); }
+    setBusy('');
+  };
+  const clear = async c => {
+    if (!window.confirm('Remove the picture of “' + c.title + '”? The store goes back to the automatic picture.')) return;
+    setErr(''); setBusy(c.id);
+    try { await adm.put('/categories/' + c.id, { image: '' }); await load(); onChanged?.(); } catch (e) { setErr(e.message); }
+    setBusy('');
+  };
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(260px,1fr))', gap: 12 }}>
-      {rows.map(c => (
-        <div key={c.id} className="a-card" style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto', alignItems: 'center', gap: 12, padding: 18 }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}><b>{c.title}</b><span style={{ fontSize: 12, color: '#5d6270' }}>{c.count} products · {c.hidden ? 'hidden on store' : 'visible'}</span><span style={{ fontSize: 12, color: '#8a8f9b' }}>{c.description}</span></div>
-          <Switch on={!c.hidden} onChange={() => toggle(c)} title="Visible on the store" />
-        </div>
-      ))}
-    </div>
+    <>
+      {err && <div className="a-msg err">{err}</div>}
+      <div className="a-bar"><b>{rows.length} categories</b><span className="info">Click a picture to change it</span><ViewToggle view={view} setView={setView} /></div>
+      <div className={'vw cats ' + view} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(300px,1fr))', gap: 12 }}>
+        {rows.map(c => (
+          <div key={c.id} className="a-card" style={{ display: 'grid', gridTemplateColumns: '64px minmax(0,1fr) auto', alignItems: 'center', gap: 12, padding: 14 }}>
+            <label className="cat-pic" title={c.img ? 'Change picture' : 'Add a picture'} style={{ backgroundImage: c.img ? `url('${c.img}')` : 'none', opacity: busy === c.id ? .5 : 1 }}>
+              {!c.img && <span>＋<small>Photo</small></span>}
+              <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden onChange={e => { pick(c, e.target.files[0]); e.target.value = ''; }} />
+            </label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
+              <b>{c.title}</b>
+              <span style={{ fontSize: 12, color: '#5d6270' }}>{c.count} products · {c.hidden ? 'hidden on store' : 'visible'}</span>
+              <span style={{ fontSize: 12, color: '#5d6270' }}>{c.description}</span>
+              <span style={{ display: 'flex', gap: 10, fontSize: 12, fontWeight: 700 }}>
+                <label style={{ color: 'oklch(0.48 0.16 254)', cursor: 'pointer' }}>{busy === c.id ? 'Uploading…' : c.img ? 'Change photo' : 'Add photo'}<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden onChange={e => { pick(c, e.target.files[0]); e.target.value = ''; }} /></label>
+                {c.img && <button type="button" onClick={() => clear(c)} style={{ border: 0, background: 'transparent', color: '#b3261e', fontWeight: 700, padding: 0, cursor: 'pointer' }}>Remove</button>}
+              </span>
+            </div>
+            <Switch on={!c.hidden} onChange={() => toggle(c)} title="Visible on the store" />
+          </div>
+        ))}
+      </div>
+    </>
   );
 }
 

@@ -91,7 +91,7 @@ export default function Header() {
         <div className="nav" onMouseLeave={() => setMenu(null)}>
           <nav className="nav-in">
             <div className="nav-l">
-              <button className="nav-all hide-md" onClick={() => setMenu(m => (m === 0 ? null : 0))} onMouseEnter={() => setMenu(0)}>
+              <button className="nav-all hide-md" onClick={() => setMenu(m => (m === 'all' ? null : 'all'))} onMouseEnter={() => setMenu('all')}>
                 <span className="burger"><span /><span /><span /></span>All categories
               </button>
               {menus.map((m, i) => {
@@ -122,7 +122,7 @@ export default function Header() {
             <Link to="/offers" className="buy-pill hide-md">Buy Product!<b>OFFER</b></Link>
             <Link to="/contact" className="contact-pill"><span>☏</span>Contact Us</Link>
           </nav>
-          {menu === 0 && (
+          {menu === 'all' && (
             <div className="mega" style={{ left: 28, right: 28 }}>
               <div className="mega-box">
                 <div className="mega-l">

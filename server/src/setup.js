@@ -9,6 +9,7 @@ import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { pool } from './db.js';
 import { ensureIndexes } from './indexes.js';
+import { initPermissions } from './permissions.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const TABLES = ['password_resets', 'site_pages', 'field_expenses', 'field_track', 'field_attendance', 'blog_posts', 'reviews', 'mkt_outbox', 'mkt_log', 'mkt_prefs', 'mkt_campaigns', 'mkt_automations', 'mkt_templates', 'order_returns', 'branches', 'user_reminders', 'user_family', 'user_addresses', 'campaigns', 'staff', 'applications', 'jobs', 'consents', 'subscribers', 'messages', 'service_requests', 'order_history', 'order_items', 'orders', 'users', 'products', 'categories', 'settings'];
@@ -61,7 +62,7 @@ const toDate = t =>new Date(t).toISOString().slice(0, 19).replace('T', ' ');
 /** Articles imported from the live AR Trade blog; INSERT IGNORE so later edits are never overwritten. */
 async function migrate() {
   // existing databases created before the Content writer role / blog authors existed
-  await pool.query("ALTER TABLE staff MODIFY role ENUM('Super admin','Admin','Delivery rider','Marketing manager','Content writer','Field employee','Manager','Accounts') NOT NULL DEFAULT 'Delivery rider'");
+  // staff.role is now free text (see permissions.js: role matrix) and is migrated by initPermissions()
   const [pc] = await pool.query("SELECT COLUMN_NAME c FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'products'");
   const pHave = new Set(pc.map(r => r.c));
   for (const [c, def] of [['gallery', 'JSON NULL'], ['description', 'MEDIUMTEXT NULL'], ['source_url', "VARCHAR(500) NOT NULL DEFAULT ''"], ['edited', 'TINYINT(1) NOT NULL DEFAULT 0'], ['short_desc', 'TEXT NULL'], ['sku', "VARCHAR(80) NOT NULL DEFAULT ''"], ['tags', 'JSON NULL'], ['meta_title', "VARCHAR(160) NOT NULL DEFAULT ''"], ['meta_desc', "VARCHAR(320) NOT NULL DEFAULT ''"], ['meta_keywords', "VARCHAR(500) NOT NULL DEFAULT ''"]]) {
@@ -142,6 +143,7 @@ async function main() {
     );
   }
 
+  await initPermissions(); // role matrix tables, staff.role column and default grants
   const [[{ n }]] = await pool.query('SELECT COUNT(*) n FROM users');
   const PROD = process.env.NODE_ENV === 'production'; // demo logins (known passwords) are never created on the live server
   if (!n && !PROD) {
@@ -153,11 +155,11 @@ async function main() {
   const [[{ ns }]] = await pool.query('SELECT COUNT(*) ns FROM staff');
   if (!ns && PROD) { // a brand-new live database still needs a first admin: random password, shown once
     const pass = crypto.randomBytes(9).toString('base64url');
-    await pool.query('INSERT INTO staff (name,email,phone,password_hash,role,status) VALUES (?,?,?,?,"Super admin","Active")', ['AR Admin', 'admin@artradeinternational.com', '01700000000', await bcrypt.hash(pass, 10)]);
+    await pool.query('INSERT INTO staff (name,email,phone,password_hash,role,status) VALUES (?,?,?,?,"Master Admin","Active")', ['AR Admin', 'admin@artradeinternational.com', '01700000000', await bcrypt.hash(pass, 10)]);
     console.log('\nFIRST ADMIN CREATED  admin@artradeinternational.com  password: ' + pass + '  (change it after the first sign-in)\n');
   } else if (!ns) {
     const demoStaff = [
-      ['AR Admin', 'admin@artradeinternational.com', '01700000000', 'admin123', 'Super admin', '', 4.8, null],
+      ['AR Admin', 'admin@artradeinternational.com', '01700000000', 'admin123', 'Master Admin', '', 4.8, null],
       ['Rafiq Hasan', 'rider@artradeinternational.com', '01711450012', 'rider123', 'Delivery rider', 'Motorbike · DHA-LA 22-4417', 4.9, 'B1'],
       ['Sumon Mia', 'rider2@artradeinternational.com', '01819662210', 'rider123', 'Delivery rider', 'Motorbike · DHA-HA 13-9021', 4.8, 'B2'],
       ['Jahid Khan', 'rider3@artradeinternational.com', '01912330478', 'rider123', 'Delivery rider', 'Motorbike · DHA-LA 31-1180', 4.7, 'B3'],
@@ -182,9 +184,9 @@ async function main() {
     ['Content Writer', 'writer@artradeinternational.com', '01700000003', await bcrypt.hash('writer123', 10), 'Content writer']);
   // demo mobile-app accounts (only created if missing)
   if (!PROD) for (const [name, email, phone, pass, role] of [
-    ['Alex Field', 'field@artradeinternational.com', '01700000010', 'field123', 'Field employee'],
+    ['Alex Field', 'field@artradeinternational.com', '01700000010', 'field123', 'Field Officer'],
     ['Rahim Manager', 'manager@artradeinternational.com', '01700000011', 'manager123', 'Manager'],
-    ['Karim Accounts', 'accounts@artradeinternational.com', '01700000012', 'accounts123', 'Accounts']
+    ['Karim Accounts', 'accounts@artradeinternational.com', '01700000012', 'accounts123', 'Accountant']
   ]) {
     await pool.query('INSERT IGNORE INTO staff (name,email,phone,password_hash,role,status) VALUES (?,?,?,?,?,"Active")', [name, email, phone, await bcrypt.hash(pass, 10), role]);
   }

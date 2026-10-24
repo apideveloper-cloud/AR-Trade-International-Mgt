@@ -4,6 +4,9 @@ const KEY = 'ar_admin_token';
 export const getAdminToken = () => { try { return sessionStorage.getItem(KEY); } catch { return null; } };
 export const setAdminToken = t => { try { t ? sessionStorage.setItem(KEY, t) : sessionStorage.removeItem(KEY); } catch { /* storage unavailable */ } };
 
+/** Does the signed-in staff member hold the permission (or any one of a list)? The server enforces it too; this only decides what to show. */
+export const can = (staff, perm) => [].concat(perm).some(p => staff?.perms?.includes(p));
+
 let onUnauthorized = () => {};
 export const setUnauthorizedHandler = fn => { onUnauthorized = fn; };
 
@@ -34,6 +37,19 @@ export async function downloadFile(url, fallbackName = 'download') {
   const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(await res.blob()), download: name });
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+}
+
+/** Opens a private PDF in a new tab (fetched with the staff token). */
+export async function viewFile(url) {
+  const w = window.open('', '_blank'); // opened first so the browser does not treat it as a blocked pop-up
+  try {
+    const t = getAdminToken();
+    const res = await fetch('/api/admin' + url, { headers: t ? { Authorization: 'Bearer ' + t } : {} });
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Could not open the file');
+    const href = URL.createObjectURL(await res.blob());
+    if (w) w.location.href = href; else window.location.href = href;
+    setTimeout(() => URL.revokeObjectURL(href), 60000);
+  } catch (e) { if (w) w.close(); throw e; }
 }
 
 export const mktApi = {
@@ -73,6 +89,8 @@ export function useTable(path, initial = {}, deps = []) {
   return { params, set, go, data, loading, error, reload: load };
 }
 
+/** Serial number (SL) of row `i` on the current page of a server-paged grid: continues across pages. */
+export const slNo = (t, i) => (t.params.page - 1) * t.params.size + i + 1;
 export const fmtMoney = n => '৳ ' + Math.round(n || 0).toLocaleString('en-US');
 export const ago = t => {
   const m = Math.floor((Date.now() - new Date(t)) / 60000);

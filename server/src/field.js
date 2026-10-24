@@ -8,17 +8,21 @@ import jwt from 'jsonwebtoken';
 import { pool } from './db.js';
 import { digits, fail, wrap, checkPassword, secret } from './util.js';
 import { guard } from './admin.js';
+import { can } from './permissions.js';
+import { pathToFileURL } from 'node:url';
+import { ensureFieldSchema } from './field/migrate.js';
+import { moduleGate, ensureModuleTable } from './field/gate.js';
+import { staffOut, roleKey, ROLE_LABELS, notify, staffIdsByRole } from './field/common.js';
 
 // REST API for the AR Trade mobile app: attendance, live GPS tracking and expenses.
 const router = Router();
+// the admin can switch whole areas off (see field/gate.js); the core areas are gated here, module files below
+for (const area of ['attendance', 'track', 'expenses', 'vouchers']) router.use('/' + area, moduleGate(area));
 const here = path.dirname(fileURLToPath(import.meta.url));
 const VOUCHERS = path.resolve(here, '../uploads/vouchers');
 fs.mkdirSync(VOUCHERS, { recursive: true });
 
-const APPROVERS = ['Super admin', 'Admin', 'Manager', 'Accounts'];
-const isApprover = s => APPROVERS.includes(s.role);
-const appRole = r => ({ 'Super admin': 'admin', Admin: 'admin', Manager: 'manager', Accounts: 'accounts' }[r] || 'employee');
-const staffOut = s => ({ id: s.id, name: s.name, email: s.email, phone: s.phone, role: appRole(s.role), roleLabel: s.role });
+const isApprover = s => can(s, 'field.approve');
 const mysqlDate = v => { const d = new Date(v); if (isNaN(d)) throw fail(400, 'Invalid time'); return d.toISOString().slice(0, 19).replace('T', ' '); };
 const UTC = c => `DATE_FORMAT(${c}, '%Y-%m-%dT%H:%i:%sZ')`; // times are stored in UTC
 const range = q => { // client sends its local day as UTC instants; default = last 24h
@@ -31,15 +35,19 @@ const coord = (v, max) => { const n = Number(v); if (!Number.isFinite(n) || Math
 
 const expenseOut = e => ({
   id: String(e.id), employeeName: e.name, title: e.title, category: e.category, amount: Number(e.amount),
-  date: e.created_utc, voucher: e.voucher ? `/api/field/vouchers/${e.voucher}` : null, status: e.status.toLowerCase()
+  date: e.created_utc, voucher: e.voucher ? `/api/field/vouchers/${e.voucher}` : null, status: e.status.toLowerCase(), remarks: e.remarks || ''
 });
 
 // ---------- auth ----------
 router.post('/login', wrap(async (req, res) => {
   const id = String(req.body.id || '').trim().toLowerCase();
-  const [[s]] = await pool.query('SELECT * FROM staff WHERE email = ? OR (phone <> "" AND phone = ?)', [id, digits(id).slice(-11)]);
-  if (!s || !(await bcrypt.compare(req.body.password || '', s.password_hash))) throw fail(401, 'Wrong mobile/email or password.');
+  if (!id) throw fail(400, 'Enter your employee ID, mobile or email');
+  const [[s]] = await pool.query('SELECT * FROM staff WHERE LOWER(employee_code) = ? OR email = ? OR (phone <> "" AND phone = ?)', [id, id, digits(id).slice(-11)]);
+  if (!s || !(await bcrypt.compare(req.body.password || '', s.password_hash))) throw fail(401, 'Wrong employee ID / mobile / email or password.');
   if (s.status !== 'Active') throw fail(403, s.status === 'Pending' ? 'Your account is waiting for approval.' : 'This account is disabled.');
+  // the sign-in screen lets people pick their role; it must match what the account really is
+  const want = String(req.body.role || '');
+  if (want && want !== roleKey(s.role)) throw fail(403, `This ID is registered as ${s.role}, not ${ROLE_LABELS[want] || want}. Pick your own role.`);
   const token = jwt.sign({ sid: s.id, srole: s.role }, secret(), { expiresIn: '30d' });
   res.json({ token, staff: staffOut(s) });
 }));
@@ -97,7 +105,7 @@ router.post('/track', guard(), wrap(async (req, res) => {
 }));
 
 // latest position of everyone who is on duty (office view)
-router.get('/track/live', guard(APPROVERS), wrap(async (req, res) => {
+router.get('/track/live', guard('field.approve'), wrap(async (req, res) => {
   const [rows] = await pool.query(`
     SELECT s.id, s.name, s.role, t.lat, t.lng, ${UTC('t.at')} at
     FROM staff s
@@ -133,6 +141,9 @@ router.post('/expenses', guard(), wrap(async (req, res) => {
   }
   const [r] = await pool.query('INSERT INTO field_expenses (staff_id,title,category,amount,voucher) VALUES (?,?,?,?,?)', [req.staff.id, title, category, amount, file]);
   const [[e]] = await pool.query(`SELECT e.*, ${UTC('CONVERT_TZ(e.created_at, @@session.time_zone, "+00:00")')} created_utc, s.name FROM field_expenses e JOIN staff s ON s.id = e.staff_id WHERE e.id = ?`, [r.insertId]);
+  staffIdsByRole('manager', 'accountant', 'admin').then(ids => notify(ids.filter(i => i !== req.staff.id), {
+    icon: 'receipt_long', cat: 'Approvals', title: 'Expense waiting for approval', sub: `${req.staff.name} · ${title} · ৳ ${amount.toLocaleString('en-IN')}`,
+    body: `${req.staff.name} submitted an expense claim for approval.`, rows: [['Amount', '৳ ' + amount.toLocaleString('en-IN')], ['Category', category], ['Voucher', file ? 'Attached' : 'None']] }));
   res.json(expenseOut(e));
 }));
 
@@ -146,14 +157,22 @@ router.get('/expenses', guard(), wrap(async (req, res) => {
   res.json(rows.map(expenseOut));
 }));
 
-router.put('/expenses/:id/decision', guard(APPROVERS), wrap(async (req, res) => {
+router.put('/expenses/:id/decision', guard('field.approve'), wrap(async (req, res) => {
   const status = { approved: 'Approved', rejected: 'Rejected' }[req.body.status];
   if (!status) throw fail(400, 'Status must be approved or rejected');
+  const remarks = String(req.body.remarks || '').trim().slice(0, 255);
+  if (status === 'Rejected' && !remarks) throw fail(400, 'Please write a reason for rejecting');
   const [[e]] = await pool.query('SELECT * FROM field_expenses WHERE id = ?', [req.params.id]);
   if (!e) throw fail(404, 'Expense not found');
   if (e.staff_id === req.staff.id) throw fail(403, 'You cannot approve your own expense');
   if (e.status !== 'Pending') throw fail(409, 'This expense was already decided');
-  await pool.query('UPDATE field_expenses SET status = ?, decided_by = ?, decided_at = UTC_TIMESTAMP() WHERE id = ?', [status, req.staff.id, e.id]);
+  await pool.query('UPDATE field_expenses SET status = ?, decided_by = ?, decided_at = UTC_TIMESTAMP(), remarks = ? WHERE id = ?', [status, req.staff.id, remarks, e.id]);
+  await notify(e.staff_id, {
+    icon: status === 'Approved' ? 'fact_check' : 'cancel', cat: 'Approvals',
+    title: status === 'Approved' ? 'Expense approved' : 'Expense rejected', sub: `${e.title} ৳ ${Number(e.amount).toLocaleString('en-IN')} ${status.toLowerCase()} by ${req.staff.name}`,
+    body: `Your expense claim "${e.title}" was ${status.toLowerCase()}.` + (remarks ? ` Remarks: ${remarks}` : ''),
+    rows: [['Amount', '৳ ' + Number(e.amount).toLocaleString('en-IN')], ['Category', e.category], [status === 'Approved' ? 'Approved by' : 'Rejected by', req.staff.name], ['Remarks', remarks || '—']]
+  });
   res.json({ ok: true });
 }));
 
@@ -165,5 +184,20 @@ router.get('/vouchers/:file', guard(), wrap(async (req, res) => {
   if (e.staff_id !== req.staff.id && !isApprover(req.staff)) throw fail(403, 'Your role cannot do this');
   res.sendFile(path.join(VOUCHERS, file));
 }));
+
+// ---------- feature modules: src/field/modules/*.js, each mounted at /api/field/<file name> ----------
+// A module that fails to load is logged and skipped so one broken file can never take the whole API down.
+await ensureFieldSchema();
+await ensureModuleTable().catch(e => console.error('[field] module switches:', e.message));
+const modulesDir = path.join(here, 'field', 'modules');
+if (fs.existsSync(modulesDir)) {
+  for (const f of fs.readdirSync(modulesDir).filter(f => f.endsWith('.js')).sort()) {
+    try {
+      const m = await import(pathToFileURL(path.join(modulesDir, f)).href);
+      const name = f.replace(/\.js$/, '');
+      router.use('/' + name, moduleGate(name), m.default);
+    } catch (e) { console.error(`[field] module ${f} failed to load: ${e.message}`); }
+  }
+}
 
 export default router;

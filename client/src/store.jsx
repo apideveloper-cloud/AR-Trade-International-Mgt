@@ -59,11 +59,16 @@ export function StoreProvider({ children }) {
     if (getToken()) api.get('/auth/me').then(r => setUser(r.user)).catch(() => setToken(null));
   }, []);
 
-  const say = useCallback((text, link) => {
-    setToast({ text, link });
+  /** Shows a toast. kind: 'success' | 'error' | 'info' | 'cart'; when omitted it is worked out from the text and link. */
+  const say = useCallback((text, link, kind) => {
+    const t = String(text ?? '');
+    const k = kind || (link ? 'cart' : /\b(no longer|cannot|can't|not (set up|valid|look)|wrong|invalid|please|too many|failed|error|unavailable|already|holds up|needs a|allow pop|add an email|did not|does not)\b/i.test(t) ? 'error' : /\b(cancel+ed|sent|saved|subscribed|updated|copied|removed|done|thank)\b/i.test(t) ? 'success' : 'info');
+    const ms = k === 'error' ? 4200 : 3200;
+    setToast({ id: Date.now() + Math.random(), text: t, link, kind: k, ms });
     clearTimeout(timer.current);
-    timer.current = setTimeout(() => setToast(null), 2600);
+    timer.current = setTimeout(() => setToast(null), ms);
   }, []);
+  const dismissToast = useCallback(() => { clearTimeout(timer.current); setToast(null); }, []);
 
   const byId = useMemo(() => new Map((data?.products || []).map(p => [p.id, p])), [data]);
   const find = id => byId.get(Number(id));
@@ -107,7 +112,7 @@ export function StoreProvider({ children }) {
     cart, cartLines, cartCount, cartSubtotal, addToCart, setQty, clearCart,
     wish, toggleWish, compare, setCompare, toggleCompare,
     user, setUser, login: b => auth('login', b), register: b => auth('register', b), social: b => auth('social', b), logout,
-    toast, say, cartOpen, setCartOpen, loginOpen, setLoginOpen,
+    toast, say, dismissToast, cartOpen, setCartOpen, loginOpen, setLoginOpen,
     optMail, setOptMail, optIn, subscribed,
     totals: opts => computeTotals(cartLines, data.site, { member: !!user, ...opts }),
     tk: s => tk(s, data?.site || {})

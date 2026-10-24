@@ -21,9 +21,9 @@ function transport() {
   return tx;
 }
 
-export async function sendMail({ to, subject, html, text, replyTo }) {
+export async function sendMail({ to, subject, html, text, replyTo, attachments }) {
   if (!mailReady()) return false;
-  await transport().sendMail({ from: process.env.SMTP_FROM || process.env.SMTP_USER, to, subject, html, text, replyTo });
+  await transport().sendMail({ from: process.env.SMTP_FROM || process.env.SMTP_USER, to, subject, html, text, replyTo, attachments });
   return true;
 }
 

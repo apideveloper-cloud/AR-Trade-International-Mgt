@@ -116,8 +116,8 @@ function Categories() {
   const cards = cats.map((c, i) => {
     const items = products.filter(p => p.cat === c.id);
     const own = items.find(p => p.img);
-    const img = own ? own.img : CAT_FALLBACK[c.id] || '';
-    const photo = !own && isPhoto(c.id);
+    const img = c.img || (own ? own.img : CAT_FALLBACK[c.id] || ''); // a picture chosen in Admin > Categories wins
+    const photo = !!c.img || (!own && isPhoto(c.id));
     const n = items.length, h = CAT_TINT[c.id] || 258;
     return { ...c, n, img, photo, h, countL: n ? n + (n === 1 ? ' PRODUCT' : ' PRODUCTS') : 'CALL FOR STOCK', i };
   });
@@ -330,9 +330,15 @@ function PriceAlert() {
   const { optIn, subscribed, say } = useStore();
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState('');
+  const [err, setErr] = useState('');
   const submit = async e => {
     e.preventDefault();
-    try { await optIn(email, 'Footer newsletter'); setSent(email); } catch (er) { say(er.message); }
+    const v = email.trim();
+    const bad = m => { setErr(m); say(m); }; // red message under the field and a toast
+    if (!v) return bad('Please enter your email address.');
+    if (!/^\S+@\S+\.\S+$/.test(v)) return bad('That email does not look right. Try name@company.com');
+    setErr('');
+    try { await optIn(v, 'Footer newsletter'); setSent(v); } catch (er) { bad(er.message); }
   };
   return (
     <section className="sec" style={{ paddingTop: 20, paddingBottom: 0 }}>
@@ -349,10 +355,11 @@ function PriceAlert() {
         <div style={{ position: 'relative' }}>
           {!sent && !subscribed ? (
             <>
-              <form className="sub-form" onSubmit={submit}>
-                <input type="email" required placeholder="you@company.com" value={email} onChange={e => setEmail(e.target.value)} />
+              <form className={'sub-form' + (err ? ' bad' : '')} onSubmit={submit} noValidate>
+                <input type="email" placeholder="you@company.com" value={email} aria-invalid={!!err} aria-label="Email address" onChange={e => { setEmail(e.target.value); setErr(''); }} />
                 <button type="submit">Subscribe →</button>
               </form>
+              {err && <div className="form-err" role="alert">⚠ {err}</div>}
               <div className="fine"><span>By subscribing you agree to our <Link to="/policy/privacy">privacy policy</Link> ·</span><span>✓ Friday deals</span><span>✓ New arrivals</span><span>✓ Unsubscribe anytime</span></div>
             </>
           ) : (
@@ -410,7 +417,7 @@ export default function Home() {
       {sec.categories && <Categories />}
       {sec.popular && <Popular />}
       <CategoryRails />
-      {sec.offer && <Offer />}
+      {sec.offer && site.showOffer !== false && <Offer />}
       {sec.fresh && <Fresh />}
       {sec.services && <Services />}
       {sec.brands && <Brands />}

@@ -1,24 +1,29 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import './admin.css';
-import { adm, getAdminToken, setAdminToken, setUnauthorizedHandler } from './adminApi.js';
+import { adm, can, getAdminToken, setAdminToken, setUnauthorizedHandler } from './adminApi.js';
 import { Categories, Products } from './pages/Catalog.jsx';
 import { Careers, Inbox, Marketing, Reviews, Services } from './pages/Engage.jsx';
 import { BlogAdmin } from './pages/BlogAdmin.jsx';
 import { PagesAdmin } from './pages/PagesAdmin.jsx';
 import { ContentAdmin } from './pages/ContentAdmin.jsx';
-import { Customers, Dashboard, Deliveries, Orders } from './pages/Sales.jsx';
+import { Customers, Deliveries, Orders } from './pages/Sales.jsx';
+import { Dashboard } from './pages/Dashboard.jsx';
 import { Settings, Team } from './pages/System.jsx';
+import { Roles } from './pages/Roles.jsx';
+import { AdminFooter, TopBar } from './AdminChrome.jsx';
 
-const ADMINS = ['Super admin', 'Admin'];
+// [page, label, icon, permission(s) from the role matrix: any one opens the page]
 const NAV = [
-  ['Overview', [['dashboard', 'Dashboard', '▦', ADMINS]]],
-  ['Sales', [['orders', 'Orders', '▤', [...ADMINS, 'Delivery rider']], ['deliveries', 'Deliveries', '⚑', [...ADMINS, 'Delivery rider']], ['customers', 'Customers', '☺', ADMINS]]],
-  ['Catalog', [['products', 'Products', '▣', ADMINS], ['categories', 'Categories', '☰', ADMINS]]],
-  ['Engage', [['services', 'Servicing', '✦', ADMINS], ['blog', 'Blog', '✎', [...ADMINS, 'Content writer']], ['pages', 'Site pages', '❏', [...ADMINS, 'Content writer']], ['content', 'Site content', '▧', [...ADMINS, 'Content writer']], ['reviews', 'Reviews', '★', [...ADMINS, 'Marketing manager']], ['inbox', 'Inbox', '✉', [...ADMINS, 'Marketing manager']], ['marketing', 'Marketing', '✺', [...ADMINS, 'Marketing manager']], ['careers', 'Careers', '☷', ADMINS]]],
-  ['System', [['team', 'Team', '☻', ADMINS], ['settings', 'Settings', '⚙', ADMINS]]]
+  ['Overview', [['dashboard', 'Dashboard', '▦', 'dashboard.view']]],
+  ['Sales', [['orders', 'Orders', '▤', 'orders.view'], ['deliveries', 'Deliveries', '⚑', ['hub.view', 'hub.deliver']], ['customers', 'Customers', '☺', 'customers.view']]],
+  ['Catalog', [['products', 'Products', '▣', 'products.view'], ['categories', 'Categories', '☰', 'products.view']]],
+  ['Engage', [['services', 'Servicing', '✦', 'services.manage'], ['blog', 'Blog', '✎', 'blog.manage'], ['pages', 'Site pages', '❏', 'pages.manage'], ['content', 'Site content', '▧', 'pages.manage'], ['reviews', 'Reviews', '★', 'reviews.moderate'], ['inbox', 'Inbox', '✉', 'messages.manage'], ['marketing', 'Marketing', '✺', 'marketing.manage'], ['careers', 'Careers', '☷', 'careers.manage']]],
+  ['System', [['team', 'Team', '☻', 'team.manage'], ['roles', 'Roles', '⚿', 'roles.manage'], ['settings', 'Settings', '⚙', 'settings.manage']]]
 ];
-const TITLES = { dashboard: 'Dashboard', orders: 'Orders', deliveries: 'Deliveries', customers: 'Customers', products: 'Products', categories: 'Categories', services: 'Service requests', blog: 'Blog articles', pages: 'Servicing, clients & company pages', content: 'Storefront content (slider, logos, FAQs, policies)', reviews: 'Product reviews', inbox: 'Inbox', marketing: 'Marketing', careers: 'Careers', team: 'Team & roles', settings: 'Settings' };
+// roles anyone may ask for on the "Request access" form (the Master Admin and Admin roles are never self-service)
+const REQUEST_ROLES = ['Delivery rider', 'Marketing manager', 'Content writer', 'Field Officer', 'RM', 'Purchase Officer', 'Accountant', 'Manager'];
+const TITLES = { dashboard: 'Dashboard', orders: 'Orders', deliveries: 'Deliveries', customers: 'Customers', products: 'Products', categories: 'Categories', services: 'Service requests', blog: 'Blog articles', pages: 'Servicing, clients & company pages', content: 'Storefront content (slider, logos, FAQs, policies)', reviews: 'Product reviews', inbox: 'Inbox', marketing: 'Marketing', careers: 'Careers', team: 'Team & accounts', roles: 'Roles & permissions', settings: 'Settings' };
 
 export function Login({ onDone }) {
   const [mode, setMode] = useState('login');
@@ -27,6 +32,16 @@ export function Login({ onDone }) {
   const [busy, setBusy] = useState(false);
   const submit = async e => {
     e.preventDefault(); setErr(''); setOk('');
+    // our own validation instead of the browser's grey "Please fill out this field" bubble
+    for (const el of e.target.querySelectorAll('input[required]')) {
+      const v = el.value.trim();
+      const label = (el.closest('label')?.firstChild?.textContent || 'this field').trim().toLowerCase();
+      const problem = !v ? `Please enter your ${label}.`
+        : el.type === 'email' && !/^\S+@\S+\.\S+$/.test(v) ? 'Enter a valid email address, like name@company.com.'
+        : el.pattern && !new RegExp('^(?:' + el.pattern + ')$').test(v) ? 'Enter a valid 11-digit mobile number (01XXXXXXXXX).'
+        : el.minLength > 0 && v.length < el.minLength ? `The ${label} must be at least ${el.minLength} characters.` : '';
+      if (problem) { el.setAttribute('aria-invalid', 'true'); el.focus(); setErr(problem); return; }
+    }
     const d = Object.fromEntries(new FormData(e.target).entries());
     setBusy(true);
     try {
@@ -45,30 +60,28 @@ export function Login({ onDone }) {
   return (
     <div className="adm-login">
       <div className="box">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'center' }}>
-          <img src="/api/uploads/site/ar-icon-round.png" alt="" style={{ width: 52, height: 52, borderRadius: '50%', background: '#fff', padding: 2, boxShadow: '0 0 0 6px rgba(255,255,255,.06)' }} />
-          <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.15 }}><b style={{ fontSize: 17 }}>AR Trade</b><span className="mono" style={{ fontSize: 11, letterSpacing: '.14em', color: 'oklch(0.78 0.1 230)' }}>ADMIN CONSOLE</span></div>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+          <img src="/admin-logo-light.png" alt="AR Trade International" style={{ display: 'block', width: 'min(340px, 74vw)', height: 'auto' }} />
+          <span className="mono" style={{ fontSize: 11, letterSpacing: '.22em', color: 'oklch(0.78 0.1 230)' }}>ADMIN CONSOLE</span>
         </div>
         <div className="card">
           <div><span style={{ fontFamily: 'var(--disp)', fontWeight: 800, fontSize: 24, letterSpacing: '-.02em', display: 'block' }}>{reg ? 'Request access' : 'Welcome back'}</span><span style={{ fontSize: 13, color: '#8f9bb8' }}>{reg ? 'Riders, marketing staff and content writers can register; an admin approves you.' : 'Sign in with your mobile number or work email.'}</span></div>
           <div className="tabs">{[['login', 'Sign in'], ['register', 'Register']].map(([k, l]) => <button key={k} className={mode === k ? 'on' : ''} onClick={() => setMode(k)}>{l}</button>)}</div>
-          <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <form onSubmit={submit} noValidate onInput={ev => { ev.target.removeAttribute?.('aria-invalid'); setErr(''); }} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {reg && <label>Full name<input type="text" name="name" required /></label>}
             {!reg && <label>Mobile or email<input type="text" name="id" required placeholder="01XXXXXXXXX or email" autoComplete="username" /></label>}
             {reg && <label>Mobile number<input type="tel" name="phone" required pattern="0?1[3-9][0-9]{8}" maxLength={11} placeholder="01XXXXXXXXX" /></label>}
             {reg && <label>Work email<input type="email" name="email" required /></label>}
-            {reg && <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>{['Delivery rider', 'Marketing manager', 'Content writer'].map((r, i) => <label key={r} className="role"><input type="radio" name="role" value={r} defaultChecked={!i} />{r}</label>)}</div>}
+            {reg && <label>Role you need<select name="role" defaultValue="Delivery rider" style={{ width: '100%' }}>{REQUEST_ROLES.map(r => <option key={r}>{r}</option>)}</select></label>}
             <label>Password<input type="password" name="pass" required minLength={8} autoComplete="current-password" /></label>
             {reg && <label>Confirm password<input type="password" name="pass2" required minLength={8} /></label>}
-            {err && <span style={{ background: 'oklch(0.35 0.1 25 / .5)', border: '1px solid oklch(0.55 0.15 25 / .6)', color: '#ffd9d2', borderRadius: 10, padding: '10px 12px', fontSize: 13 }}>{err}</span>}
+            {err && <span className="lerr" role="alert" style={{ background: 'oklch(0.35 0.1 25 / .5)', border: '1px solid oklch(0.55 0.15 25 / .6)', color: '#ffd9d2', borderRadius: 10, padding: '10px 12px', fontSize: 13 }}>⚠ {err}</span>}
             {ok && <span style={{ background: 'oklch(0.35 0.08 150 / .5)', border: '1px solid oklch(0.6 0.12 150 / .6)', color: '#d5f5e0', borderRadius: 10, padding: '10px 12px', fontSize: 13 }}>{ok}</span>}
             <button className="go" disabled={busy}>{reg ? 'Request access' : 'Sign in'} →</button>
           </form>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, flexWrap: 'wrap', fontSize: 11.5, color: '#6f7b98', borderTop: '1px dashed #223050', paddingTop: 14 }}>
-            <span className="mono" style={{ fontSize: 10, letterSpacing: '.1em', color: 'oklch(0.78 0.1 230)', background: 'oklch(0.5 0.12 240 / .15)', borderRadius: 6, padding: '3px 7px' }}>DEMO</span><span>01700000000 · admin@artradeinternational.com</span><span style={{ color: '#aeb8d0', fontWeight: 700 }}>admin123</span>
-          </div>
         </div>
         <Link to="/" style={{ textAlign: 'center', color: '#8f9bb8', fontSize: 13 }}>← Back to storefront</Link>
+        <span style={{ textAlign: 'center', color: '#6f7b98', fontSize: 12 }}>Dev By: <b style={{ color: '#c9d4ea', fontWeight: 700 }}>Eng. A T M Faruque</b></span>
       </div>
     </div>
   );
@@ -79,6 +92,7 @@ export default function AdminApp() {
   const [ready, setReady] = useState(false);
   const [site, setSite] = useState(null);
   const [cats, setCats] = useState([]);
+  const [menuQ, setMenuQ] = useState(''); // left-menu search
   const nav = useNavigate();
   const { pathname } = useLocation();
 
@@ -91,13 +105,23 @@ export default function AdminApp() {
   const loadMeta = useCallback(() => fetch('/api/bootstrap').then(r => r.json()).then(d => { setSite(d.site); }).catch(() => {}), []);
   useEffect(() => { loadMeta(); }, [loadMeta]);
   const loadCats = useCallback(() => adm.get('/categories').then(r => setCats(r.map(c => ({ id: c.id, title: c.title })))).catch(() => {}), []);
-  useEffect(() => { if (staff && ADMINS.includes(staff.role)) loadCats(); }, [staff, loadCats]);
+  useEffect(() => { if (staff && can(staff, 'products.view')) loadCats(); }, [staff, loadCats]);
 
   if (!ready) return <div style={{ padding: 80, textAlign: 'center' }}><span className="spin" /></div>;
   if (!staff) return <Login onDone={s => { setStaff(s); }} />;
 
-  const groups = NAV.map(([g, items]) => [g, items.filter(i => i[3].includes(staff.role))]).filter(([, i]) => i.length);
+  const groups = NAV.map(([g, items]) => [g, items.filter(i => can(staff, i[3]))]).filter(([, i]) => i.length);
+  if (!groups.length) {
+    return (
+      <div style={{ padding: 60, textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 14, alignItems: 'center' }}>
+        <div className="a-msg err">Your role ({staff.role}) has no admin console pages. Use the mobile app, or ask the Master Admin to grant access.</div>
+        <button className="a-btn" onClick={logout}>Sign out</button>
+      </div>
+    );
+  }
   const home = groups[0][1][0][0];
+  const mq = menuQ.trim().toLowerCase();
+  const shown = mq ? groups.map(([g, items]) => [g, items.filter(i => (i[1] + ' ' + g).toLowerCase().includes(mq))]).filter(([, i]) => i.length) : groups;
   const page = pathname.split('/')[2] || home;
   const go = k => nav('/admin/' + k);
   const allowed = groups.flatMap(([, i]) => i.map(x => x[0]));
@@ -106,9 +130,16 @@ export default function AdminApp() {
   return (
     <div className="adm">
       <aside className="adm-side">
-        <div className="adm-brand"><img src="/api/uploads/site/ar-icon-round.png" alt="" /><div><b>AR Trade</b><small>Admin console</small></div></div>
+        <div className="adm-brand logo"><img src="/admin-logo-light.png" alt="AR Trade International" /><small>Admin console</small></div>
+        <div className="nav-search">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+          <input value={menuQ} placeholder="Search menu…" aria-label="Search the menu" onChange={e => setMenuQ(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Escape') setMenuQ(''); if (e.key === 'Enter' && shown[0]) { go(shown[0][1][0][0]); setMenuQ(''); } }} />
+          {menuQ && <button type="button" onClick={() => setMenuQ('')} aria-label="Clear the search">✕</button>}
+        </div>
         <nav className="adm-nav">
-          {groups.map(([g, items]) => (
+          {!shown.length && <span className="nav-none">No menu item matches “{menuQ}”.</span>}
+          {shown.map(([g, items]) => (
             <div key={g} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               <h6>{g}</h6>
               {items.map(([k, t, ic]) => <Link key={k} to={'/admin/' + k} className={page === k ? 'on' : ''}><span className="ic">{ic}</span><span className="tx">{t}</span></Link>)}
@@ -116,15 +147,15 @@ export default function AdminApp() {
           ))}
         </nav>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <div className="adm-links"><Link to="/">↗ Storefront</Link>{staff.role !== 'Content writer' && <><Link to="/hub">↗ Delivery Hub</Link><Link to="/email">↗ Email Center</Link></>}</div>
           <div className="adm-user"><span className="av">{staff.name[0]}</span><div style={{ minWidth: 0, flex: 1, lineHeight: 1.25 }}><b>{staff.name}</b><small>{staff.role}</small></div><button onClick={logout} title="Sign out">⏻</button></div>
         </div>
       </aside>
       <main className="adm-main">
-        <div><span className="today">{new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</span><h1>{TITLES[page] || 'Admin'}</h1></div>
+        <TopBar staff={staff} groups={groups} page={page} title={TITLES[page] || 'Admin'} go={go} logout={logout} />
+        <div className="adm-body" key={page}>
         {!allowed.includes(page) ? <div className="a-msg err">Your role cannot open this page.</div> : (
           <Routes>
-            <Route path="dashboard" element={<Dashboard go={go} />} />
+            <Route path="dashboard" element={<Dashboard go={go} staff={staff} />} />
             <Route path="orders" element={<Orders site={site} staff={staff} />} />
             <Route path="deliveries" element={<Deliveries />} />
             <Route path="customers" element={<Customers />} />
@@ -139,10 +170,13 @@ export default function AdminApp() {
             <Route path="marketing" element={<Marketing />} />
             <Route path="careers" element={<Careers />} />
             <Route path="team" element={<Team me={staff} />} />
+            <Route path="roles" element={<Roles />} />
             <Route path="settings" element={<Settings />} />
             <Route path="*" element={<Navigate to={'/admin/' + home} replace />} />
           </Routes>
         )}
+        </div>
+        <AdminFooter staff={staff} />
       </main>
     </div>
   );

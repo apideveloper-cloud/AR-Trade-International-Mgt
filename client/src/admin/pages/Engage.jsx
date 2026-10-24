@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react';
-import { adm, downloadFile, dateF, dateTimeF, mktApi, useTable } from '../adminApi.js';
-import { Empty, Modal, Pager, Pill, Toolbar } from '../ui.jsx';
+import { adm, downloadFile, dateF, dateTimeF, mktApi, slNo, useTable } from '../adminApi.js';
+import { Empty, Modal, Pager, Pill, Toolbar, Summary, ViewToggle, hueOf, useView } from '../ui.jsx';
 
 export function Services() {
   const t = useTable('/services', { status: '' });
+  const [view, setView] = useView('services');
   const set = async (id, status) => { await adm.put('/services/' + id, { status }); t.reload(); };
   return (
     <>
-      <Toolbar t={t} filters={[{ key: 'status', label: 'All statuses', options: ['New', 'Scheduled', 'In progress', 'Completed'] }]} />
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, opacity: t.loading ? .6 : 1 }}>
+      <Toolbar t={t} filters={[{ key: 'status', label: 'All statuses', options: ['New', 'Scheduled', 'In progress', 'Completed'] }]}><ViewToggle view={view} setView={setView} /></Toolbar>
+      <div className={'vw ' + view} style={{ display: 'flex', flexDirection: 'column', gap: 10, opacity: t.loading ? .6 : 1 }}>
         {t.data.rows.map(v => (
           <div key={v.id} className="a-card" style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto', gap: 16, alignItems: 'center', padding: '16px 18px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -28,14 +29,15 @@ export function Services() {
 
 export function Reviews() {
   const t = useTable('/reviews', { status: '' });
+  const [view, setView] = useView('reviews');
   const set = async (id, status) => { await adm.put('/reviews/' + id, { status }); t.reload(); };
   const del = async id => { if (window.confirm('Delete this review permanently?')) { await adm.del('/reviews/' + id); t.reload(); } };
   const btn = (bg, fg) => ({ border: 0, borderRadius: 999, padding: '8px 14px', fontSize: 12.5, fontWeight: 700, background: bg, color: fg, cursor: 'pointer' });
   return (
     <>
       {t.data.pending > 0 && <div className="a-msg" style={{ background: 'oklch(0.96 0.04 85)', color: 'oklch(0.4 0.12 70)' }}>{t.data.pending} review{t.data.pending > 1 ? 's' : ''} waiting for your approval. Reviews appear on the product page only after you approve them.</div>}
-      <Toolbar t={t} filters={[{ key: 'status', label: 'All statuses', options: ['Pending', 'Approved', 'Rejected'] }]} />
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, opacity: t.loading ? .6 : 1 }}>
+      <Toolbar t={t} filters={[{ key: 'status', label: 'All statuses', options: ['Pending', 'Approved', 'Rejected'] }]}><ViewToggle view={view} setView={setView} /></Toolbar>
+      <div className={'vw ' + view} style={{ display: 'flex', flexDirection: 'column', gap: 10, opacity: t.loading ? .6 : 1 }}>
         {t.data.rows.map(v => (
           <div key={v.id} className="a-card" style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto', gap: 16, alignItems: 'start', padding: '16px 18px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 5, minWidth: 0 }}>
@@ -94,60 +96,85 @@ export function Marketing() {
   const subs = useTable('/subscribers');
   const consents = useTable('/consents', { status: '' });
   const [camps, setCamps] = useState([]);
-  const msg = '';
   const [err, setErr] = useState('');
   const loadCamps = () => mktApi.get('/campaigns').then(setCamps).catch(() => setCamps([]));
   useEffect(() => { loadCamps(); }, []);
 
-  const add = async e => { e.preventDefault(); try { await adm.post('/subscribers', { email: e.target.email.value }); e.target.reset(); subs.reload(); } catch (er) { setErr(er.message); } };
+  const add = async e => { e.preventDefault(); try { await adm.post('/subscribers', { email: e.target.email.value }); e.target.reset(); setErr(''); subs.reload(); } catch (er) { setErr(er.message); } };
   const remove = async email => { await adm.del('/subscribers/' + encodeURIComponent(email)); subs.reload(); consents.reload(); };
   const confirm = async id => { await adm.put(`/consents/${id}/confirm`); consents.reload(); subs.reload(); };
   const exportCsv = rows => {
     const csv = ['email,subscribed_at', ...rows.map(r => `${r.email},${r.created_at}`)].join('\n');
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); a.download = 'subscribers.csv'; a.click();
   };
+  const sent = camps.filter(c => c.status === 'Sent').length;
 
   return (
     <>
-      <div className="kpis">
-        {[['Subscribers', subs.data.total], ['Consent records', consents.data.total], ['Campaigns sent', camps.length]].map(([l, v]) => <div className="kpi" key={l}><small>{l}</small><b>{v}</b></div>)}
-      </div>
-      <div className="grid2">
-        <a href="/email" className="a-card" style={{ background: 'linear-gradient(135deg,#0b1631,oklch(0.42 0.14 255))', color: '#fff', gap: 6, justifyContent: 'center' }}>
-          <b style={{ fontSize: 17 }}>Email Center →</b>
-          <span style={{ fontSize: 13, color: '#b9c6e2' }}>Campaigns with A/B subjects, automations, templates, preference center &amp; reports.</span>
-          {err && <div className="a-msg err">{err}</div>}{msg && <div className="a-msg ok">{msg}</div>}
-        </a>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <Summary items={[
+        ['Subscribers', subs.data.total, 'People who confirmed by email', 'blue', 'users'],
+        ['Consent records', consents.data.total, 'Double opt-in log entries', 'green', 'check'],
+        ['Campaigns sent', sent, 'Delivered to subscribers', 'violet', 'mail'],
+        ['Scheduled', camps.length - sent, 'Waiting to go out', 'amber', 'clock']
+      ]} />
+      {err && <div className="a-msg err">{err}</div>}
+      <div className="mk-grid">
+        <div className="mk-left">
+          <a href="/email" className="mk-hero">
+            <span className="mk-hero-ic">✉</span>
+            <div><b>Email Center →</b><span>Campaigns with A/B subjects, automations, templates, preference center &amp; reports.</span></div>
+            <div className="mk-chips"><i>A/B subjects</i><i>Automations</i><i>Templates</i><i>Reports</i></div>
+          </a>
+          <div className="a-card mk-card">
+            <div className="mk-hd"><b>Campaigns</b><span className="chip">{camps.length}</span></div>
+            {!camps.length && <div className="muted" style={{ padding: '4px 0 8px' }}>No campaigns yet. Create one in the Email Center.</div>}
+            {camps.map(c => (
+              <div key={c.id} className="mk-camp">
+                <span className="mk-dot" style={{ '--h': c.status === 'Sent' ? 160 : 70 }}>{c.status === 'Sent' ? '✓' : '⏱'}</span>
+                <div><b>{c.name}</b><span>{c.code} · {c.audience} · {dateF(c.at)}</span></div>
+                <Pill s={c.status === 'Sent' ? 'Hired' : 'New'} label={c.status === 'Sent' ? 'Sent to ' + c.sent : 'Scheduled'} />
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="mk-right">
           <Toolbar t={subs} sizes={[10, 25]} />
-          <div className="a-card" style={{ padding: 0, gap: 0 }}>
-            <div style={{ padding: '14px 20px', borderBottom: '1px solid #eef0f4', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><b style={{ fontSize: 15 }}>Subscriber list</b><button className="a-btn sm ghost" onClick={() => exportCsv(subs.data.rows)}>Export CSV</button></div>
-            <form onSubmit={add} style={{ display: 'flex', gap: 8, padding: '12px 20px', borderBottom: '1px solid #f3f4f7' }}><input className="a-input" name="email" type="email" required placeholder="Add an email" style={{ padding: '8px 10px' }} /><button className="a-btn sm">Add</button></form>
-            {subs.data.rows.map(x => <div key={x.email} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, padding: '10px 20px', borderBottom: '1px solid #f3f4f7' }}><span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{x.email}</span><button onClick={() => remove(x.email)} style={{ border: 0, background: 'transparent', color: 'oklch(0.5 0.18 25)', fontWeight: 700 }}>Remove</button></div>)}
-            {!subs.data.rows.length && <div style={{ padding: 20, color: '#6b7080' }}>No subscribers yet.</div>}
+          <div className="a-card mk-card" style={{ padding: 0 }}>
+            <div className="mk-hd" style={{ padding: '12px 16px' }}><b>Subscriber list</b><span className="chip">{subs.data.total}</span><span style={{ flex: 1 }} /><button className="a-btn sm ghost" onClick={() => exportCsv(subs.data.rows)}>⤓ Export CSV</button></div>
+            <form onSubmit={add} className="mk-add"><input className="a-input" name="email" type="email" required placeholder="Add an email address" /><button className="a-btn sm grad">＋ Add</button></form>
+            {subs.data.rows.map((x, i) => (
+              <div key={x.email} className="mk-sub">
+                <span className="mk-av" style={{ '--h': hueOf(x.email) }}>{x.email[0].toUpperCase()}</span>
+                <span className="sl">{slNo(subs, i)}</span>
+                <span className="mk-mail">{x.email}</span>
+                <button type="button" className="mk-rm" onClick={() => remove(x.email)}>Remove</button>
+              </div>
+            ))}
+            {!subs.data.rows.length && <div className="muted" style={{ padding: 16 }}>No subscribers yet.</div>}
           </div>
           <Pager t={subs} />
         </div>
       </div>
-      <div className="a-card" style={{ padding: 0, gap: 0 }}>
-        <div style={{ padding: '16px 20px', borderBottom: '1px solid #eef0f4' }}><b style={{ fontSize: 15 }}>Consent log · {consents.data.total}</b><div style={{ fontSize: 12, color: '#6b7080' }}>Double opt-in records — date, time, source and IP for every signup.</div></div>
-        <div style={{ padding: 12 }}><Toolbar t={consents} filters={[{ key: 'status', label: 'All statuses', options: ['Pending', 'Confirmed', 'Unsubscribed'] }]} /></div>
+      <div className="a-card mk-card" style={{ padding: 0 }}>
+        <div className="mk-hd" style={{ padding: '14px 18px 4px' }}><b>Consent log</b><span className="chip">{consents.data.total}</span></div>
+        <div style={{ padding: '0 18px 8px', fontSize: 12, color: '#6b7388' }}>Double opt-in records: date, time, source and IP for every signup.</div>
+        <div style={{ padding: '0 12px 8px' }}><Toolbar t={consents} filters={[{ key: 'status', label: 'All statuses', options: ['Pending', 'Confirmed', 'Unsubscribed'] }]} /></div>
         <div style={{ overflow: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead style={{ background: '#f7f8fa' }}><tr>{['Email', 'Status', 'Source', 'Consent at', 'Confirmed at', 'IP', ''].map(h => <th key={h} style={{ padding: '10px 14px', textAlign: 'left', fontSize: 11, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase', color: '#6b7080', whiteSpace: 'nowrap' }}>{h}</th>)}</tr></thead>
-            <tbody>{consents.data.rows.map(c => (
-              <tr key={c.id}>{[<b key="e">{c.email}</b>, <Pill key="s" s={c.status === 'Confirmed' ? 'Hired' : c.status === 'Pending' ? 'New' : 'Cancelled'} label={c.status} />, c.source, dateTimeF(c.at), dateTimeF(c.confirmedAt), <span key="ip" className="mono" style={{ fontSize: 11.5 }}>{c.ip}</span>,
-                c.status !== 'Confirmed' ? <button key="b" onClick={() => confirm(c.id)} style={{ border: 0, background: 'transparent', color: 'oklch(0.48 0.16 254)', fontWeight: 700 }}>Confirm</button> : null]
-                .map((cell, i) => <td key={i} style={{ padding: '11px 14px', borderTop: '1px solid #f1f2f6', whiteSpace: 'nowrap', fontSize: 12.5 }}>{cell}</td>)}</tr>
+          <table className="dt">
+            <thead><tr>{['SL', 'Email', 'Status', 'Source', 'Consent at', 'Confirmed at', 'IP', ''].map(h => <th key={h}>{h}</th>)}</tr></thead>
+            <tbody>{consents.data.rows.map((c, i) => (
+              <tr key={c.id}>
+                <td><span className="sl">{slNo(consents, i)}</span></td>
+                <td><b>{c.email}</b></td>
+                <td><Pill s={c.status === 'Confirmed' ? 'Hired' : c.status === 'Pending' ? 'New' : 'Cancelled'} label={c.status} /></td>
+                <td>{c.source}</td><td>{dateTimeF(c.at)}</td><td>{dateTimeF(c.confirmedAt)}</td>
+                <td><span className="mono" style={{ fontSize: 11.5 }}>{c.ip}</span></td>
+                <td>{c.status !== 'Confirmed' ? <button type="button" className="a-btn sm ghost" onClick={() => confirm(c.id)}>Confirm</button> : null}</td>
+              </tr>
             ))}</tbody>
           </table>
         </div>
         <div style={{ padding: 12 }}><Pager t={consents} /></div>
-      </div>
-      <div className="a-card" style={{ padding: 0, gap: 0 }}>
-        <div style={{ padding: '16px 20px', borderBottom: '1px solid #eef0f4' }}><b style={{ fontSize: 15 }}>Sent campaigns</b></div>
-        {!camps.length && <div style={{ padding: 20, color: '#6b7080' }}>No campaigns yet.</div>}
-        {camps.map(c => <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 20px', borderBottom: '1px solid #f3f4f7', flexWrap: 'wrap' }}><div style={{ flex: 1, minWidth: 200, display: 'flex', flexDirection: 'column' }}><b>{c.name}</b><span style={{ fontSize: 12, color: '#5d6270' }}>{c.code} · {c.audience} · {dateF(c.at)}</span></div><Pill s={c.status === 'Sent' ? 'Hired' : 'New'} label={c.status === 'Sent' ? 'Sent to ' + c.sent : 'Scheduled'} /></div>)}
       </div>
     </>
   );
@@ -164,7 +191,7 @@ function JobForm({ job, onClose, onSaved }) {
   };
   const L = a => (a || []).join('\n');
   return (
-    <Modal kicker="Careers" title={job ? 'Edit job' : 'Post a job'} onClose={onClose} onSubmit={submit} footer={<><button type="button" className="a-btn ghost" onClick={onClose}>Cancel</button><button className="a-btn grad">Save job</button></>}>
+    <Modal side kicker="Careers" title={job ? 'Edit job' : 'Post a job'} onClose={onClose} onSubmit={submit} footer={<><button type="button" className="a-btn ghost" onClick={onClose}>Cancel</button><button className="a-btn grad">Save job</button></>}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {err && <div className="a-msg err">{err}</div>}
         <label className="a-lbl">Job title<input className="a-input" name="title" required defaultValue={job?.title} /></label>
@@ -232,10 +259,11 @@ export function Careers() {
         </>
       )}
       {tab === 'jobs' && (
-        <div className="a-table"><div style={{ minWidth: 700 }}>
-          <div className="head" style={{ gridTemplateColumns: 'minmax(200px,1fr) 120px 110px 90px 90px 140px' }}><span>Role</span><span>Department</span><span>Deadline</span><span>Open</span><span>Applied</span><span /></div>
-          {jobs.map(j => (
-            <div key={j.id} className="row" style={{ gridTemplateColumns: 'minmax(200px,1fr) 120px 110px 90px 90px 140px' }}>
+        <div className="a-table"><div style={{ minWidth: 744 }}>
+          <div className="head" style={{ gridTemplateColumns: '44px minmax(200px,1fr) 120px 110px 90px 90px 140px' }}><span>SL</span><span>Role</span><span>Department</span><span>Deadline</span><span>Open</span><span>Applied</span><span /></div>
+          {jobs.map((j, i) => (
+            <div key={j.id} className="row" style={{ gridTemplateColumns: '44px minmax(200px,1fr) 120px 110px 90px 90px 140px' }}>
+              <span className="sl">{i + 1}</span>
               <span style={{ display: 'flex', flexDirection: 'column' }}><b>{j.title}</b><span style={{ color: '#5d6270', fontSize: 12 }}>{j.id} · {j.type} · {j.salary}</span></span>
               <span>{j.dept}</span><span>{dateF(j.deadline)}</span><Pill s={j.open && new Date(j.deadline) > new Date() ? 'Active' : 'Disabled'} label={j.open && new Date(j.deadline) > new Date() ? 'Open' : 'Closed'} /><b>{j.apps}</b>
               <span style={{ display: 'flex', gap: 6 }}><button className="a-btn sm ghost" onClick={() => setEdit(j)}>Edit</button><button className="a-btn sm ghost" style={{ color: 'oklch(0.5 0.18 25)' }} onClick={() => delJob(j)}>Delete</button></span>

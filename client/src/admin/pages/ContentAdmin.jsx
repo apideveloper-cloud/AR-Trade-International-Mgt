@@ -19,12 +19,19 @@ function ImageField({ label, value, onChange, folder, wide }) {
   return (
     <div style={{ ...lbl, gridColumn: wide ? '1 / -1' : undefined }}>
       <span>{label}</span>
-      <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-        <div style={{ flex: 'none', width: wide ? 160 : 84, height: wide ? 64 : 56, borderRadius: 10, border: '1px solid #e4e2dc', background: `#f3f6fb ${value ? `url('${value}')` : ''} center/contain no-repeat` }} />
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 }}>
+      <div className={'cx-img' + (wide ? ' wide' : '')}>
+        <label className="cx-drop" style={{ backgroundImage: value ? `url('${value}')` : 'none' }} title="Click to upload an image">
+          {!value && <span>⤒<small>{busy ? 'Uploading…' : 'Upload image'}</small></span>}
+          {value && <em>{busy ? 'Uploading…' : 'Change'}</em>}
+          <input type="file" hidden accept="image/png,image/jpeg,image/gif,image/webp" onChange={up} />
+        </label>
+        <div className="cx-img-r">
           <input className="a-input" value={value || ''} onChange={e => onChange(e.target.value)} placeholder="/api/uploads/site/… or https://…" style={{ fontSize: 12 }} />
-          <label className="a-btn ghost sm" style={{ cursor: 'pointer', alignSelf: 'flex-start' }}>{busy ? 'Uploading…' : '⤒ Upload image'}<input type="file" hidden accept="image/png,image/jpeg,image/gif,image/webp" onChange={up} /></label>
-          {err && <span style={{ color: '#b3261e', fontSize: 12 }}>{err}</span>}
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <label className="a-btn ghost sm" style={{ cursor: 'pointer' }}>{busy ? 'Uploading…' : '⤒ Upload image'}<input type="file" hidden accept="image/png,image/jpeg,image/gif,image/webp" onChange={up} /></label>
+            {value && <button type="button" className="a-btn ghost sm" style={{ color: '#b3261e' }} onClick={() => onChange('')}>Remove</button>}
+            {err && <span style={{ color: '#b3261e', fontSize: 12 }}>{err}</span>}
+          </div>
         </div>
       </div>
     </div>
@@ -34,7 +41,7 @@ function ImageField({ label, value, onChange, folder, wide }) {
 function Field({ f, item, set }) {
   const v = item[f.k];
   if (f.type === 'image') return <ImageField label={f.label} value={v} onChange={x => set(f.k, x)} folder={f.folder} wide={f.wide} />;
-  if (f.type === 'check') return <label style={{ ...lbl, flexDirection: 'row', alignItems: 'center', gap: 8 }}><input type="checkbox" checked={v !== false && !!v} onChange={e => set(f.k, e.target.checked)} />{f.label}</label>;
+  if (f.type === 'check') { const on = v !== false && !!v; return <div className="cx-toggle"><button type="button" role="switch" aria-checked={on} className={'a-sw' + (on ? ' on' : '')} onClick={() => set(f.k, !on)} /><span>{f.label}</span></div>; }
   if (f.type === 'select') return <label style={lbl}>{f.label}<select className="a-input" value={v || f.options[0][0]} onChange={e => set(f.k, e.target.value)}>{f.options.map(([val, l]) => <option key={val} value={val}>{l}</option>)}</select></label>;
   if (f.type === 'area') return <label style={{ ...lbl, gridColumn: '1 / -1' }}>{f.label}<textarea className="a-input" rows={f.rows || 3} value={v || ''} onChange={e => set(f.k, e.target.value)} /></label>;
   return <label style={{ ...lbl, gridColumn: f.wide ? '1 / -1' : undefined }}>{f.label}<input className="a-input" type={f.type || 'text'} value={v ?? ''} onChange={e => set(f.k, e.target.value)} placeholder={f.ph || ''} /></label>;
@@ -47,19 +54,20 @@ function ListEditor({ items, setItems, fields, blank, title, max = 60 }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       {items.map((it, i) => (
-        <div key={i} style={{ border: '1px solid #e4e2dc', borderRadius: 14, padding: 14, background: '#fbfcfe', display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <b style={{ flex: 1, fontSize: 13 }}>{title(it, i)}</b>
-            <button type="button" className="a-btn ghost sm" onClick={() => mv(i, -1)} disabled={i === 0}>↑</button>
-            <button type="button" className="a-btn ghost sm" onClick={() => mv(i, 1)} disabled={i === items.length - 1}>↓</button>
-            <button type="button" className="a-btn ghost sm" style={{ color: '#b3261e' }} onClick={() => setItems(a => a.filter((_, j) => j !== i))}>Remove</button>
+        <div key={i} className={'cx-item' + (it.on === false ? ' off' : '')}>
+          <div className="cx-item-hd">
+            <span className="cx-no">{i + 1}</span>
+            <b>{title(it, i)}</b>
+            <button type="button" className="cx-ic" title="Move up" onClick={() => mv(i, -1)} disabled={i === 0}>↑</button>
+            <button type="button" className="cx-ic" title="Move down" onClick={() => mv(i, 1)} disabled={i === items.length - 1}>↓</button>
+            <button type="button" className="cx-ic del" title="Remove" onClick={() => setItems(a => a.filter((_, j) => j !== i))}>✕</button>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 10 }}>
             {fields.filter(f => !f.show || f.show(it)).map(f => <Field key={f.k} f={f} item={it} set={(k, v) => upd(i, k, v)} />)}
           </div>
         </div>
       ))}
-      {items.length < max && <button type="button" className="a-btn ghost" style={{ alignSelf: 'flex-start' }} onClick={() => setItems(a => [...a, typeof blank === 'function' ? blank() : { ...blank }])}>+ Add</button>}
+      {items.length < max && <button type="button" className="cx-add" onClick={() => setItems(a => [...a, typeof blank === 'function' ? blank() : { ...blank }])}>＋ Add another</button>}
     </div>
   );
 }
@@ -79,6 +87,7 @@ const SLIDE_FIELDS = [
   { k: 'badgeT', label: 'Badge top text', show: s => s.type !== 'image' }, { k: 'badgeV', label: 'Badge value', show: s => s.type !== 'image' }
 ];
 
+const TAB_ICON = { slides: '🖼️', brands: '🏷️', clients: '🏢', perks: '✨', faqs: '❓', policies: '📜', about: 'ℹ️', menus: '🔗', general: '✎' };
 const TABS = [
   ['slides', 'Home slider', 'The big banner on the home page. Order = display order.'],
   ['brands', 'Brand logos', 'The scrolling brand strip on the home page.'],
@@ -113,23 +122,29 @@ export function ContentAdmin() {
     setBusy(false);
   };
   const SaveBar = ({ keys }) => (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 12, position: 'sticky', bottom: 0, background: 'rgba(246,245,242,.95)', padding: '12px 0', zIndex: 3 }}>
-      <button type="button" className="a-btn grad" disabled={busy} onClick={() => save(keys)}>{busy ? 'Saving…' : 'Save changes'}</button>
-      {msg && <span className={'a-msg ' + (msg.err ? 'err' : 'ok')}>{msg.t}</span>}
+    <div className="cx-save">
+      <span>{msg ? <b style={{ color: msg.err ? '#ffb4ab' : '#9be7b4' }}>{msg.err ? '⚠ ' : '✓ '}{msg.t}</b> : 'Changes go live on the website as soon as you save.'}</span>
+      <button type="button" className="a-btn" disabled={busy} onClick={() => save(keys)}>{busy ? 'Saving…' : 'Save changes'}</button>
     </div>
   );
   const policyFields = [{ k: 't', label: 'Title' }, { k: 'k', label: 'Web address key (e.g. privacy)' }];
   const desc = (TABS.find(t => t[0] === tab) || [])[2];
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-        {TABS.map(([k, l]) => <button key={k} type="button" className={'a-chip' + (tab === k ? ' on' : '')} style={tab === k ? { background: '#16181d', color: '#fff' } : undefined} onClick={() => { setTab(k); setMsg(null); }}>{l}</button>)}
+      <div className="cx-tabs" role="tablist">
+        {TABS.map(([k, l]) => <button key={k} type="button" role="tab" aria-selected={tab === k} className={'cx-tab' + (tab === k ? ' on' : '')} onClick={() => { setTab(k); setMsg(null); }}><i>{TAB_ICON[k]}</i>{l}</button>)}
       </div>
-      <div className="a-card" style={{ gap: 14 }}>
-        <span style={{ color: '#5d6270', fontSize: 13 }}>{desc} Images are stored in the <b>uploads/site</b> folder.</span>
+      <div className="cx-hero">
+        <span className="cx-hero-ic">{TAB_ICON[tab]}</span>
+        <div><b>{(TABS.find(t => t[0] === tab) || [])[1]}</b><span>{desc} Images are stored in the <u>uploads/site</u> folder.</span></div>
+      </div>
+      <div className="a-card cx-body" style={{ gap: 14 }}>
 
         {tab === 'slides' && <>
-          <label style={{ ...lbl, maxWidth: 260 }}>Seconds per slide<input className="a-input" type="number" min="2" max="30" step="0.5" value={data.slideSecs ?? 5.5} onChange={e => set('slideSecs', e.target.value)} /></label>
+          <div className="cx-strip" aria-label="Slide order preview">
+            {data.slides.map((s, i) => <div key={i} className={'cx-th' + (s.on === false ? ' off' : '')} title={s.type === 'image' ? (s.alt || 'banner') : (s.title || 'text slide')} style={{ backgroundImage: `url('${s.type === 'image' ? s.img : s.pic}')` }}><em>{i + 1}</em></div>)}
+            <label style={{ ...lbl, maxWidth: 200, marginLeft: 'auto' }}>Seconds per slide<input className="a-input" type="number" min="2" max="30" step="0.5" value={data.slideSecs ?? 5.5} onChange={e => set('slideSecs', e.target.value)} /></label>
+          </div>
           <ListEditor items={data.slides} setItems={fn => set('slides', fn)} fields={SLIDE_FIELDS} max={12} title={(s, i) => `Slide ${i + 1} · ${s.type === 'image' ? (s.alt || 'banner') : (s.title || 'text slide')}`} blank={() => ({ on: true, type: 'image', img: '', alt: '', href: '#/shop/all' })} />
           <SaveBar keys={['slides', 'slideSecs']} />
         </>}
@@ -172,15 +187,15 @@ export function ContentAdmin() {
         </>}
 
         {tab === 'about' && <>
-          <b>Introduction</b>
+          <h4 className="cx-h">Introduction</h4>
           <div style={{ display: 'grid', gap: 10 }}>
             {[['heading', 'Page heading'], ['intro', 'Introduction'], ['mdMessage', 'Managing Director message'], ['mdName', 'Managing Director name'], ['mdTitle', 'Managing Director title'], ['vision', 'Vision'], ['mission', 'Mission']].map(([k, l]) => (
               <label key={k} style={lbl}>{l}{['intro', 'mdMessage', 'vision', 'mission'].includes(k) ? <textarea className="a-input" rows={3} value={data.about[k] || ''} onChange={e => set('about', a => ({ ...a, [k]: e.target.value }))} /> : <input className="a-input" value={data.about[k] || ''} onChange={e => set('about', a => ({ ...a, [k]: e.target.value }))} />}</label>
             ))}
           </div>
-          <b>Numbers</b>
+          <h4 className="cx-h">Numbers</h4>
           <ListEditor items={data.stats} setItems={fn => set('stats', fn)} max={8} title={s => `${s.v} ${s.t}`} blank={{ v: '', t: '' }} fields={[{ k: 'v', label: 'Number (e.g. 2011)' }, { k: 't', label: 'Caption' }]} />
-          <b>Why choose us</b>
+          <h4 className="cx-h">Why choose us</h4>
           <ListEditor items={data.whys} setItems={fn => set('whys', fn)} max={12} title={w => w.t || 'New card'} blank={{ t: '', d: '' }} fields={[{ k: 't', label: 'Title' }, { k: 'd', type: 'area', label: 'Description', rows: 2 }]} />
           <SaveBar keys={['about', 'stats', 'whys']} />
         </>}
@@ -188,13 +203,13 @@ export function ContentAdmin() {
         {tab === 'menus' && <>
           {[['hot', 'Hot Products dropdown'], ['services', 'Our Services dropdown'], ['blog', 'Blog dropdown'], ['about', 'Footer "About us" column']].map(([k, title]) => (
             <div key={k} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <b>{title}</b>
+              <h4 className="cx-h">{title}</h4>
               <ListEditor items={(data.menus[k] || []).map(i => ({ t: i.t, link: i.href || i.to || '' }))} max={20} title={i => i.t || 'New link'} blank={{ t: '', link: '' }}
                 setItems={fn => set('menus', m => ({ ...m, [k]: fn((m[k] || []).map(i => ({ t: i.t, link: i.href || i.to || '' }))).map(i => ({ t: i.t, to: i.link })) }))}
                 fields={[{ k: 't', label: 'Text' }, { k: 'link', label: 'Link (/shop/toner, /blog or https://…)' }]} />
             </div>
           ))}
-          <b>Footer and contact page texts</b>
+          <h4 className="cx-h">Footer and contact page texts</h4>
           <div style={{ display: 'grid', gap: 10 }}>
             {[['tagline', 'Footer description'], ['hours', 'Opening hours'], ['mobileBanking', 'Contact page: mobile banking line'], ['email2', 'Contact page: second email']].map(([k, l]) => <label key={k} style={lbl}>{l}<input className="a-input" value={data.footer[k] || ''} onChange={e => set('footer', f => ({ ...f, [k]: e.target.value }))} /></label>)}
           </div>
@@ -202,15 +217,15 @@ export function ContentAdmin() {
         </>}
 
         {tab === 'general' && <>
-          <b>Social links</b>
+          <h4 className="cx-h">Social links</h4>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(260px,1fr))', gap: 10 }}>
             {['facebook', 'instagram', 'linkedin', 'youtube', 'x'].map(k => <label key={k} style={lbl}>{k[0].toUpperCase() + k.slice(1)}<input className="a-input" value={data.social?.[k] || ''} onChange={e => set('social', s => ({ ...s, [k]: e.target.value }))} placeholder="https://…" /></label>)}
           </div>
-          <b>Section titles on the home page</b>
+          <h4 className="cx-h">Section titles on the home page</h4>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(260px,1fr))', gap: 10 }}>
             {Object.keys(data.labels || {}).map(k => <label key={k} style={lbl}>{k}<input className="a-input" value={data.labels[k]} onChange={e => set('labels', l => ({ ...l, [k]: e.target.value }))} /></label>)}
           </div>
-          <b>Home page blocks (show / hide)</b>
+          <h4 className="cx-h">Home page blocks (show / hide)</h4>
           <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
             {Object.keys(data.sections || {}).map(k => <label key={k} style={{ display: 'flex', gap: 6, alignItems: 'center', fontWeight: 600 }}><input type="checkbox" checked={!!data.sections[k]} onChange={e => set('sections', s => ({ ...s, [k]: e.target.checked }))} />{k}</label>)}
           </div>

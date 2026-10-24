@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api, fmt } from '../api.js';
+import Fireworks from '../components/Fireworks.jsx';
 import { PAY, PAY_HERO, PAY_LABEL, SLOT_TIMES } from '../data.js';
 import { printInvoice } from '../invoice.js';
 import { useStore } from '../store.jsx';
@@ -242,6 +243,8 @@ export function Success() {
   const { site, say } = useStore();
   const [o] = useState(() => { try { const s = JSON.parse(sessionStorage.getItem('ar_last_order')); return s?.id === id ? s : null; } catch { return null; } });
   const [mailed, setMailed] = useState(false);
+  // fireworks play once per freshly placed order, not again on every refresh of this page
+  const [fx] = useState(() => { try { const k = 'ar_fx_' + id; if (sessionStorage.getItem(k)) return false; sessionStorage.setItem(k, '1'); return true; } catch { return true; } });
   useEffect(() => { window.scrollTo(0, 0); }, []);
   if (!o) {
     return <div className="success"><h1>Thank you!</h1><p>Your order <b>{id}</b> is placed. Use the Track order page with your mobile number to see its status.</p><Link className="btn btn-dark btn-pill" to="/track" style={{ padding: '14px 24px' }}>Track this order</Link></div>;
@@ -250,6 +253,7 @@ export function Success() {
   const note = { border: '1px solid', borderRadius: 14, padding: '12px 16px', fontSize: 13.5, color: '#0b1631', maxWidth: 560 };
   return (
     <section className="success">
+      {fx && <Fireworks />}
       <div style={{ display: 'flex' }}><span style={{ width: 44, height: 44, borderRadius: '50%', background: 'oklch(0.72 0.13 220)' }} /><span style={{ width: 44, height: 44, borderRadius: '50%', background: 'oklch(0.6 0.2 350)', marginLeft: -14 }} /><span style={{ width: 44, height: 44, borderRadius: '50%', background: 'oklch(0.82 0.13 85)', marginLeft: -14 }} /></div>
       <h1>Thank you! Order placed.</h1>
       <p style={{ margin: 0, color: '#3d424d', fontSize: 16, lineHeight: 1.6, maxWidth: 520 }}>Order <b>{o.id}</b> for <b>{fmt(o.total)}</b> is confirmed. We'll call {o.customer.phone} shortly to verify. Payment: {o.payment}.</p>

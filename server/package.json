@@ -20,9 +20,12 @@
     "scrape:products": "node scripts/scrape-products.js",
     "seo:products": "node scripts/seo-products.js",
     "test": "node --test test/*.test.js",
-    "db:lockdown": "node scripts/lock-demo-accounts.js"
+    "db:lockdown": "node scripts/lock-demo-accounts.js",
+    "docs:roles": "node scripts/role-matrix-doc.js"
   },
   "dependencies": {
+    "@fontsource/noto-sans": "^5.3.0",
+    "@fontsource/noto-sans-bengali": "^5.3.0",
     "bcryptjs": "^2.4.3",
     "compression": "^1.8.2",
     "cors": "^2.8.5",
@@ -31,6 +34,7 @@
     "jsonwebtoken": "^9.0.2",
     "mysql2": "^3.11.3",
     "nodemailer": "^10.2.1",
+    "pdfkit": "^0.20.2",
     "sanitize-html": "^2.18.1",
     "sharp": "^0.35.5"
   }

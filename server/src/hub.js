@@ -1,13 +1,13 @@
 import { Router } from 'express';
 import crypto from 'node:crypto';
 import { pool } from './db.js';
-import { ADMINS, guard } from './admin.js';
+import { guard } from './admin.js';
+import { can } from './permissions.js';
 import { COURIERS, DONE, FLOW, RETURN_REASONS, applyFlow, cancelOrder, getBranches, returnEligible, routeBranch } from './flow.js';
 import { digits, fail, parseJson, wrap } from './util.js';
 
 const hub = Router();
 const pub = Router();
-const HUB_ROLES = [...ADMINS, 'Delivery rider'];
 const isCod = o => /cod|cash/i.test(o.payment || '') && o.pay_status !== 'Paid';
 
 async function loadItems(ids) {
@@ -23,12 +23,12 @@ const riderOut = r => ({ id: r.id, name: r.name, phone: r.phone, vehicle: r.vehi
 async function getOrderFor(req, id) {
   const [[o]] = await pool.query('SELECT * FROM orders WHERE id = ?', [id]);
   if (!o) throw fail(404, 'Order not found');
-  if (req.staff.role === 'Delivery rider' && o.rider_id !== req.staff.id) throw fail(403, 'This delivery is not assigned to you');
+  if (!can(req.staff, 'hub.dispatch') && o.rider_id !== req.staff.id) throw fail(403, 'This delivery is not assigned to you');
   return o;
 }
 
 // ---------- dispatch board ----------
-hub.get('/board', guard(ADMINS), wrap(async (req, res) => {
+hub.get('/board', guard('hub.view'), wrap(async (req, res) => {
   const [orders] = await pool.query('SELECT * FROM orders ORDER BY created_at DESC LIMIT 300');
   const items = await loadItems(orders.map(o => o.id));
   const branches = await getBranches();
@@ -49,11 +49,11 @@ hub.get('/board', guard(ADMINS), wrap(async (req, res) => {
   res.json({ orders: rows, riders: riders.map(riderOut), couriers: COURIERS, branches, codWithRiders: Number(cod[0].s), returnsPending: ret.n });
 }));
 
-hub.put('/orders/:id/flow', guard(HUB_ROLES), wrap(async (req, res) => {
+hub.put('/orders/:id/flow', guard(['hub.dispatch','hub.deliver']), wrap(async (req, res) => {
   const o = await getOrderFor(req, req.params.id);
   const { flow, note } = req.body;
   if (!FLOW.includes(flow) || flow === 'Delivered') throw fail(400, 'Use the delivery proof to close an order');
-  if (req.staff.role === 'Delivery rider' && flow !== 'Out for delivery') throw fail(403, 'Riders can only start their own trip');
+  if (!can(req.staff, 'hub.dispatch') && flow !== 'Out for delivery') throw fail(403, 'Riders can only start their own trip');
   if (DONE.includes(o.flow)) throw fail(400, 'This order is already closed');
   const extra = {};
   if (flow === 'Packed' && !o.branch_id) {
@@ -69,7 +69,7 @@ hub.put('/orders/:id/flow', guard(HUB_ROLES), wrap(async (req, res) => {
   res.json({ ok: true });
 }));
 
-hub.put('/orders/:id/rider', guard(ADMINS), wrap(async (req, res) => {
+hub.put('/orders/:id/rider', guard('hub.dispatch'), wrap(async (req, res) => {
   const riderId = req.body.riderId ? Number(req.body.riderId) : null;
   if (riderId) {
     const [[r]] = await pool.query('SELECT id FROM staff WHERE id = ? AND role = "Delivery rider" AND status = "Active"', [riderId]);
@@ -79,7 +79,7 @@ hub.put('/orders/:id/rider', guard(ADMINS), wrap(async (req, res) => {
   res.json({ ok: true });
 }));
 
-hub.put('/orders/:id/courier', guard(ADMINS), wrap(async (req, res) => {
+hub.put('/orders/:id/courier', guard('hub.dispatch'), wrap(async (req, res) => {
   const c = COURIERS.find(x => x.id === req.body.courier);
   if (!c && req.body.courier) throw fail(400, 'Unknown courier');
   const tn = c ? c.id.slice(0, 2).toUpperCase() + (100000 + crypto.randomInt(900000)) : null;
@@ -87,7 +87,7 @@ hub.put('/orders/:id/courier', guard(ADMINS), wrap(async (req, res) => {
   res.json({ ok: true });
 }));
 
-hub.post('/orders/:id/cancel', guard(ADMINS), wrap(async (req, res) => {
+hub.post('/orders/:id/cancel', guard('hub.dispatch'), wrap(async (req, res) => {
   const [[o]] = await pool.query('SELECT * FROM orders WHERE id = ?', [req.params.id]);
   if (!o) throw fail(404, 'Order not found');
   if (DONE.includes(o.flow)) throw fail(400, 'This order is already closed');
@@ -95,7 +95,7 @@ hub.post('/orders/:id/cancel', guard(ADMINS), wrap(async (req, res) => {
   res.json({ ok: true });
 }));
 
-hub.post('/orders/:id/fail', guard(HUB_ROLES), wrap(async (req, res) => {
+hub.post('/orders/:id/fail', guard(['hub.dispatch','hub.deliver']), wrap(async (req, res) => {
   const o = await getOrderFor(req, req.params.id);
   if (o.flow !== 'Out for delivery') throw fail(400, 'Only orders that are out for delivery can fail');
   const reason = String(req.body.reason || '').trim();
@@ -106,13 +106,13 @@ hub.post('/orders/:id/fail', guard(HUB_ROLES), wrap(async (req, res) => {
   res.json({ attempts: attempts.length, flagged: attempts.length >= 3 });
 }));
 
-hub.post('/orders/:id/deliver', guard(HUB_ROLES), wrap(async (req, res) => {
+hub.post('/orders/:id/deliver', guard(['hub.dispatch','hub.deliver']), wrap(async (req, res) => {
   const o = await getOrderFor(req, req.params.id);
   if (o.flow !== 'Out for delivery') throw fail(400, 'This order is not out for delivery');
   const { method, otp, name, signature, cod } = req.body;
   const pod = { at: Date.now(), method };
   if (method === 'courier') {
-    if (!ADMINS.includes(req.staff.role) || !o.courier) throw fail(403, 'Only staff can close a courier delivery');
+    if (!can(req.staff, 'hub.dispatch') || !o.courier) throw fail(403, 'Only staff can close a courier delivery');
     pod.name = o.courier;
   } else if (method === 'otp') {
     if (String(otp || '').trim() !== String(o.otp)) throw fail(400, 'OTP does not match');
@@ -128,16 +128,16 @@ hub.post('/orders/:id/deliver', guard(HUB_ROLES), wrap(async (req, res) => {
 }));
 
 // ---------- rider app ----------
-hub.get('/riders', guard(HUB_ROLES), wrap(async (req, res) => {
+hub.get('/riders', guard(['hub.dispatch','hub.deliver']), wrap(async (req, res) => {
   const [riders] = await pool.query('SELECT * FROM staff WHERE role = "Delivery rider" AND status = "Active" ORDER BY id');
   const [jobs] = await pool.query('SELECT rider_id, COUNT(*) n FROM orders WHERE rider_id IS NOT NULL AND flow IN ("Packed","Out for delivery") GROUP BY rider_id');
   const [cod] = await pool.query('SELECT rider_id, SUM(cod_collected) s FROM orders WHERE cod_collected > 0 AND cod_deposited_at IS NULL GROUP BY rider_id');
-  const mine = req.staff.role === 'Delivery rider' ? riders.filter(r => r.id === req.staff.id) : riders;
+  const mine = !can(req.staff, 'hub.dispatch') ? riders.filter(r => r.id === req.staff.id) : riders;
   res.json(mine.map(r => ({ ...riderOut(r), jobs: jobs.find(j => j.rider_id === r.id)?.n || 0, cash: Number(cod.find(c => c.rider_id === r.id)?.s || 0) })));
 }));
 
-hub.get('/riders/:id', guard(HUB_ROLES), wrap(async (req, res) => {
-  const id = req.staff.role === 'Delivery rider' ? req.staff.id : Number(req.params.id);
+hub.get('/riders/:id', guard(['hub.dispatch','hub.deliver']), wrap(async (req, res) => {
+  const id = !can(req.staff, 'hub.dispatch') ? req.staff.id : Number(req.params.id);
   const [[r]] = await pool.query('SELECT * FROM staff WHERE id = ? AND role = "Delivery rider"', [id]);
   if (!r) throw fail(404, 'Rider not found');
   const [orders] = await pool.query('SELECT * FROM orders WHERE rider_id = ? ORDER BY created_at DESC', [id]);
@@ -153,19 +153,19 @@ hub.get('/riders/:id', guard(HUB_ROLES), wrap(async (req, res) => {
 }));
 
 // only the office confirms that a rider handed the cash in (a rider cannot clear their own balance)
-hub.post('/riders/:id/deposit', guard(ADMINS), wrap(async (req, res) => {
+hub.post('/riders/:id/deposit', guard('hub.cash'), wrap(async (req, res) => {
   const id = Number(req.params.id);
   await pool.query('UPDATE orders SET cod_deposited_at = NOW() WHERE rider_id = ? AND cod_collected > 0 AND cod_deposited_at IS NULL', [id]);
   res.json({ ok: true });
 }));
 
 // ---------- returns ----------
-hub.get('/returns', guard(ADMINS), wrap(async (req, res) => {
+hub.get('/returns', guard('hub.view'), wrap(async (req, res) => {
   const [rows] = await pool.query('SELECT r.*, o.customer_name, o.total FROM order_returns r JOIN orders o ON o.id = r.order_id ORDER BY r.created_at DESC');
   res.json(rows.map(r => ({ id: r.order_id, name: r.customer_name, total: r.total, reason: r.reason, note: r.note, status: r.status, mode: r.mode, refund: r.refund, at: r.created_at })));
 }));
 
-hub.put('/returns/:orderId', guard(ADMINS), wrap(async (req, res) => {
+hub.put('/returns/:orderId', guard('hub.dispatch'), wrap(async (req, res) => {
   const [[r]] = await pool.query('SELECT r.*, o.total FROM order_returns r JOIN orders o ON o.id = r.order_id WHERE r.order_id = ?', [req.params.orderId]);
   if (!r) throw fail(404, 'Return not found');
   if (r.status !== 'Requested') throw fail(400, 'This return is already resolved');
@@ -181,7 +181,7 @@ hub.put('/returns/:orderId', guard(ADMINS), wrap(async (req, res) => {
 }));
 
 // ---------- branches & couriers ----------
-hub.get('/branches', guard(ADMINS), wrap(async (req, res) => {
+hub.get('/branches', guard('hub.view'), wrap(async (req, res) => {
   const branches = await getBranches();
   const [riders] = await pool.query('SELECT branch_id, COUNT(*) n FROM staff WHERE role = "Delivery rider" AND status = "Active" GROUP BY branch_id');
   const [active] = await pool.query('SELECT * FROM orders WHERE flow NOT IN ("Delivered","Cancelled","Returned") ORDER BY created_at DESC');

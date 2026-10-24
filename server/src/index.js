@@ -15,6 +15,8 @@ import accountRouter from './account.js';
 import fieldRouter from './field.js';
 import { hubRouter, liveRouter } from './hub.js';
 import { mktRouter, onSubscribed, prefsRouter, startMailWorker } from './mkt.js';
+import { initPermissions } from './permissions.js';
+import { ensureSchema } from './migrate.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -128,7 +130,7 @@ app.get('/api/pages/:slug', wrap(async (req, res) => {
 
 app.get('/api/bootstrap', wrap(async (req, res) => {
   res.setHeader('Cache-Control', 'public, max-age=30');
-  const [cats] = await pool.query('SELECT id, title AS t, description AS d FROM categories WHERE hidden = 0 ORDER BY sort_order');
+  const [cats] = await pool.query('SELECT id, title AS t, description AS d, img FROM categories WHERE hidden = 0 ORDER BY sort_order');
   const [prods] = await pool.query('SELECT * FROM products WHERE active = 1 ORDER BY id DESC');
   const s = await getSettings();
   res.json({ cats, products: prods.map(productOut), site: s.site, content: s.content });
@@ -530,6 +532,10 @@ app.use((err, req, res, next) => {
   if (status >= 500) console.error(err);
   res.status(status).json({ error: status === 400 ? 'Invalid request' : status === 413 ? 'Request is too large' : status >= 500 ? 'Server error' : err.message });
 });
+
+// role matrix: tables, staff.role migration and default grants must be ready before the first request
+await ensureSchema().catch(e => { console.error('Schema upgrade failed:', e.message); process.exit(1); });
+await initPermissions().catch(e => { console.error('Role matrix setup failed:', e.message); process.exit(1); });
 
 const port = Number(process.env.PORT || 4000);
 app.listen(port, () => {

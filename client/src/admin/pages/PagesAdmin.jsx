@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { adm } from '../adminApi.js';
+import { adm, can } from '../adminApi.js';
 import { Pill } from '../ui.jsx';
 
 const GROUPS = [['servicing', 'Servicing details', 'Shown on the Servicing page'], ['clients', 'Corporate clients', 'Shown on the About page'], ['company', 'Company profile', 'Profile, mission and vision']];
@@ -92,7 +92,7 @@ export function PagesAdmin({ staff }) {
   const del = async r => { if (window.confirm(`Delete “${r.title}”?`)) { await adm.del('/pages/' + r.id); load(); } };
   if (edit) return <PageEditor id={edit.id} group={edit.group || rows.find(r => r.id === edit.id)?.group} onDone={id => { setEdit(id ? { id } : null); load(); }} />;
   if (!rows) return <div className="a-card">Loading…</div>;
-  const isAdmin = ['Super admin', 'Admin'].includes(staff.role);
+  const isAdmin = can(staff, 'pages.delete');
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
       {GROUPS.map(([g, title, hint]) => (

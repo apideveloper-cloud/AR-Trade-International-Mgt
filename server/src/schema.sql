@@ -3,7 +3,8 @@ CREATE TABLE IF NOT EXISTS categories (
   title VARCHAR(120) NOT NULL,
   description VARCHAR(255) NOT NULL DEFAULT '',
   sort_order INT NOT NULL DEFAULT 0,
-  hidden TINYINT(1) NOT NULL DEFAULT 0
+  hidden TINYINT(1) NOT NULL DEFAULT 0,
+  img VARCHAR(500) NULL
 );
 
 CREATE TABLE IF NOT EXISTS products (
@@ -236,7 +237,12 @@ CREATE TABLE IF NOT EXISTS staff (
   email VARCHAR(160) NOT NULL UNIQUE,
   phone VARCHAR(40) NOT NULL DEFAULT '',
   password_hash VARCHAR(100) NOT NULL,
-  role ENUM('Super admin','Admin','Delivery rider','Marketing manager','Content writer','Field employee','Manager','Accounts') NOT NULL DEFAULT 'Delivery rider',
+  role VARCHAR(40) NOT NULL DEFAULT 'Delivery rider',
+  nid VARCHAR(20) NOT NULL DEFAULT '',
+  present_address VARCHAR(300) NOT NULL DEFAULT '',
+  contact_address VARCHAR(300) NOT NULL DEFAULT '',
+  ref_name VARCHAR(120) NOT NULL DEFAULT '',
+  ref_phone VARCHAR(20) NOT NULL DEFAULT '',
   status ENUM('Active','Pending','Disabled') NOT NULL DEFAULT 'Pending',
   vehicle VARCHAR(80) NOT NULL DEFAULT '',
   rating DECIMAL(2,1) NOT NULL DEFAULT 4.8,

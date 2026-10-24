@@ -68,6 +68,9 @@ curl -s localhost:4000/api/bootstrap | head -c 200     # must print JSON
 curl -s -o /dev/null -w "%{http_code}\n" "localhost:4000/api/uploads/%63v/x.pdf"     # must print 404
 ```
 
+### Role matrix (new)
+On first start the app migrates the database by itself: it creates `role_perms` and `role_log`, turns `staff.role` from an ENUM into text and renames the old roles (Super admin → Master Admin, Accounts → Accountant, Field employee → Field Officer). The MySQL user therefore needs CREATE and ALTER rights on the database for that first start (the backup in step 4 covers the rollback). Defaults per role are in `ROLE_MATRIX.md`; after the deploy sign in as the Master Admin and open **Admin > Roles** to adjust them.
+
 ## 7. Web server + HTTPS
 ```
 cp /root/nginx-artradeinternational.conf /etc/nginx/conf.d/artradeinternational.conf

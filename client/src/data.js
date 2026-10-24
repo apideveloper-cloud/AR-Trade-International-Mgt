@@ -18,7 +18,6 @@ export const MEGA = [
 const int = (t, to) => ({ t, to });
 const ext = (t, href) => ({ t, href, mark: '↗' });
 export const MENUS = [
-  { t: 'Office Equipment', mega: true },
   // main / popular product categories: their dropdown (all products + top brands) is built from the live catalogue in Header.jsx
   { t: 'Toner', cat: 'toner', path: '/shop/toner' },
   { t: 'Ink', cat: 'ink', path: '/shop/ink' },

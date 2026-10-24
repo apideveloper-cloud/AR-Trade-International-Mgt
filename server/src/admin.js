@@ -9,34 +9,35 @@ import jwt from 'jsonwebtoken';
 import { pool } from './db.js';
 import { digits, fail, parseJson, wrap, checkPassword, secret } from './util.js';
 import { applyFlow, cancelOrder, FROM_STATUS } from './flow.js';
+import { buildInvoicePdf, invoiceNo } from './invoice.js';
+import { buildOverview, buildProductReport } from './overview.js';
+import { mailReady, sendMail } from './mailer.js';
+import { can, permsOf, matrix, saveRole, DEFAULTS, MASTER, MASTER_ONLY, ROLE_DEFS, ROLE_NAMES, REGISTRABLE } from './permissions.js';
 
 const router = Router();
 const CV_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../uploads/cv');
 const STATUSES = ['Pending', 'Confirmed', 'Packed', 'Shipped', 'Delivered', 'Cancelled'];
-const ROLES = ['Super admin', 'Admin', 'Delivery rider', 'Marketing manager', 'Content writer', 'Field employee', 'Manager', 'Accounts'];
 
 const staffOut = s => ({ id: s.id, name: s.name, email: s.email, phone: s.phone, role: s.role, status: s.status, since: s.created_at });
+/** The signed-in user as the console needs it: includes the permissions their role holds right now. */
+const meOut = s => ({ ...staffOut(s), perms: [...permsOf(s.role)] });
 const sign = s => jwt.sign({ sid: s.id, srole: s.role }, secret(), { expiresIn: '12h' });
 
-/** Express middleware: requires a signed-in, active staff member; roles limits which staff roles may call the route. */
-export const guard = roles => async (req, res, next) => {
+/** Express middleware: requires a signed-in, active staff member. `need` is a permission (or a list: any one is enough) from the role matrix. */
+export const guard = need => async (req, res, next) => {
   try {
     let t;
     try { t = jwt.verify((req.headers.authorization || '').replace(/^Bearer /, ''), secret()); } catch { throw fail(401, 'Please sign in to the admin console'); }
     if (!t.sid) throw fail(401, 'Please sign in to the admin console');
     const [[s]] = await pool.query('SELECT * FROM staff WHERE id = ?', [t.sid]);
     if (!s || s.status !== 'Active') throw fail(401, 'Your account is not active');
-    if (roles && !roles.includes(s.role)) throw fail(403, 'Your role cannot do this');
+    if (need && !can(s, need)) throw fail(403, 'Your role cannot do this');
     req.staff = s;
     next();
   } catch (e) {
     res.status(e.status || 500).json({ error: e.message });
   }
 };
-export const ADMINS = ['Super admin', 'Admin'];
-const SALES = ['Super admin', 'Admin', 'Delivery rider'];
-const MKT = ['Super admin', 'Admin', 'Marketing manager'];
-const BLOG = ['Super admin', 'Admin', 'Content writer'];
 
 const page = req => {
   const size = Math.min(100, Math.max(5, parseInt(req.query.size, 10) || 10));
@@ -52,7 +53,7 @@ router.post('/login', wrap(async (req, res) => {
   if (!s || !(await bcrypt.compare(req.body.password || '', s.password_hash))) throw fail(401, 'Wrong mobile/email or password.');
   if (s.status === 'Pending') throw fail(403, 'Your account is waiting for an admin to approve it.');
   if (s.status !== 'Active') throw fail(403, 'This account is disabled.');
-  res.json({ token: sign(s), staff: staffOut(s) });
+  res.json({ token: sign(s), staff: meOut(s) });
 }));
 
 router.post('/register', wrap(async (req, res) => {
@@ -60,7 +61,7 @@ router.post('/register', wrap(async (req, res) => {
   if (!name || !email || !password) throw fail(400, 'Name, work email and a password are required.');
   checkPassword(password);
   if (!/^01[3-9]\d{8}$/.test(digits(phone).slice(-11))) throw fail(400, 'Enter a valid 11-digit mobile number (01XXXXXXXXX).');
-  if (!['Delivery rider', 'Marketing manager', 'Content writer'].includes(role)) throw fail(400, 'Choose Delivery rider, Marketing manager or Content writer.');
+  if (!REGISTRABLE.includes(role)) throw fail(400, 'Choose one of the listed roles.');
   const [ex] = await pool.query('SELECT id FROM staff WHERE email = ? OR phone = ?', [email.toLowerCase(), digits(phone).slice(-11)]);
   if (ex.length) throw fail(409, 'This email or mobile number is already registered.');
   await pool.query('INSERT INTO staff (name,email,phone,password_hash,role,status) VALUES (?,?,?,?,?,"Pending")',
@@ -68,10 +69,29 @@ router.post('/register', wrap(async (req, res) => {
   res.json({ ok: true });
 }));
 
-router.get('/me', guard(), wrap(async (req, res) => { res.json({ staff: staffOut(req.staff) }); }));
+router.get('/me', guard(), wrap(async (req, res) => { res.json({ staff: meOut(req.staff) }); }));
+
+// ---------- header notifications: what needs attention, limited to what the person's role may open ----------
+router.get('/alerts', guard(), wrap(async (req, res) => {
+  const s = req.staff;
+  const n = async sql => (await pool.query(sql))[0][0].n;
+  const items = [];
+  const add = async (perm, key, sql, label, page) => { if (can(s, perm)) { const c = Number(await n(sql)); if (c > 0) items.push({ key, n: c, label, page }); } };
+  if (s.role !== 'Delivery rider') await add('orders.view', 'orders', "SELECT COUNT(*) n FROM orders WHERE status = 'Pending'", 'pending orders to confirm', 'orders');
+  await add('services.manage', 'services', "SELECT COUNT(*) n FROM service_requests WHERE status = 'New'", 'new service requests', 'services');
+  await add('reviews.moderate', 'reviews', "SELECT COUNT(*) n FROM reviews WHERE status = 'Pending'", 'reviews waiting for approval', 'reviews');
+  await add('messages.manage', 'inbox', 'SELECT COUNT(*) n FROM messages WHERE created_at >= NOW() - INTERVAL 2 DAY', 'messages in the last 2 days', 'inbox');
+  await add('careers.manage', 'careers', "SELECT COUNT(*) n FROM applications WHERE stage = 'New'", 'new job applications', 'careers');
+  await add('team.manage', 'team', "SELECT COUNT(*) n FROM staff WHERE status = 'Pending'", 'staff accounts to approve', 'team');
+  await add('hub.view', 'returns', "SELECT COUNT(*) n FROM order_returns WHERE status = 'Requested'", 'return requests', 'deliveries');
+  res.json({ items, total: items.reduce((a, i) => a + i.n, 0) });
+}));
 
 // ---------- dashboard ----------
-router.get('/dashboard', guard(ADMINS), wrap(async (req, res) => {
+// role-aware dashboard: figures, charts, a 7-day forecast and the auto-generated guide (?asOf=YYYY-MM-DD shows the picture as of another day)
+router.get('/overview', guard('dashboard.view'), wrap(async (req, res) => { res.json(await buildOverview(pool, req.staff, req.query.asOf, req.query.range)); }));
+
+router.get('/dashboard', guard('dashboard.view'), wrap(async (req, res) => {
   const [[w]] = await pool.query('SELECT COUNT(*) n, COALESCE(SUM(total),0) rev FROM orders WHERE status <> "Cancelled" AND created_at >= NOW() - INTERVAL 7 DAY');
   const [[a]] = await pool.query('SELECT COUNT(*) n, COALESCE(AVG(total),0) avg FROM orders WHERE status <> "Cancelled"');
   const [[p]] = await pool.query('SELECT COUNT(*) n FROM orders WHERE status = "Pending"');
@@ -84,10 +104,11 @@ router.get('/dashboard', guard(ADMINS), wrap(async (req, res) => {
     return { label: d.toLocaleDateString('en-GB', { weekday: 'short' }), value: hit ? Number(hit.v) : 0 };
   });
   const [low] = await pool.query('SELECT id,name,img,stock FROM products WHERE price > 0 AND stock <= 5 AND active = 1 ORDER BY stock LIMIT 6');
+  const [st] = await pool.query('SELECT status, COUNT(*) n FROM orders GROUP BY status');
   const [recent] = await pool.query('SELECT id,customer_name,total,status,created_at FROM orders ORDER BY created_at DESC LIMIT 6');
   res.json({
     kpis: { weekRevenue: Number(w.rev), weekOrders: w.n, pending: p.n, avgOrder: Math.round(a.avg), openServices: Number(sv.open || 0), newServices: Number(sv.fresh || 0) },
-    chart, lowStock: low, recent: recent.map(o => ({ id: o.id, customer: o.customer_name, total: o.total, status: o.status, at: o.created_at }))
+    chart, statuses: Object.fromEntries(st.map(x => [x.status, x.n])), lowStock: low, recent: recent.map(o => ({ id: o.id, customer: o.customer_name, total: o.total, status: o.status, at: o.created_at }))
   });
 }));
 
@@ -108,7 +129,7 @@ async function loadOrders(where, params, extra = '') {
   }));
 }
 
-router.get('/orders', guard(SALES), wrap(async (req, res) => {
+router.get('/orders', guard('orders.view'), wrap(async (req, res) => {
   const { size, offset } = page(req);
   const cond = [], params = [];
   if (req.query.q) { cond.push('(id LIKE ? OR customer_name LIKE ? OR customer_phone LIKE ?)'); params.push(like(req.query.q), like(req.query.q), like(req.query.q)); }
@@ -118,17 +139,29 @@ router.get('/orders', guard(SALES), wrap(async (req, res) => {
   const where = cond.length ? 'WHERE ' + cond.join(' AND ') : '';
   const [[{ n }]] = await pool.query(`SELECT COUNT(*) n FROM orders ${where}`, params);
   const [counts] = await pool.query('SELECT status, COUNT(*) c FROM orders GROUP BY status');
-  res.json({ total: n, counts: Object.fromEntries(counts.map(c => [c.status, c.c])), rows: await loadOrders(where, params, `LIMIT ${size} OFFSET ${offset}`) });
+  let summary; // money figures only for roles that may see the dashboard (not riders)
+  if (req.query.summary === '1' && can(req.staff, 'dashboard.view')) {
+    const [[a]] = await pool.query(`SELECT COUNT(*) total, SUM(status = 'Cancelled') cancelled,
+      COALESCE(SUM(CASE WHEN status <> 'Cancelled' THEN total END), 0) revenue,
+      SUM(DATE(created_at) = CURDATE()) today,
+      COALESCE(SUM(CASE WHEN DATE(created_at) = CURDATE() AND status <> 'Cancelled' THEN total END), 0) todayRevenue,
+      COALESCE(SUM(CASE WHEN status NOT IN ('Cancelled', 'Delivered') THEN total END), 0) openValue,
+      SUM(status NOT IN ('Cancelled', 'Delivered')) open,
+      COALESCE(SUM(CASE WHEN status <> 'Cancelled' AND pay_status = 'Unpaid' THEN total END), 0) unpaid FROM orders`);
+    const live = a.total - a.cancelled;
+    summary = { total: Number(a.total), cancelled: Number(a.cancelled), revenue: Number(a.revenue), avg: live ? Math.round(Number(a.revenue) / live) : 0, today: Number(a.today), todayRevenue: Number(a.todayRevenue), open: Number(a.open), openValue: Number(a.openValue), unpaid: Number(a.unpaid) };
+  }
+  res.json({ total: n, counts: Object.fromEntries(counts.map(c => [c.status, c.c])), summary, rows: await loadOrders(where, params, `LIMIT ${size} OFFSET ${offset}`) });
 }));
 
-router.get('/orders/:id', guard(SALES), wrap(async (req, res) => {
+router.get('/orders/:id', guard('orders.view'), wrap(async (req, res) => {
   const rider = req.staff.role === 'Delivery rider';
   const [o] = await loadOrders('WHERE id = ?' + (rider ? ' AND (status IN ("Packed","Shipped") OR rider_id = ?)' : ''), rider ? [req.params.id, req.staff.id] : [req.params.id]);
   if (!o) throw fail(404, 'Order not found');
   res.json(o);
 }));
 
-router.put('/orders/:id/status', guard(SALES), wrap(async (req, res) => {
+router.put('/orders/:id/status', guard('orders.status'), wrap(async (req, res) => {
   const { status } = req.body;
   if (!STATUSES.includes(status)) throw fail(400, 'Unknown status');
   const rider = req.staff.role === 'Delivery rider';
@@ -155,7 +188,42 @@ router.put('/orders/:id/status', guard(SALES), wrap(async (req, res) => {
   res.json((await loadOrders('WHERE id = ?', [req.params.id]))[0]);
 }));
 
-router.delete('/orders/:id', guard(ADMINS), wrap(async (req, res) => {
+// ---------- order / invoice PDF: view or download it, or email it to the customer ----------
+const siteInfo = async () => parseJson((await pool.query('SELECT v FROM settings WHERE k = "site"'))[0][0]?.v) || {};
+async function invoiceOrder(req) {
+  if (req.staff.role === 'Delivery rider') throw fail(403, 'Riders cannot open invoices');
+  const [o] = await loadOrders('WHERE id = ?', [req.params.id]);
+  if (!o) throw fail(404, 'Order not found');
+  return o;
+}
+router.get('/orders/:id/invoice.pdf', guard('orders.view'), wrap(async (req, res) => {
+  const o = await invoiceOrder(req);
+  const pdf = await buildInvoicePdf(o, await siteInfo());
+  res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': `inline; filename="${invoiceNo(o.id)}.pdf"`, 'Cache-Control': 'no-store' }).send(pdf);
+}));
+router.post('/orders/:id/invoice/email', guard('orders.status'), wrap(async (req, res) => {
+  const o = await invoiceOrder(req);
+  const to = String(req.body.to || o.customer.email || '').trim().toLowerCase();
+  if (!/^[^\s,;<>"()]+@[^\s,;<>"()]+\.[^\s,;<>"()]+$/.test(to) || to.length > 160) throw fail(400, 'Enter one valid email address for the customer');
+  if (!mailReady()) throw fail(409, 'Email sending is not set up yet. Add the SMTP settings (SMTP_HOST ...) to server/.env, or download the PDF and send it yourself.');
+  const site = await siteInfo();
+  const inv = invoiceNo(o.id);
+  const money = n => '৳ ' + Math.round(Number(n) || 0).toLocaleString('en-US');
+  const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const note = String(req.body.message || '').trim().slice(0, 1000);
+  const paid = o.payStatus === 'Paid';
+  const pdf = await buildInvoicePdf(o, site);
+  await sendMail({
+    to, replyTo: site.email || undefined, subject: `Your invoice ${inv} from AR Trade International`,
+    text: `Hello ${o.customer.name},\n\n${note ? note + '\n\n' : ''}Thank you for your order ${o.id}. Your invoice ${inv} is attached as a PDF.\n\nOrder total: ${money(o.total)} (${paid ? 'paid' : 'payment due'})\nStatus: ${o.status}\n\nAR Trade International\n${[site.phone, site.email].filter(Boolean).join(' · ')}`,
+    html: `<div style="font-family:Arial,sans-serif;max-width:520px;color:#0b1631"><p>Hello ${esc(o.customer.name)},</p>${note ? `<p style="white-space:pre-wrap">${esc(note)}</p>` : ''}<p>Thank you for your order <b>${esc(o.id)}</b>. Your invoice <b>${inv}</b> is attached as a PDF.</p><table cellpadding="6" style="background:#f4f7fc;border-radius:8px"><tr><td>Order total</td><td><b>${money(o.total)}</b> (${paid ? 'paid' : 'payment due'})</td></tr><tr><td>Status</td><td>${esc(o.status)}</td></tr></table><p style="color:#6b7388;font-size:13px">AR Trade International<br>${esc([site.phone, site.email].filter(Boolean).join(' · '))}</p></div>`,
+    attachments: [{ filename: inv + '.pdf', content: pdf, contentType: 'application/pdf' }]
+  });
+  await pool.query('INSERT INTO order_history (order_id,status,flow,note) VALUES (?,?,?,?)', [o.id, o.status === 'Pending' ? 'Pending' : o.status, 'Invoice emailed', `Invoice ${inv} emailed to ${to} by ${req.staff.name}`.slice(0, 255)]);
+  res.json({ ok: true, to });
+}));
+
+router.delete('/orders/:id', guard('orders.delete'), wrap(async (req, res) => {
   const [[o]] = await pool.query('SELECT status FROM orders WHERE id = ?', [req.params.id]);
   if (!o) throw fail(404, 'Order not found');
   if (o.status !== 'Cancelled') throw fail(400, 'Only cancelled orders can be deleted. Cancel it first so the stock goes back.');
@@ -174,7 +242,7 @@ const PROD_COLS = { metaTitle: 'meta_title', metaDesc: 'meta_desc', metaKeywords
 const BOOL = new Set(['popular', 'isNew', 'featured', 'active']);
 const INT = new Set(['old', 'price', 'stock']);
 
-router.get('/products', guard(ADMINS), wrap(async (req, res) => {
+router.get('/products', guard('products.view'), wrap(async (req, res) => {
   const { size, offset } = page(req);
   const cond = [], params = [];
   if (req.query.q) { cond.push('(name LIKE ? OR brand LIKE ? OR part LIKE ? OR id = ?)'); params.push(like(req.query.q), like(req.query.q), like(req.query.q), Number(req.query.q) || 0); }
@@ -184,7 +252,13 @@ router.get('/products', guard(ADMINS), wrap(async (req, res) => {
   const where = cond.length ? 'WHERE ' + cond.join(' AND ') : '';
   const [[{ n }]] = await pool.query(`SELECT COUNT(*) n FROM products ${where}`, params);
   const [rows] = await pool.query(`SELECT * FROM products ${where} ORDER BY id DESC LIMIT ${size} OFFSET ${offset}`, params);
-  res.json({ total: n, rows: rows.map(prodOut) });
+  const [[a]] = await pool.query(`SELECT COUNT(*) total, SUM(active = 1) live, SUM(active = 0) hidden,
+    SUM(active = 1 AND price > 0 AND stock <= 0) outOfStock, SUM(active = 1 AND price > 0 AND stock BETWEEN 1 AND 5) low,
+    SUM(active = 1 AND price = 0) quote, SUM(active = 1 AND (img IS NULL OR img = '')) noImage,
+    COALESCE(SUM(CASE WHEN active = 1 THEN price * stock END), 0) stockValue FROM products`);
+  const [[cc]] = await pool.query('SELECT COUNT(*) n FROM categories WHERE hidden = 0');
+  const summary = { total: Number(a.total), live: Number(a.live), hidden: Number(a.hidden), outOfStock: Number(a.outOfStock), low: Number(a.low), quote: Number(a.quote), noImage: Number(a.noImage), stockValue: Number(a.stockValue), categories: cc.n };
+  res.json({ total: n, summary, rows: rows.map(prodOut) });
 }));
 
 function productPatch(body) {
@@ -203,7 +277,7 @@ function productPatch(body) {
   return { sets, vals };
 }
 
-router.put('/products/:id', guard(ADMINS), wrap(async (req, res) => {
+router.put('/products/:id', guard('products.manage'), wrap(async (req, res) => {
   const { sets, vals } = productPatch(req.body);
   if (!sets.length) throw fail(400, 'Nothing to update');
   const [r] = await pool.query(`UPDATE products SET ${sets.join(', ')} WHERE id = ?`, [...vals, req.params.id]);
@@ -212,20 +286,21 @@ router.put('/products/:id', guard(ADMINS), wrap(async (req, res) => {
   res.json(prodOut(p));
 }));
 
-router.get('/products/:id/full', guard(ADMINS), wrap(async (req, res) => {
+router.get('/products/:id/report', guard(['products.view', 'dashboard.view']), wrap(async (req, res) => { res.json(await buildProductReport(pool, req.params.id, req.query.asOf, Number(req.query.range) || 30)); }));
+router.get('/products/:id/full', guard('products.view'), wrap(async (req, res) => {
   const [[p]] = await pool.query('SELECT * FROM products WHERE id = ?', [req.params.id]);
   if (!p) throw fail(404, 'Product not found');
   const [specs] = await pool.query('SELECT name, value FROM product_specs WHERE product_id = ? ORDER BY position', [p.id]);
   res.json({ ...prodOut(p), specs, short: p.short_desc || '', sku: p.sku || '' });
 }));
-router.put('/products/:id/specs', guard(ADMINS), wrap(async (req, res) => {
+router.put('/products/:id/specs', guard('products.manage'), wrap(async (req, res) => {
   const rows = (Array.isArray(req.body.specs) ? req.body.specs : []).map(s => [String(s.name || '').trim().slice(0, 80), String(s.value || '').trim().slice(0, 500)]).filter(s => s[0] && s[1]).slice(0, 40);
   await pool.query('DELETE FROM product_specs WHERE product_id = ?', [req.params.id]);
   for (const [i, [n, v]] of rows.entries()) await pool.query('INSERT INTO product_specs (product_id, position, name, value) VALUES (?,?,?,?)', [req.params.id, i, n, v]);
   await pool.query('UPDATE products SET edited = 1 WHERE id = ?', [req.params.id]);
   res.json({ ok: true, count: rows.length });
 }));
-router.post('/products', guard(ADMINS), wrap(async (req, res) => {
+router.post('/products', guard('products.manage'), wrap(async (req, res) => {
   const b = req.body;
   if (!b.name || !b.cat || !b.brand) throw fail(400, 'Name, brand and category are required');
   const [[{ m }]] = await pool.query('SELECT COALESCE(MAX(id), 29999) m FROM products WHERE id >= 30000');
@@ -236,22 +311,31 @@ router.post('/products', guard(ADMINS), wrap(async (req, res) => {
   res.json(prodOut(p));
 }));
 
-router.delete('/products/:id', guard(ADMINS), wrap(async (req, res) => {
+router.delete('/products/:id', guard('products.manage'), wrap(async (req, res) => {
   await pool.query('UPDATE products SET active = 0 WHERE id = ?', [req.params.id]);
   res.json({ ok: true });
 }));
 
-router.get('/categories', guard(ADMINS), wrap(async (req, res) => {
-  const [rows] = await pool.query('SELECT c.id, c.title, c.description, c.hidden, (SELECT COUNT(*) FROM products p WHERE p.category_id = c.id AND p.active = 1) n FROM categories c ORDER BY c.sort_order');
-  res.json(rows.map(r => ({ id: r.id, title: r.title, description: r.description, hidden: !!r.hidden, count: r.n })));
+router.get('/categories', guard('products.view'), wrap(async (req, res) => {
+  const [rows] = await pool.query('SELECT c.id, c.title, c.description, c.hidden, c.img, (SELECT COUNT(*) FROM products p WHERE p.category_id = c.id AND p.active = 1) n FROM categories c ORDER BY c.sort_order');
+  res.json(rows.map(r => ({ id: r.id, title: r.title, description: r.description, hidden: !!r.hidden, img: r.img || '', count: r.n })));
 }));
-router.put('/categories/:id', guard(ADMINS), wrap(async (req, res) => {
-  await pool.query('UPDATE categories SET hidden = ? WHERE id = ?', [+!!req.body.hidden, req.params.id]);
+router.put('/categories/:id', guard('categories.manage'), wrap(async (req, res) => {
+  const sets = [], vals = [];
+  if ('hidden' in req.body) { sets.push('hidden = ?'); vals.push(+!!req.body.hidden); }
+  if ('image' in req.body) { // the picture shown on the storefront category tile; empty = go back to the automatic one
+    const u = String(req.body.image || '').trim().slice(0, 500);
+    if (u && !/^(\/api\/uploads\/|https:\/\/)/.test(u)) throw fail(400, 'The picture must be uploaded here or be an https:// link');
+    sets.push('img = ?'); vals.push(u || null);
+  }
+  if (!sets.length) throw fail(400, 'Nothing to update');
+  const [r] = await pool.query(`UPDATE categories SET ${sets.join(', ')} WHERE id = ?`, [...vals, req.params.id]);
+  if (!r.affectedRows) throw fail(404, 'Category not found');
   res.json({ ok: true });
 }));
 
 // ---------- customers, services, inbox ----------
-router.get('/customers', guard(ADMINS), wrap(async (req, res) => {
+router.get('/customers', guard('customers.view'), wrap(async (req, res) => {
   const { size, p } = page(req);
   const [orders] = await pool.query('SELECT customer_name name, customer_phone phone, MAX(customer_email) email, COUNT(*) n, SUM(total) ltv, MAX(created_at) last FROM orders WHERE status <> "Cancelled" GROUP BY customer_phone, customer_name');
   const [users] = await pool.query('SELECT id, name, phone, email FROM users');
@@ -260,11 +344,16 @@ router.get('/customers', guard(ADMINS), wrap(async (req, res) => {
   const q = String(req.query.q || '').toLowerCase();
   let list = [...map.values()].filter(c => !q || `${c.name} ${c.phone} ${c.email}`.toLowerCase().includes(q));
   list.sort((a, b) => b.ltv - a.ltv);
-  res.json({ total: list.length, rows: list.slice((p - 1) * size, p * size) });
+  const everyone = [...map.values()], buyers = everyone.filter(c => c.n > 0);
+  const revenue = buyers.reduce((t, c) => t + c.ltv, 0);
+  const [[nu]] = await pool.query('SELECT COALESCE(SUM(created_at >= NOW() - INTERVAL 30 DAY), 0) n FROM users');
+  const top = buyers.reduce((b, c) => (!b || c.ltv > b.ltv ? c : b), null);
+  const summary = { total: everyone.length, accounts: users.length, buyers: buyers.length, repeat: buyers.filter(c => c.n >= 2).length, revenue, avg: buyers.length ? Math.round(revenue / buyers.length) : 0, newAccounts: Number(nu.n), top: top ? { name: top.name, ltv: top.ltv } : null };
+  res.json({ total: list.length, summary, rows: list.slice((p - 1) * size, p * size) });
 }));
 
 // ---------- customer passwords: set directly, or create a one-time reset link and answer "forgot password" requests ----------
-router.put('/customers/:id/password', guard(ADMINS), wrap(async (req, res) => {
+router.put('/customers/:id/password', guard('customers.manage'), wrap(async (req, res) => {
   const pw = String(req.body.password || '');
   checkPassword(pw);
   const [r] = await pool.query('UPDATE users SET password_hash = ? WHERE id = ?', [await bcrypt.hash(pw, 10), req.params.id]);
@@ -272,7 +361,7 @@ router.put('/customers/:id/password', guard(ADMINS), wrap(async (req, res) => {
   await pool.query('UPDATE password_resets SET used_at = NOW() WHERE user_id = ? AND used_at IS NULL', [req.params.id]);
   res.json({ ok: true });
 }));
-router.post('/customers/:id/reset-link', guard(ADMINS), wrap(async (req, res) => {
+router.post('/customers/:id/reset-link', guard('customers.manage'), wrap(async (req, res) => {
   const [[u]] = await pool.query('SELECT id FROM users WHERE id = ?', [req.params.id]);
   if (!u) throw fail(404, 'Customer account not found');
   await pool.query('UPDATE password_resets SET used_at = NOW() WHERE user_id = ? AND used_at IS NULL', [u.id]);
@@ -280,13 +369,13 @@ router.post('/customers/:id/reset-link', guard(ADMINS), wrap(async (req, res) =>
   await pool.query('INSERT INTO password_resets (user_id, token, requested, expires_at) VALUES (?,?,0,DATE_ADD(NOW(), INTERVAL 1 DAY))', [u.id, token]);
   res.json({ path: '/reset/' + token, hours: 24 });
 }));
-router.get('/password-resets', guard(ADMINS), wrap(async (req, res) => {
+router.get('/password-resets', guard('customers.manage'), wrap(async (req, res) => {
   const [rows] = await pool.query('SELECT r.id, r.user_id userId, u.name, u.phone, u.email, r.created_at created FROM password_resets r JOIN users u ON u.id = r.user_id WHERE r.requested = 1 AND r.used_at IS NULL AND r.expires_at > NOW() ORDER BY r.created_at DESC LIMIT 50');
   res.json(rows);
 }));
-router.delete('/password-resets/:id', guard(ADMINS), wrap(async (req, res) => { await pool.query('UPDATE password_resets SET used_at = NOW() WHERE id = ?', [req.params.id]); res.json({ ok: true }); }));
+router.delete('/password-resets/:id', guard('customers.manage'), wrap(async (req, res) => { await pool.query('UPDATE password_resets SET used_at = NOW() WHERE id = ?', [req.params.id]); res.json({ ok: true }); }));
 
-router.get('/services', guard(ADMINS), wrap(async (req, res) => {
+router.get('/services', guard('services.manage'), wrap(async (req, res) => {
   const { size, offset } = page(req);
   const cond = [], params = [];
   if (req.query.q) { cond.push('(id LIKE ? OR name LIKE ? OR phone LIKE ? OR model LIKE ?)'); params.push(...Array(4).fill(like(req.query.q))); }
@@ -296,7 +385,7 @@ router.get('/services', guard(ADMINS), wrap(async (req, res) => {
   const [rows] = await pool.query(`SELECT * FROM service_requests ${where} ORDER BY created_at DESC LIMIT ${size} OFFSET ${offset}`, params);
   res.json({ total: n, rows: rows.map(r => ({ id: r.id, type: r.type, name: r.name, phone: r.phone, model: r.model, issue: r.issue, date: r.preferred_date, status: r.status, created: r.created_at })) });
 }));
-router.put('/services/:id', guard(ADMINS), wrap(async (req, res) => {
+router.put('/services/:id', guard('services.manage'), wrap(async (req, res) => {
   if (!['New', 'Scheduled', 'In progress', 'Completed'].includes(req.body.status)) throw fail(400, 'Unknown status');
   await pool.query('UPDATE service_requests SET status = ? WHERE id = ?', [req.body.status, req.params.id]);
   res.json({ ok: true });
@@ -320,7 +409,7 @@ const textOf = html => sanitizeHtml(html, { allowedTags: [], allowedAttributes: 
 const blogRow = r => ({ id: r.id, slug: r.slug, title: r.title, category: r.category, cover: r.cover, excerpt: r.excerpt, body: r.body, date: r.published, status: r.status, author: r.author, authorId: r.author_id, updated: r.updated_at });
 const IMG_TYPES = { png: [0x89, 0x50, 0x4e, 0x47], jpg: [0xff, 0xd8, 0xff], gif: [0x47, 0x49, 0x46], webp: [0x52, 0x49, 0x46, 0x46] };
 
-router.get('/blog', guard(BLOG), wrap(async (req, res) => {
+router.get('/blog', guard('blog.manage'), wrap(async (req, res) => {
   const { size, offset } = page(req);
   const cond = [], params = [];
   if (req.query.q) { cond.push('(title LIKE ? OR category LIKE ? OR author LIKE ?)'); params.push(like(req.query.q), like(req.query.q), like(req.query.q)); }
@@ -331,7 +420,7 @@ router.get('/blog', guard(BLOG), wrap(async (req, res) => {
   const [cats] = await pool.query('SELECT DISTINCT category FROM blog_posts ORDER BY category');
   res.json({ total: n, rows: rows.map(blogRow), categories: cats.map(c => c.category) });
 }));
-router.get('/blog/:id', guard(BLOG), wrap(async (req, res) => {
+router.get('/blog/:id', guard('blog.manage'), wrap(async (req, res) => {
   const [[r]] = await pool.query('SELECT *, DATE_FORMAT(published, "%Y-%m-%d") AS published FROM blog_posts WHERE id = ?', [req.params.id]);
   if (!r) throw fail(404, 'Article not found');
   res.json(blogRow(r));
@@ -353,13 +442,13 @@ const savePost = async (req, id) => {
   if (dup.length) { if (b.slug) throw fail(409, 'This web address is already used by another article'); slug += '-' + Date.now().toString(36).slice(-4); }
   return { title, body, category, status, date, excerpt, cover, slug };
 };
-router.post('/blog', guard(BLOG), wrap(async (req, res) => {
+router.post('/blog', guard('blog.manage'), wrap(async (req, res) => {
   const p = await savePost(req, 0);
   const [r] = await pool.query('INSERT INTO blog_posts (slug, title, category, cover, excerpt, body, published, status, author, author_id, edited, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,1,NOW())',
     [p.slug, p.title, p.category, p.cover, p.excerpt, p.body, p.date, p.status, req.staff.name, req.staff.id]);
   res.json({ id: r.insertId, slug: p.slug });
 }));
-router.put('/blog/:id', guard(BLOG), wrap(async (req, res) => {
+router.put('/blog/:id', guard('blog.manage'), wrap(async (req, res) => {
   const [[cur]] = await pool.query('SELECT id FROM blog_posts WHERE id = ?', [req.params.id]);
   if (!cur) throw fail(404, 'Article not found');
   const p = await savePost(req, cur.id);
@@ -367,7 +456,7 @@ router.put('/blog/:id', guard(BLOG), wrap(async (req, res) => {
     [p.slug, p.title, p.category, p.cover, p.excerpt, p.body, p.date, p.status, cur.id]);
   res.json({ ok: true, slug: p.slug });
 }));
-router.delete('/blog/:id', guard(BLOG), wrap(async (req, res) => {
+router.delete('/blog/:id', guard('blog.manage'), wrap(async (req, res) => {
   const [[r]] = await pool.query('SELECT author_id FROM blog_posts WHERE id = ?', [req.params.id]);
   if (!r) throw fail(404, 'Article not found');
   if (req.staff.role === 'Content writer' && r.author_id !== req.staff.id) throw fail(403, 'Writers can delete only their own articles');
@@ -376,10 +465,10 @@ router.delete('/blog/:id', guard(BLOG), wrap(async (req, res) => {
 }));
 // images for products / blog / servicing / clients / company pages are stored under server/uploads/<folder>/ (folder = section/category)
 const FOLDER = /^(products|blog|services|clients|company|site)(\/[a-z0-9][a-z0-9-]{0,58}){0,2}$/;
-router.post('/upload-image', guard([...ADMINS, 'Content writer']), wrap(async (req, res) => {
+router.post('/upload-image', guard('media.upload'), wrap(async (req, res) => {
   const folder = String(req.body.folder || 'blog/general').toLowerCase();
   if (!FOLDER.test(folder)) throw fail(400, 'Unknown upload folder');
-  if (req.staff.role === 'Content writer' && !/^(blog|services|clients|company|site)(\/|$)/.test(folder)) throw fail(403, 'Your role cannot upload product images');
+  if (!can(req.staff, 'products.manage') && !/^(blog|services|clients|company|site)(\/|$)/.test(folder)) throw fail(403, 'Your role cannot upload product images');
   const m = /^data:image\/(png|jpe?g|gif|webp);base64,(.+)$/.exec(String(req.body.data || ''));
   if (!m) throw fail(400, 'Choose a PNG, JPG, GIF or WebP image');
   const buf = Buffer.from(m[2], 'base64');
@@ -396,13 +485,12 @@ router.post('/upload-image', guard([...ADMINS, 'Content writer']), wrap(async (r
 }));
 
 // ---------- site pages: servicing details, corporate clients, company profile ----------
-const PAGES = [...ADMINS, 'Content writer'];
 const pageRow = r => ({ id: r.id, slug: r.slug, group: r.grp, title: r.title, excerpt: r.excerpt, body: r.body, cover: r.cover, images: parseJson(r.images) || [], status: r.status, order: r.sort_order, edited: !!r.edited, updated: r.updated_at });
-router.get('/pages', guard(PAGES), wrap(async (req, res) => {
+router.get('/pages', guard('pages.manage'), wrap(async (req, res) => {
   const [rows] = await pool.query('SELECT * FROM site_pages ORDER BY FIELD(grp, "servicing", "clients", "company"), sort_order, id');
   res.json(rows.map(pageRow));
 }));
-router.get('/pages/:id', guard(PAGES), wrap(async (req, res) => {
+router.get('/pages/:id', guard('pages.manage'), wrap(async (req, res) => {
   const [[r]] = await pool.query('SELECT * FROM site_pages WHERE id = ?', [req.params.id]);
   if (!r) throw fail(404, 'Page not found');
   res.json(pageRow(r));
@@ -415,7 +503,7 @@ const savePage = (b) => {
   if (cover && !/^(https?:\/\/|\/api\/uploads\/)/.test(cover)) throw fail(400, 'Cover must be an uploaded image or an http(s) link');
   return { title, body, cover, excerpt: (String(b.excerpt || '').trim() || textOf(body)).slice(0, 190), status: b.status === 'Draft' ? 'Draft' : 'Published', order: parseInt(b.order, 10) || 0 };
 };
-router.put('/pages/:id', guard(PAGES), wrap(async (req, res) => {
+router.put('/pages/:id', guard('pages.manage'), wrap(async (req, res) => {
   const p = savePage(req.body);
   const imgs = [...p.body.matchAll(/<img src="([^"]+)"/g)].map(m => m[1]);
   const [r] = await pool.query('UPDATE site_pages SET title=?, excerpt=?, body=?, cover=?, images=?, status=?, sort_order=?, edited=1, updated_at=NOW() WHERE id=?',
@@ -423,7 +511,7 @@ router.put('/pages/:id', guard(PAGES), wrap(async (req, res) => {
   if (!r.affectedRows) throw fail(404, 'Page not found');
   res.json({ ok: true });
 }));
-router.post('/pages', guard(PAGES), wrap(async (req, res) => {
+router.post('/pages', guard('pages.manage'), wrap(async (req, res) => {
   const grp = ['servicing', 'clients', 'company'].includes(req.body.group) ? req.body.group : 'servicing';
   const p = savePage(req.body);
   let slug = slugify(req.body.slug || p.title) || 'page-' + Date.now();
@@ -434,7 +522,7 @@ router.post('/pages', guard(PAGES), wrap(async (req, res) => {
     [slug, grp, p.title, p.excerpt, p.body, p.cover, JSON.stringify(imgs), p.order, p.status]);
   res.json({ id: r.insertId, slug });
 }));
-router.delete('/pages/:id', guard(ADMINS), wrap(async (req, res) => { await pool.query('DELETE FROM site_pages WHERE id = ?', [req.params.id]); res.json({ ok: true }); }));
+router.delete('/pages/:id', guard('pages.delete'), wrap(async (req, res) => { await pool.query('DELETE FROM site_pages WHERE id = ?', [req.params.id]); res.json({ ok: true }); }));
 
 // ---------- storefront content (home slides, brand + client logos, FAQs, policies, labels…) ----------
 const text = (v, max = 400) => String(v ?? '').trim().slice(0, max);
@@ -464,12 +552,12 @@ const CONTENT = {
     return /^https?:\/\//.test(l) ? { t: text(i.t, 80), href: l, mark: '↗' } : { t: text(i.t, 80), to: l || '/' };
   })]))
 };
-router.get('/content', guard(PAGES), wrap(async (req, res) => {
+router.get('/content', guard('pages.manage'), wrap(async (req, res) => {
   const [[row]] = await pool.query('SELECT v FROM settings WHERE k = "content"');
   const c = parseJson(row.v);
   res.json(Object.fromEntries(Object.keys(CONTENT).map(k => [k, c[k]])));
 }));
-router.put('/content/:section', guard(PAGES), wrap(async (req, res) => {
+router.put('/content/:section', guard('pages.manage'), wrap(async (req, res) => {
   const fn = CONTENT[req.params.section];
   if (!fn) throw fail(404, 'Unknown content section');
   const value = fn(req.body.value);
@@ -481,7 +569,7 @@ router.put('/content/:section', guard(PAGES), wrap(async (req, res) => {
 }));
 
 // ---------- product reviews moderation ----------
-router.get('/reviews', guard(MKT), wrap(async (req, res) => {
+router.get('/reviews', guard('reviews.moderate'), wrap(async (req, res) => {
   const { size, offset } = page(req);
   const cond = [], params = [];
   if (req.query.q) { cond.push('(r.name LIKE ? OR r.body LIKE ? OR p.name LIKE ?)'); params.push(like(req.query.q), like(req.query.q), like(req.query.q)); }
@@ -493,21 +581,21 @@ router.get('/reviews', guard(MKT), wrap(async (req, res) => {
   const [[{ pending }]] = await pool.query('SELECT COUNT(*) pending FROM reviews WHERE status = "Pending"');
   res.json({ total: n, pending, rows: rows.map(r => ({ id: r.id, productId: r.product_id, product: r.product || ('#' + r.product_id), name: r.name, rating: r.rating, title: r.title, body: r.body, verified: !!r.verified, status: r.status, created: r.created_at, reviewed: r.reviewed_at })) });
 }));
-router.put('/reviews/:id', guard(MKT), wrap(async (req, res) => {
+router.put('/reviews/:id', guard('reviews.moderate'), wrap(async (req, res) => {
   if (!['Pending', 'Approved', 'Rejected'].includes(req.body.status)) throw fail(400, 'Unknown status');
   await pool.query('UPDATE reviews SET status = ?, reviewed_at = NOW() WHERE id = ?', [req.body.status, req.params.id]);
   res.json({ ok: true });
 }));
-router.delete('/reviews/:id', guard(MKT), wrap(async (req, res) => { await pool.query('DELETE FROM reviews WHERE id = ?', [req.params.id]); res.json({ ok: true }); }));
+router.delete('/reviews/:id', guard('reviews.moderate'), wrap(async (req, res) => { await pool.query('DELETE FROM reviews WHERE id = ?', [req.params.id]); res.json({ ok: true }); }));
 
-router.get('/messages', guard(MKT), wrap(async (req, res) => {
+router.get('/messages', guard('messages.manage'), wrap(async (req, res) => {
   const [rows] = await pool.query('SELECT * FROM messages ORDER BY created_at DESC LIMIT 200');
   res.json({ chat: rows.filter(m => m.subject === 'Live chat').map(m => ({ id: m.id, text: m.body, at: m.created_at })), contact: rows.filter(m => m.subject !== 'Live chat').map(m => ({ id: m.id, name: m.name, contact: m.contact, company: m.company, body: m.body, at: m.created_at })) });
 }));
-router.delete('/messages/:id', guard(MKT), wrap(async (req, res) => { await pool.query('DELETE FROM messages WHERE id = ?', [req.params.id]); res.json({ ok: true }); }));
+router.delete('/messages/:id', guard('messages.manage'), wrap(async (req, res) => { await pool.query('DELETE FROM messages WHERE id = ?', [req.params.id]); res.json({ ok: true }); }));
 
 // ---------- marketing: subscribers, consent log, campaigns ----------
-router.get('/subscribers', guard(MKT), wrap(async (req, res) => {
+router.get('/subscribers', guard('marketing.manage'), wrap(async (req, res) => {
   const { size, offset } = page(req);
   const q = req.query.q ? 'WHERE email LIKE ?' : '';
   const params = req.query.q ? [like(req.query.q)] : [];
@@ -515,18 +603,18 @@ router.get('/subscribers', guard(MKT), wrap(async (req, res) => {
   const [rows] = await pool.query(`SELECT email, created_at FROM subscribers ${q} ORDER BY created_at DESC LIMIT ${size} OFFSET ${offset}`, params);
   res.json({ total: n, rows });
 }));
-router.post('/subscribers', guard(MKT), wrap(async (req, res) => {
+router.post('/subscribers', guard('marketing.manage'), wrap(async (req, res) => {
   const email = String(req.body.email || '').trim().toLowerCase();
   if (!/^\S+@\S+\.\S+$/.test(email)) throw fail(400, 'Enter a valid email');
   await pool.query('INSERT IGNORE INTO subscribers (email) VALUES (?)', [email]);
   res.json({ ok: true });
 }));
-router.delete('/subscribers/:email', guard(MKT), wrap(async (req, res) => {
+router.delete('/subscribers/:email', guard('marketing.manage'), wrap(async (req, res) => {
   await pool.query('DELETE FROM subscribers WHERE email = ?', [req.params.email]);
   await pool.query('UPDATE consents SET status = "Unsubscribed" WHERE email = ? AND status <> "Unsubscribed"', [req.params.email]);
   res.json({ ok: true });
 }));
-router.get('/consents', guard(MKT), wrap(async (req, res) => {
+router.get('/consents', guard('marketing.manage'), wrap(async (req, res) => {
   const { size, offset } = page(req);
   const cond = [], params = [];
   if (req.query.q) { cond.push('(email LIKE ? OR source LIKE ?)'); params.push(like(req.query.q), like(req.query.q)); }
@@ -536,7 +624,7 @@ router.get('/consents', guard(MKT), wrap(async (req, res) => {
   const [rows] = await pool.query(`SELECT * FROM consents ${where} ORDER BY created_at DESC LIMIT ${size} OFFSET ${offset}`, params);
   res.json({ total: n, rows: rows.map(c => ({ id: c.id, email: c.email, source: c.source, token: c.token, status: c.status, ip: c.ip, at: c.created_at, confirmedAt: c.confirmed_at })) });
 }));
-router.put('/consents/:id/confirm', guard(MKT), wrap(async (req, res) => {
+router.put('/consents/:id/confirm', guard('marketing.manage'), wrap(async (req, res) => {
   const [[c]] = await pool.query('SELECT * FROM consents WHERE id = ?', [req.params.id]);
   if (!c) throw fail(404, 'Not found');
   await pool.query('UPDATE consents SET status = "Confirmed", confirmed_at = COALESCE(confirmed_at, NOW()) WHERE id = ?', [c.id]);
@@ -546,11 +634,11 @@ router.put('/consents/:id/confirm', guard(MKT), wrap(async (req, res) => {
 }));
 
 // ---------- careers ----------
-router.get('/jobs', guard(ADMINS), wrap(async (req, res) => {
+router.get('/jobs', guard('careers.manage'), wrap(async (req, res) => {
   const [rows] = await pool.query('SELECT j.*, (SELECT COUNT(*) FROM applications a WHERE a.job_id = j.id) apps FROM jobs j ORDER BY j.deadline DESC');
   res.json(rows.map(j => ({ id: j.id, title: j.title, dept: j.dept, type: j.type, loc: j.loc, exp: j.exp, salary: j.salary, vacancies: j.vacancies, deadline: j.deadline, open: !!j.open, about: j.about, resp: parseJson(j.resp) || [], req: parseJson(j.req) || [], perks: parseJson(j.perks) || [], apps: j.apps })));
 }));
-router.post('/jobs', guard(ADMINS), wrap(async (req, res) => {
+router.post('/jobs', guard('careers.manage'), wrap(async (req, res) => {
   const j = req.body;
   if (!j.title || !j.dept) throw fail(400, 'Title and department are required');
   const id = j.id || 'J-' + (Math.floor(Date.now() / 1000) % 100000);
@@ -562,58 +650,149 @@ router.post('/jobs', guard(ADMINS), wrap(async (req, res) => {
       JSON.stringify(lines(j.resp)), JSON.stringify(lines(j.req)), JSON.stringify(lines(j.perks))]);
   res.json({ id });
 }));
-router.delete('/jobs/:id', guard(ADMINS), wrap(async (req, res) => {
+router.delete('/jobs/:id', guard('careers.manage'), wrap(async (req, res) => {
   await pool.query('DELETE FROM applications WHERE job_id = ?', [req.params.id]);
   await pool.query('DELETE FROM jobs WHERE id = ?', [req.params.id]);
   res.json({ ok: true });
 }));
-router.get('/applications', guard(ADMINS), wrap(async (req, res) => {
+router.get('/applications', guard('careers.manage'), wrap(async (req, res) => {
   const [rows] = await pool.query('SELECT a.*, j.title job_title FROM applications a JOIN jobs j ON j.id = a.job_id ORDER BY a.created_at DESC');
   res.json(rows.map(a => ({ id: a.id, job: a.job_id, jobTitle: a.job_title, name: a.name, phone: a.phone, email: a.email, exp: a.exp, salary: a.salary, link: a.link, note: a.note, cv: a.cv_name, stage: a.stage, at: a.created_at })));
 }));
 // applicants' CVs are private files: downloaded here by an Admin, never through the public /api/uploads path
-router.get('/applications/:id/cv', guard(ADMINS), wrap(async (req, res) => {
+router.get('/applications/:id/cv', guard('careers.manage'), wrap(async (req, res) => {
   const [[a]] = await pool.query('SELECT cv_file, cv_name FROM applications WHERE id = ?', [req.params.id]);
   if (!a || !a.cv_file) throw fail(404, 'CV not found');
   const file = path.join(CV_DIR, path.basename(a.cv_file));
   if (!fs.existsSync(file)) throw fail(404, 'CV file is missing on the server');
   res.download(file, (/\.[a-z]{3,4}$/i.test(a.cv_name || '') ? a.cv_name : a.cv_file).replace(/[^\w.\- ]/g, '_'));
 }));
-router.put('/applications/:id', guard(ADMINS), wrap(async (req, res) => {
+router.put('/applications/:id', guard('careers.manage'), wrap(async (req, res) => {
   if (!['New', 'Shortlisted', 'Interview', 'Offered', 'Hired', 'Rejected'].includes(req.body.stage)) throw fail(400, 'Unknown stage');
   await pool.query('UPDATE applications SET stage = ? WHERE id = ?', [req.body.stage, req.params.id]);
   res.json({ ok: true });
 }));
 
 // ---------- team ----------
-router.get('/staff', guard(ADMINS), wrap(async (req, res) => {
+router.get('/staff', guard('team.manage'), wrap(async (req, res) => {
   const [rows] = await pool.query('SELECT * FROM staff ORDER BY FIELD(status,"Pending","Active","Disabled"), created_at');
-  res.json(rows.map(staffOut));
+  res.json(rows.map(staffRow));
 }));
-router.put('/staff/:id', guard(ADMINS), wrap(async (req, res) => {
+router.put('/staff/:id', guard('team.manage'), wrap(async (req, res) => {
   const { role, status } = req.body;
   const [[t]] = await pool.query('SELECT * FROM staff WHERE id = ?', [req.params.id]);
   if (!t) throw fail(404, 'Not found');
   if (t.id === req.staff.id) throw fail(400, 'You cannot change your own access');
-  if (t.role === 'Super admin' && req.staff.role !== 'Super admin') throw fail(403, 'Only a Super admin can change a Super admin');
-  if (role === 'Super admin' && req.staff.role !== 'Super admin') throw fail(403, 'Only a Super admin can make someone a Super admin');
-  if (role) { if (!ROLES.includes(role)) throw fail(400, 'Unknown role'); await pool.query('UPDATE staff SET role = ? WHERE id = ?', [role, t.id]); }
+  const master = req.staff.role === MASTER;
+  // only the Master Admin may touch, or create, the two top roles
+  if (!master && (t.role === MASTER || t.role === 'Admin')) throw fail(403, 'Only the Master Admin can change a Master Admin or an Admin');
+  if (role === MASTER && t.role !== MASTER) throw fail(409, 'There is only one Master Admin. Use "Transfer Master Admin" to hand it over.');
+  if (!master && role === 'Admin') throw fail(403, 'Only the Master Admin can make someone an Admin');
+  if (t.role === MASTER && ((role && role !== MASTER) || (status && status !== 'Active'))) {
+    const [[o]] = await pool.query('SELECT COUNT(*) n FROM staff WHERE role = ? AND status = "Active" AND id <> ?', [MASTER, t.id]);
+    if (!o.n) throw fail(400, 'There must always be one active Master Admin');
+  }
+  if (role) { if (!ROLE_NAMES.includes(role)) throw fail(400, 'Unknown role'); await pool.query('UPDATE staff SET role = ? WHERE id = ?', [role, t.id]); }
   if (status) { if (!['Active', 'Pending', 'Disabled'].includes(status)) throw fail(400, 'Unknown status'); await pool.query('UPDATE staff SET status = ? WHERE id = ?', [status, t.id]); }
   res.json({ ok: true });
 }));
 
+// ---------- roles & permissions (the role matrix; Master Admin only) ----------
+/** NID, addresses and the reference person of a staff member. All optional, but checked when given. */
+function staffDetails(b) {
+  const nid = digits(b.nid);
+  if (nid && ![10, 13, 17].includes(nid.length)) throw fail(400, 'NID must have 10, 13 or 17 digits.');
+  const refPhone = digits(b.refPhone).slice(-11);
+  if (refPhone && !/^01[3-9]\d{8}$/.test(refPhone)) throw fail(400, "Enter a valid 11-digit mobile number for the reference person (01XXXXXXXXX).");
+  const cut = (v, n) => String(v ?? '').trim().slice(0, n);
+  return { nid, present_address: cut(b.presentAddress, 300), contact_address: cut(b.contactAddress, 300), ref_name: cut(b.refName, 120), ref_phone: refPhone };
+}
+const staffRow = s => ({ ...staffOut(s), nid: s.nid || '', presentAddress: s.present_address || '', contactAddress: s.contact_address || '', refName: s.ref_name || '', refPhone: s.ref_phone || '' });
+
+// add a team member without the request-access step: the account is active straight away
+router.post('/staff', guard('team.manage'), wrap(async (req, res) => {
+  const name = String(req.body.name || '').trim().slice(0, 120);
+  const email = String(req.body.email || '').trim().toLowerCase().slice(0, 160);
+  const phone = digits(req.body.phone).slice(-11);
+  const role = String(req.body.role || '');
+  if (name.length < 2) throw fail(400, 'Enter the name of the team member.');
+  if (!/^\S+@\S+\.\S+$/.test(email)) throw fail(400, 'Enter a valid work email.');
+  if (!/^01[3-9]\d{8}$/.test(phone)) throw fail(400, 'Enter a valid 11-digit mobile number (01XXXXXXXXX).');
+  checkPassword(req.body.password);
+  if (!ROLE_NAMES.includes(role)) throw fail(400, 'Choose a role.');
+  if (role === MASTER) throw fail(409, 'There is only one Master Admin and it is already taken. Use "Transfer Master Admin" to hand it to someone else.');
+  if (req.staff.role !== MASTER && role === 'Admin') throw fail(403, 'Only the Master Admin can add an Admin.');
+  const d = staffDetails(req.body);
+  const [dup] = await pool.query('SELECT id FROM staff WHERE email = ? OR phone = ?', [email, phone]);
+  if (dup.length) throw fail(409, 'This email or mobile number is already registered.');
+  const [r] = await pool.query('INSERT INTO staff (name,email,phone,password_hash,role,status,nid,present_address,contact_address,ref_name,ref_phone) VALUES (?,?,?,?,?,"Active",?,?,?,?,?)', [name, email, phone, await bcrypt.hash(String(req.body.password), 10), role, d.nid, d.present_address, d.contact_address, d.ref_name, d.ref_phone]);
+  res.json({ ok: true, id: r.insertId });
+}));
+// edit a team member's name, contact and personal details (role, status and password have their own routes)
+router.put('/staff/:id/details', guard('team.manage'), wrap(async (req, res) => {
+  const [[t]] = await pool.query('SELECT * FROM staff WHERE id = ?', [req.params.id]);
+  if (!t) throw fail(404, 'Not found');
+  if (req.staff.role !== MASTER && (t.role === MASTER || t.role === 'Admin') && t.id !== req.staff.id) throw fail(403, 'Only the Master Admin can change a Master Admin or an Admin');
+  const name = String(req.body.name ?? t.name).trim().slice(0, 120);
+  const email = String(req.body.email ?? t.email).trim().toLowerCase().slice(0, 160);
+  const phone = digits(req.body.phone ?? t.phone).slice(-11);
+  if (name.length < 2) throw fail(400, 'Enter the name of the team member.');
+  if (!/^\S+@\S+\.\S+$/.test(email)) throw fail(400, 'Enter a valid work email.');
+  if (!/^01[3-9]\d{8}$/.test(phone)) throw fail(400, 'Enter a valid 11-digit mobile number (01XXXXXXXXX).');
+  const d = staffDetails(req.body);
+  const [dup] = await pool.query('SELECT id FROM staff WHERE (email = ? OR phone = ?) AND id <> ?', [email, phone, t.id]);
+  if (dup.length) throw fail(409, 'This email or mobile number is already used by another account.');
+  await pool.query('UPDATE staff SET name=?, email=?, phone=?, nid=?, present_address=?, contact_address=?, ref_name=?, ref_phone=? WHERE id=?', [name, email, phone, d.nid, d.present_address, d.contact_address, d.ref_name, d.ref_phone, t.id]);
+  res.json({ ok: true });
+}));
+// hand the single Master Admin role to another active member; the current Master Admin becomes an Admin (one step, so there is never zero or two)
+router.post('/staff/:id/make-master', guard('team.manage'), wrap(async (req, res) => {
+  if (req.staff.role !== MASTER) throw fail(403, 'Only the Master Admin can hand over the Master Admin role');
+  const [[t]] = await pool.query('SELECT * FROM staff WHERE id = ?', [req.params.id]);
+  if (!t) throw fail(404, 'Not found');
+  if (t.id === req.staff.id) throw fail(400, 'You already are the Master Admin');
+  if (t.status !== 'Active') throw fail(400, 'Choose an active team member');
+  if (String(req.body.confirm || '') !== 'TRANSFER') throw fail(400, 'Type TRANSFER to confirm');
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    await conn.query('UPDATE staff SET role = "Admin" WHERE id = ? AND role = ?', [req.staff.id, MASTER]);
+    await conn.query('UPDATE staff SET role = ? WHERE id = ?', [MASTER, t.id]);
+    await conn.commit();
+  } catch (e) { await conn.rollback(); throw e; } finally { conn.release(); }
+  await pool.query('INSERT INTO role_log (role, staff_id, staff_name, what) VALUES (?,?,?,?)', [MASTER, req.staff.id, req.staff.name, `Master Admin role handed over to ${t.name}; ${req.staff.name} is now an Admin`.slice(0, 255)]);
+  res.json({ ok: true });
+}));
+router.get('/staff/roles', guard('team.manage'), wrap(async (req, res) => {
+  const master = req.staff.role === MASTER;
+  res.json(ROLE_DEFS.map(r => ({ name: r.name, icon: r.icon, desc: r.desc, legacy: !!r.legacy, assignable: r.name !== MASTER && (master || r.name !== 'Admin'), perms: [...permsOf(r.name)].length })));
+}));
+router.get('/roles', guard(MASTER_ONLY), wrap(async (req, res) => { res.json(await matrix()); }));
+router.put('/roles/:name', guard(MASTER_ONLY), wrap(async (req, res) => {
+  const name = req.params.name;
+  if (!ROLE_NAMES.includes(name)) throw fail(404, 'Unknown role');
+  if (name === MASTER) throw fail(400, 'The Master Admin always has full access');
+  res.json({ ok: true, perms: await saveRole(name, req.body.perms, req.staff) });
+}));
+router.post('/roles/:name/reset', guard(MASTER_ONLY), wrap(async (req, res) => {
+  const name = req.params.name;
+  if (!ROLE_NAMES.includes(name)) throw fail(404, 'Unknown role');
+  if (name === MASTER) throw fail(400, 'The Master Admin always has full access');
+  res.json({ ok: true, perms: await saveRole(name, DEFAULTS[name], req.staff) });
+}));
+
 // ---------- settings ----------
-router.get('/settings', guard(ADMINS), wrap(async (req, res) => {
+router.get('/settings', guard('settings.manage'), wrap(async (req, res) => {
   const [[row]] = await pool.query('SELECT v FROM settings WHERE k = "site"');
   res.json(parseJson(row.v));
 }));
-router.put('/settings', guard(ADMINS), wrap(async (req, res) => {
+router.put('/settings', guard('settings.manage'), wrap(async (req, res) => {
   const [[row]] = await pool.query('SELECT v FROM settings WHERE k = "site"');
   const cur = parseJson(row.v);
   const b = req.body, num = v => Math.max(0, parseInt(v, 10) || 0);
   const next = {
     ...cur,
-    promo: b.promo ?? cur.promo, showPromo: b.showPromo ?? cur.showPromo, heroTitle: b.heroTitle ?? cur.heroTitle, heroSub: b.heroSub ?? cur.heroSub,
+    promo: b.promo ?? cur.promo, showPromo: b.showPromo ?? cur.showPromo, showOffer: 'showOffer' in b ? !!b.showOffer : (cur.showOffer ?? true), heroTitle: b.heroTitle ?? cur.heroTitle, heroSub: b.heroSub ?? cur.heroSub,
     offerTitle: b.offerTitle ?? cur.offerTitle, offerSub: b.offerSub ?? cur.offerSub,
     insideFee: 'insideFee' in b ? num(b.insideFee) : cur.insideFee, outsideFee: 'outsideFee' in b ? num(b.outsideFee) : cur.outsideFee,
     suburbFee: 'suburbFee' in b ? num(b.suburbFee) : cur.suburbFee, freeOver: 'freeOver' in b ? num(b.freeOver) : cur.freeOver,
