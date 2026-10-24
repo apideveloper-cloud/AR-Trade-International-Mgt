@@ -53,7 +53,6 @@ function Editor({ product, cats, onClose, onSaved }) {
             {off > 0 && <span style={{ position: 'absolute', top: 12, left: 12, background: 'var(--pink)', color: '#fff', fontSize: 12, fontWeight: 800, padding: '5px 10px', borderRadius: 999 }}>−{off}%</span>}
           </div>
           <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 42, border: '1px dashed #b9c4da', borderRadius: 11, background: '#fff', fontWeight: 800, color: 'oklch(0.45 0.15 252)', cursor: 'pointer' }}>⤒ Upload image(s)<input type="file" accept="image/png,image/jpeg,image/gif,image/webp" multiple hidden onChange={upload} /></label>
-          <label className="a-lbl">Image URL<input className="a-input" value={f.img && f.img.startsWith('data:') ? '' : f.img || ''} onChange={on('img')} placeholder="https://…" /></label>
           {(f.gallery || []).length > 0 && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {f.gallery.map(u => (
@@ -181,7 +180,7 @@ export function Categories({ onChanged }) {
   const [view, setView] = useView('categories', 'grid');
   const [busy, setBusy] = useState('');
   const [err, setErr] = useState('');
-  const load = () => adm.get('/categories').then(setRows);
+  const load = () => adm.get('/categories').then(setRows).catch(e => setErr(e.message));
   useEffect(() => { load(); }, []);
   const toggle = async c => { await adm.put('/categories/' + c.id, { hidden: !c.hidden }); await load(); onChanged?.(); };
   const pick = async (c, file) => {

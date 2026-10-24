@@ -7,7 +7,7 @@ import sanitizeHtml from 'sanitize-html';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { pool } from './db.js';
-import { digits, fail, parseJson, wrap, checkPassword, secret } from './util.js';
+import { digits, fail, parseJson, wrap, checkPassword, secret, isLocalImg, localImg } from './util.js';
 import { applyFlow, cancelOrder, FROM_STATUS } from './flow.js';
 import { buildInvoicePdf, invoiceNo } from './invoice.js';
 import { buildOverview, buildProductReport } from './overview.js';
@@ -268,11 +268,11 @@ function productPatch(body) {
     let v = body[k];
     if (BOOL.has(k)) v = +!!v; else if (INT.has(k)) v = Math.max(0, parseInt(v, 10) || 0); else v = v == null ? '' : String(v);
     if (k === 'metaTitle') v = v.slice(0, 160); if (k === 'metaDesc') v = v.slice(0, 320); if (k === 'metaKeywords') v = v.slice(0, 500);
-    if (k === 'img' && !v) v = null;
+    if (k === 'img') v = localImg(v) || null;
     sets.push(`${col} = ?`); vals.push(v);
   }
   if ('description' in body) { sets.push('description = ?'); vals.push(sanitizeHtml(String(body.description || ''), SAN)); }
-  if ('gallery' in body) { sets.push('gallery = ?'); vals.push(JSON.stringify((Array.isArray(body.gallery) ? body.gallery : []).map(String).filter(u => /^(https?:\/\/|\/api\/uploads\/)/.test(u)).slice(0, 12))); }
+  if ('gallery' in body) { sets.push('gallery = ?'); vals.push(JSON.stringify((Array.isArray(body.gallery) ? body.gallery : []).map(u => String(u).trim()).filter(isLocalImg).slice(0, 12))); }
   if (sets.length) sets.push('edited = 1');
   return { sets, vals };
 }
@@ -306,7 +306,7 @@ router.post('/products', guard('products.manage'), wrap(async (req, res) => {
   const [[{ m }]] = await pool.query('SELECT COALESCE(MAX(id), 29999) m FROM products WHERE id >= 30000');
   const id = Math.max(30000, m + 1);
   await pool.query('INSERT INTO products (id,category_id,brand,name,old_price,price,img,stock,is_new,active,tech,color,yield_info,part,compat,spec,description,gallery,edited) VALUES (?,?,?,?,?,?,?,?,1,1,?,?,?,?,?,?,?,?,1)',
-    [id, b.cat, b.brand, b.name, parseInt(b.old, 10) || 0, parseInt(b.price, 10) || 0, b.img || null, parseInt(b.stock, 10) || 0, b.tech || '', b.color || '', b.yield || '', b.part || '', b.compat || '', b.spec || '', sanitizeHtml(String(b.description || ''), SAN), JSON.stringify(Array.isArray(b.gallery) ? b.gallery.map(String).slice(0, 12) : (b.img ? [b.img] : []))]);
+    [id, b.cat, b.brand, b.name, parseInt(b.old, 10) || 0, parseInt(b.price, 10) || 0, localImg(b.img) || null, parseInt(b.stock, 10) || 0, b.tech || '', b.color || '', b.yield || '', b.part || '', b.compat || '', b.spec || '', sanitizeHtml(String(b.description || ''), SAN), JSON.stringify(Array.isArray(b.gallery) ? b.gallery.map(String).slice(0, 12) : (b.img ? [b.img] : []))]);
   const [[p]] = await pool.query('SELECT * FROM products WHERE id = ?', [id]);
   res.json(prodOut(p));
 }));
@@ -324,8 +324,7 @@ router.put('/categories/:id', guard('categories.manage'), wrap(async (req, res) 
   const sets = [], vals = [];
   if ('hidden' in req.body) { sets.push('hidden = ?'); vals.push(+!!req.body.hidden); }
   if ('image' in req.body) { // the picture shown on the storefront category tile; empty = go back to the automatic one
-    const u = String(req.body.image || '').trim().slice(0, 500);
-    if (u && !/^(\/api\/uploads\/|https:\/\/)/.test(u)) throw fail(400, 'The picture must be uploaded here or be an https:// link');
+    const u = localImg(req.body.image, 'The picture must be uploaded here');
     sets.push('img = ?'); vals.push(u || null);
   }
   if (!sets.length) throw fail(400, 'Nothing to update');
@@ -396,11 +395,11 @@ const SAN = {
   allowedTags: ['p', 'br', 'h2', 'h3', 'h4', 'ul', 'ol', 'li', 'strong', 'b', 'em', 'i', 'u', 'a', 'img', 'blockquote', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'hr', 'figure', 'figcaption'],
   allowedAttributes: { a: ['href', 'target', 'rel'], img: ['src', 'alt', 'loading'] },
   allowedSchemes: ['http', 'https', 'mailto', 'tel'],
-  allowedSchemesByTag: { img: ['http', 'https'] },
+  allowedSchemesByTag: { img: [] },
   allowProtocolRelative: false,
   transformTags: {
     a: (tag, at) => ({ tagName: 'a', attribs: { ...at, target: '_blank', rel: 'noopener' } }),
-    img: (tag, at) => ({ tagName: 'img', attribs: { src: at.src || '', alt: at.alt || '', loading: 'lazy' } }),
+    img: (tag, at) => ({ tagName: 'img', attribs: { src: isLocalImg(at.src) ? at.src : '', alt: at.alt || '', loading: 'lazy' } }),
     div: 'p', b: 'strong', i: 'em'
   }
 };
@@ -435,8 +434,7 @@ const savePost = async (req, id) => {
   const status = b.status === 'Draft' ? 'Draft' : 'Published';
   const date = /^\d{4}-\d{2}-\d{2}$/.test(b.date || '') ? b.date : new Date().toISOString().slice(0, 10);
   const excerpt = (String(b.excerpt || '').trim() || textOf(body)).slice(0, 190);
-  const cover = String(b.cover || '').trim().slice(0, 500);
-  if (cover && !/^(https?:\/\/|\/api\/(media|uploads)\/)/.test(cover)) throw fail(400, 'Cover must be an uploaded image or an http(s) link');
+  const cover = localImg(b.cover, 'The cover must be an uploaded image');
   let slug = slugify(b.slug || title) || 'post-' + Date.now();
   const [dup] = await pool.query('SELECT id FROM blog_posts WHERE slug = ? AND id <> ?', [slug, id || 0]);
   if (dup.length) { if (b.slug) throw fail(409, 'This web address is already used by another article'); slug += '-' + Date.now().toString(36).slice(-4); }
@@ -499,8 +497,7 @@ const savePage = (b) => {
   const title = String(b.title || '').trim();
   if (title.length < 3) throw fail(400, 'Please enter a title');
   const body = sanitizeHtml(String(b.body || ''), SAN);
-  const cover = String(b.cover || '').trim().slice(0, 500);
-  if (cover && !/^(https?:\/\/|\/api\/uploads\/)/.test(cover)) throw fail(400, 'Cover must be an uploaded image or an http(s) link');
+  const cover = localImg(b.cover, 'The cover must be an uploaded image');
   return { title, body, cover, excerpt: (String(b.excerpt || '').trim() || textOf(body)).slice(0, 190), status: b.status === 'Draft' ? 'Draft' : 'Published', order: parseInt(b.order, 10) || 0 };
 };
 router.put('/pages/:id', guard('pages.manage'), wrap(async (req, res) => {
@@ -527,7 +524,7 @@ router.delete('/pages/:id', guard('pages.delete'), wrap(async (req, res) => { aw
 // ---------- storefront content (home slides, brand + client logos, FAQs, policies, labels…) ----------
 const text = (v, max = 400) => String(v ?? '').trim().slice(0, max);
 const url = v => { const u = text(v, 500); if (u && !/^(\/api\/uploads\/|https?:\/\/|\/|#\/|\.\/)/.test(u)) throw fail(400, 'Links must start with / , #/ or https://'); return u; };
-const img = v => { const u = url(v); if (u && !/^(\/api\/uploads\/|https?:\/\/)/.test(u)) throw fail(400, 'Images must be uploaded here or be an https:// link'); return u; };
+const img = v => localImg(text(v, 500), 'Images must be uploaded here');
 const list = (v, max = 60) => { if (!Array.isArray(v)) throw fail(400, 'Expected a list'); return v.slice(0, max); };
 const CONTENT = {
   slides: v => list(v, 12).map(s => (s.type === 'image'

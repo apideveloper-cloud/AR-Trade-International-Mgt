@@ -26,7 +26,7 @@ function ImageField({ label, value, onChange, folder, wide }) {
           <input type="file" hidden accept="image/png,image/jpeg,image/gif,image/webp" onChange={up} />
         </label>
         <div className="cx-img-r">
-          <input className="a-input" value={value || ''} onChange={e => onChange(e.target.value)} placeholder="/api/uploads/site/… or https://…" style={{ fontSize: 12 }} />
+          {value && <small style={{ color: '#6b7388', fontSize: 12, wordBreak: 'break-all' }}>{value}</small>}
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <label className="a-btn ghost sm" style={{ cursor: 'pointer' }}>{busy ? 'Uploading…' : '⤒ Upload image'}<input type="file" hidden accept="image/png,image/jpeg,image/gif,image/webp" onChange={up} /></label>
             {value && <button type="button" className="a-btn ghost sm" style={{ color: '#b3261e' }} onClick={() => onChange('')}>Remove</button>}

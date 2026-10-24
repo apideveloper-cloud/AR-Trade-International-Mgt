@@ -11,6 +11,17 @@ export const secret = () => {
   return 'dev-secret';
 };
 export const fail = (status, message) => Object.assign(new Error(message), { status });
+
+/** Pictures are only ever our own uploaded files (server/uploads), kept in the database as a path. No outside web addresses, no inline data. */
+const LOCAL_IMG = /^\/api\/(uploads|media)\/[A-Za-z0-9][A-Za-z0-9._\/-]{0,300}$/;
+export const isLocalImg = u => typeof u === 'string' && LOCAL_IMG.test(u) && !u.includes('..') && !u.includes('//');
+/** '' for no picture; the path itself when it is one of our uploads; otherwise a 400 telling the admin to upload. */
+export const localImg = (v, message = 'Pictures must be uploaded here. Web addresses are not accepted.') => {
+  const u = String(v ?? '').trim();
+  if (!u) return '';
+  if (!isLocalImg(u)) throw fail(400, message);
+  return u;
+};
 export const digits = s => String(s || '').replace(/\D/g, '');
 export const parseJson = v => (typeof v === 'string' ? JSON.parse(v) : v);
 
