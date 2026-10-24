@@ -25,6 +25,23 @@ const NAV = [
 const REQUEST_ROLES = ['Delivery rider', 'Marketing manager', 'Content writer', 'Field Officer', 'RM', 'Purchase Officer', 'Accountant', 'Manager'];
 const TITLES = { dashboard: 'Dashboard', orders: 'Orders', deliveries: 'Deliveries', customers: 'Customers', products: 'Products', categories: 'Categories', services: 'Service requests', blog: 'Blog articles', pages: 'Servicing, clients & company pages', content: 'Storefront content (slider, logos, FAQs, policies)', reviews: 'Product reviews', inbox: 'Inbox', marketing: 'Marketing', careers: 'Careers', team: 'Team & accounts', roles: 'Roles & permissions', settings: 'Settings' };
 
+/** Password box with a show / hide eye, so a mistyped password can be checked before signing in. */
+function PasswordInput({ name, autoComplete, minLength }) {
+  const [show, setShow] = useState(false);
+  return (
+    <span className="pw-in">
+      <input type={show ? 'text' : 'password'} name={name} required minLength={minLength} autoComplete={autoComplete} />
+      <button type="button" className="pw-eye" onClick={() => setShow(s => !s)} aria-label={show ? 'Hide password' : 'Show password'} aria-pressed={show} title={show ? 'Hide password' : 'Show password'}>
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          {show
+            ? <><path d="M3 3l18 18" /><path d="M10.6 6.2A9.8 9.8 0 0 1 12 6c5 0 8.5 4 9.5 6a12 12 0 0 1-2.6 3.3M6.6 7.6A12.4 12.4 0 0 0 2.5 12c1 2 4.5 6 9.5 6 1.6 0 3-.4 4.2-1" /><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" /></>
+            : <><path d="M2.5 12c1-2 4.5-6 9.5-6s8.5 4 9.5 6c-1 2-4.5 6-9.5 6s-8.5-4-9.5-6z" /><circle cx="12" cy="12" r="3" /></>}
+        </svg>
+      </button>
+    </span>
+  );
+}
+
 export function Login({ onDone }) {
   const [mode, setMode] = useState('login');
   const [err, setErr] = useState('');
@@ -66,15 +83,15 @@ export function Login({ onDone }) {
         </div>
         <div className="card">
           <div><span style={{ fontFamily: 'var(--disp)', fontWeight: 800, fontSize: 24, letterSpacing: '-.02em', display: 'block' }}>{reg ? 'Request access' : 'Welcome back'}</span><span style={{ fontSize: 13, color: '#8f9bb8' }}>{reg ? 'Riders, marketing staff and content writers can register; an admin approves you.' : 'Sign in with your mobile number or work email.'}</span></div>
-          <div className="tabs">{[['login', 'Sign in'], ['register', 'Register']].map(([k, l]) => <button key={k} className={mode === k ? 'on' : ''} onClick={() => setMode(k)}>{l}</button>)}</div>
-          <form onSubmit={submit} noValidate onInput={ev => { ev.target.removeAttribute?.('aria-invalid'); setErr(''); }} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div className="tabs">{[['login', 'Sign in'], ['register', 'Register']].map(([k, l]) => <button key={k} className={mode === k ? 'on' : ''} onClick={() => { if (k !== mode) { setMode(k); setErr(''); setOk(''); } }}>{l}</button>)}</div>
+          <form key={mode} onSubmit={submit} noValidate onInput={ev => { ev.target.removeAttribute?.('aria-invalid'); setErr(''); }} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {reg && <label>Full name<input type="text" name="name" required /></label>}
             {!reg && <label>Mobile or email<input type="text" name="id" required placeholder="01XXXXXXXXX or email" autoComplete="username" /></label>}
             {reg && <label>Mobile number<input type="tel" name="phone" required pattern="0?1[3-9][0-9]{8}" maxLength={11} placeholder="01XXXXXXXXX" /></label>}
             {reg && <label>Work email<input type="email" name="email" required /></label>}
             {reg && <label>Role you need<select name="role" defaultValue="Delivery rider" style={{ width: '100%' }}>{REQUEST_ROLES.map(r => <option key={r}>{r}</option>)}</select></label>}
-            <label>Password<input type="password" name="pass" required minLength={8} autoComplete="current-password" /></label>
-            {reg && <label>Confirm password<input type="password" name="pass2" required minLength={8} /></label>}
+            <label>Password<PasswordInput name="pass" minLength={8} autoComplete="current-password" /></label>
+            {reg && <label>Confirm password<PasswordInput name="pass2" minLength={8} autoComplete="new-password" /></label>}
             {err && <span className="lerr" role="alert" style={{ background: 'oklch(0.35 0.1 25 / .5)', border: '1px solid oklch(0.55 0.15 25 / .6)', color: '#ffd9d2', borderRadius: 10, padding: '10px 12px', fontSize: 13 }}>⚠ {err}</span>}
             {ok && <span style={{ background: 'oklch(0.35 0.08 150 / .5)', border: '1px solid oklch(0.6 0.12 150 / .6)', color: '#d5f5e0', borderRadius: 10, padding: '10px 12px', fontSize: 13 }}>{ok}</span>}
             <button className="go" disabled={busy}>{reg ? 'Request access' : 'Sign in'} →</button>

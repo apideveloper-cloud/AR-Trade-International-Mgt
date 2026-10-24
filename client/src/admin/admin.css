@@ -878,3 +878,11 @@ a.rl2:hover { transform: translateY(-3px); border-color: oklch(0.72 0.12 var(--h
 .adm-login select:hover { border-color: #3a4a72; }
 .adm-login select:focus { border-color: oklch(0.68 0.12 235); box-shadow: 0 0 0 3px oklch(0.6 0.13 240 / .18); }
 .adm-login select option { background: #0c1429; color: #fff; }
+
+/* show / hide password eye inside the sign-in boxes */
+.adm-login .pw-in { position: relative; display: block; }
+.adm-login .pw-in input { width: 100%; padding-right: 46px; }
+.adm-login .pw-eye { position: absolute; top: 50%; right: 6px; transform: translateY(-50%); width: 34px; height: 34px; display: grid; place-items: center; border: 0; border-radius: 8px; background: transparent; color: #9db1da; cursor: pointer; transition: background .15s, color .15s; }
+.adm-login .pw-eye:hover { background: rgba(255,255,255,.08); color: #fff; }
+.adm-login .pw-eye[aria-pressed="true"] { color: oklch(0.78 0.12 235); }
+.adm-login .pw-eye:focus-visible { outline: 2px solid oklch(0.68 0.12 235); outline-offset: 1px; }

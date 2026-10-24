@@ -375,7 +375,7 @@ function PriceAlert() {
 }
 
 export default function Home() {
-  const { products, content, addToCart } = useStore();
+  const { products, content, site, addToCart } = useStore();
   const deal = products.find(p => p.featured) || products[0];
   const off = deal ? offPct(deal) : 0;
   const sec = content.sections;

@@ -112,7 +112,7 @@ app.get('/api/products/:id', wrap(async (req, res) => {
   const [imgs] = await pool.query('SELECT path, alt FROM product_images WHERE product_id = ? ORDER BY position', [r.id]);
   const [specs] = await pool.query('SELECT name, value FROM product_specs WHERE product_id = ? ORDER BY position', [r.id]);
   res.json({ ...productOut(r), description: r.description || '', short: r.short_desc || '', sku: r.sku || '', tags: parseJson(r.tags) || [], specs, ...seoOut(r),
-    gallery: imgs.length ? imgs.map(x => x.path) : (parseJson(r.gallery) || []), source: r.source_url || '' });
+    gallery: imgs.length ? imgs.map(x => x.path) : (parseJson(r.gallery) || []) });
 }));
 
 // servicing details, corporate clients and company pages managed from the admin console
@@ -473,7 +473,7 @@ app.get('/api/blog/:slug', wrap(async (req, res) => {
   const [[r]] = await pool.query('SELECT *, DATE_FORMAT(published, "%Y-%m-%d") AS published FROM blog_posts WHERE slug = ? AND status = "Published"', [req.params.slug]);
   if (!r) throw fail(404, 'Article not found');
   const [rel] = await pool.query('SELECT slug, title, category, cover, excerpt, author, DATE_FORMAT(published, "%Y-%m-%d") AS published FROM blog_posts WHERE status = "Published" AND slug <> ? ORDER BY (category = ?) DESC, published DESC LIMIT 3', [r.slug, r.category]);
-  res.json({ post: { ...blogOut(r), body: r.body, source: r.source_url }, related: rel.map(blogOut) });
+  res.json({ post: { ...blogOut(r), body: r.body }, related: rel.map(blogOut) });
 }));
 
 // ---------- careers ----------
