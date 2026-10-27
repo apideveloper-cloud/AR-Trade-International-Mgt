@@ -115,7 +115,7 @@ export function Contact() {
         </div>
         <div className="map">
           <iframe title="AR Trade International — 159 Santinagar, Dhaka-1217" src="https://maps.google.com/maps?q=159%20Santinagar%2C%20Dhaka%201217%2C%20Bangladesh&z=16&output=embed" loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
-          <a href="https://www.google.com/maps/dir/?api=1&destination=159+Santinagar+Dhaka+1217" target="_blank" rel="noreferrer"><img src="/api/uploads/site/ar-icon-round.png" alt="" /><span><b style={{ fontSize: 13 }}>AR Trade International</b><small>Get directions →</small></span></a>
+          <a href="https://www.google.com/maps/dir/?api=1&destination=159+Santinagar+Dhaka+1217" target="_blank" rel="noreferrer"><img src="/ar-icon-round.png" alt="" /><span><b style={{ fontSize: 13 }}>AR Trade International</b><small>Get directions →</small></span></a>
         </div>
       </div>
     </section>

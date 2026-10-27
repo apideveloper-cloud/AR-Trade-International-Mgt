@@ -11,6 +11,7 @@ release/
 
 # runtime data: uploads (images, CVs), logs, database exports, local scratch
 server/uploads/
+server/backups/
 server/data/
 *.log
 deploy/*.sql

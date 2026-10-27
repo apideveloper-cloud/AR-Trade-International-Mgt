@@ -9,6 +9,8 @@ import { PagesAdmin } from './pages/PagesAdmin.jsx';
 import { ContentAdmin } from './pages/ContentAdmin.jsx';
 import { Customers, Deliveries, Orders } from './pages/Sales.jsx';
 import { Dashboard } from './pages/Dashboard.jsx';
+import { Backups } from './pages/Backups.jsx';
+import { NavIcon } from './navIcons.jsx';
 import { FieldApprovals, FieldAttendance, FieldModules, FieldTeamMap } from './pages/Field.jsx';
 import { FieldContacts, FieldCustomers, FieldDeliveries, FieldOrders, FieldVisits } from './pages/FieldSales.jsx';
 import { AccCollections, AccExpenses, AccOverview, AccPurchase, AccReceivables, AccReports } from './pages/Accounts.jsx';
@@ -26,11 +28,11 @@ const NAV = [
   ['Field team', [['field-map', 'Team map', '◎', 'field.approve'], ['field-attendance', 'Attendance', '◷', 'field.approve'], ['field-approvals', 'Approvals', '✔', 'field.approve'], ['field-modules', 'Field modules', '⚙', 'settings.manage']]],
   ['Field sales', [['field-customers', 'Field customers', '☺', 'field.approve'], ['field-visits', 'Visits & follow-ups', '⚑', 'field.approve'], ['field-orders', 'Field orders', '▤', 'field.approve'], ['field-deliveries', 'Field deliveries', '⛟', 'field.approve'], ['field-contacts', 'Contacts', '☎', 'field.approve']]],
   ['Accounts', [['acc-overview', 'Accounts overview', '◈', ['field.approve', 'hub.cash']], ['acc-receivables', 'Receivables', '⇣', ['field.approve', 'hub.cash']], ['acc-collections', 'Collections', '⇡', ['field.approve', 'hub.cash']], ['acc-expenses', 'Expenses', '₿', ['field.approve', 'hub.cash']], ['acc-purchase', 'Purchase orders', '▥', ['field.approve', 'hub.cash']], ['acc-reports', 'Reports', '▦', ['field.approve', 'hub.cash']]]],
-  ['System', [['team', 'Team', '☻', 'team.manage'], ['roles', 'Roles', '⚿', 'roles.manage'], ['settings', 'Settings', '⚙', 'settings.manage']]]
+  ['System', [['team', 'Team', '☻', 'team.manage'], ['roles', 'Roles', '⚿', 'roles.manage'], ['backups', 'Backups', '⛁', 'roles.manage'], ['settings', 'Settings', '⚙', 'settings.manage']]]
 ];
 // the field-app module behind a menu page (a page is hidden when the module is off for the signed-in role)
 const MODULE_OF = { 'field-map': 'team', 'field-attendance': 'attendance', 'field-approvals': 'approvals', 'field-customers': 'customers', 'field-visits': 'visits', 'field-orders': 'sales', 'field-deliveries': 'delivery', 'field-contacts': 'contacts', 'acc-collections': 'collection', 'acc-purchase': 'purchase', 'acc-reports': 'reports', 'acc-expenses': 'expenses' };
-const TITLES = { 'field-customers': 'Field customers', 'field-visits': 'Visits & follow-ups', 'field-orders': 'Field sales orders', 'field-deliveries': 'Field deliveries', 'field-contacts': 'Contacts', 'acc-overview': 'Accounts overview', 'acc-receivables': 'Receivables', 'acc-collections': 'Collections', 'acc-expenses': 'Expense ledger', 'acc-purchase': 'Purchase orders', 'acc-reports': 'Accounts reports', 'field-map': 'Team live map', 'field-attendance': 'Attendance', 'field-approvals': 'Field approvals', 'field-modules': 'Field app modules', dashboard: 'Dashboard', orders: 'Orders', deliveries: 'Deliveries', customers: 'Customers', products: 'Products', categories: 'Categories', services: 'Service requests', blog: 'Blog articles', pages: 'Servicing, clients & company pages', content: 'Storefront content (slider, logos, FAQs, policies)', reviews: 'Product reviews', inbox: 'Inbox', marketing: 'Marketing', careers: 'Careers', team: 'Team & accounts', roles: 'Roles & permissions', settings: 'Settings' };
+const TITLES = { backups: 'Backups', 'field-customers': 'Field customers', 'field-visits': 'Visits & follow-ups', 'field-orders': 'Field sales orders', 'field-deliveries': 'Field deliveries', 'field-contacts': 'Contacts', 'acc-overview': 'Accounts overview', 'acc-receivables': 'Receivables', 'acc-collections': 'Collections', 'acc-expenses': 'Expense ledger', 'acc-purchase': 'Purchase orders', 'acc-reports': 'Accounts reports', 'field-map': 'Team live map', 'field-attendance': 'Attendance', 'field-approvals': 'Field approvals', 'field-modules': 'Field app modules', dashboard: 'Dashboard', orders: 'Orders', deliveries: 'Deliveries', customers: 'Customers', products: 'Products', categories: 'Categories', services: 'Service requests', blog: 'Blog articles', pages: 'Servicing, clients & company pages', content: 'Storefront content (slider, logos, FAQs, policies)', reviews: 'Product reviews', inbox: 'Inbox', marketing: 'Marketing', careers: 'Careers', team: 'Team & accounts', roles: 'Roles & permissions', settings: 'Settings' };
 
 /** Password box with a show / hide eye, so a mistyped password can be checked before signing in. */
 function PasswordInput({ name, autoComplete, minLength }) {
@@ -104,6 +106,8 @@ function RoleCombo({ value, onChange }) {
 
 export function Login({ onDone }) {
   const [role, setRole] = useState(() => { try { const r = localStorage.getItem('ar_login_role'); return LOGIN_ROLES.some(x => x[0] === r) ? r : ''; } catch { return ''; } });
+  const [remember, setRemember] = useState(() => { try { return localStorage.getItem('ar_login_remember') === '1'; } catch { return false; } });
+  const [lastUser] = useState(() => { try { return localStorage.getItem('ar_login_user') || ''; } catch { return ''; } });
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
   const submit = async e => {
@@ -119,9 +123,12 @@ export function Login({ onDone }) {
     const d = Object.fromEntries(new FormData(e.target).entries());
     setBusy(true);
     try {
-      const r = await adm.post('/login', { id: d.id, password: d.pass, role });
-      try { localStorage.setItem('ar_login_role', role); } catch { /* storage unavailable */ }
-      setAdminToken(r.token); onDone(r.staff);
+      const r = await adm.post('/login', { id: d.id, password: d.pass, role, remember });
+      try {
+        localStorage.setItem('ar_login_role', role); localStorage.setItem('ar_login_remember', remember ? '1' : '0');
+        if (remember) localStorage.setItem('ar_login_user', d.id.trim()); else localStorage.removeItem('ar_login_user'); // only the user name is kept, never the password
+      } catch { /* storage unavailable */ }
+      setAdminToken(r.token, remember); onDone(r.staff);
     } catch (er) { setErr(er.message); }
     setBusy(false);
   };
@@ -136,8 +143,9 @@ export function Login({ onDone }) {
           <div><span style={{ fontFamily: 'var(--disp)', fontWeight: 800, fontSize: 24, letterSpacing: '-.02em', display: 'block' }}>Welcome back</span><span style={{ fontSize: 13, color: '#8f9bb8' }}>Pick your role, then sign in with your mobile number or work email.</span></div>
           <form onSubmit={submit} noValidate onInput={ev => { ev.target.removeAttribute?.('aria-invalid'); setErr(''); }} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div className="rc-field"><span className="rl-l">Your role</span><RoleCombo value={role} onChange={r => { setRole(r); setErr(''); }} /></div>
-            <label>Mobile or email<input type="text" name="id" required placeholder="01XXXXXXXXX or email" autoComplete="username" /></label>
+            <label>Mobile or email<input type="text" name="id" required placeholder="01XXXXXXXXX or email" autoComplete="username" defaultValue={remember ? lastUser : ''} /></label>
             <label>Password<PasswordInput name="pass" minLength={8} autoComplete="current-password" /></label>
+            <label className="rm-row"><input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)} /><span className="rm-box" aria-hidden="true">✓</span><span className="rm-tx"><b>Remember me</b><small>Stay signed in on this device for 7 days. Do not use on a shared computer.</small></span></label>
             {err && <span className="lerr" role="alert">⚠ {err}</span>}
             <button className="go" disabled={busy}>{busy ? 'Checking…' : role ? 'Sign in as ' + role + ' →' : 'Sign in →'}</button>
           </form>
@@ -239,7 +247,7 @@ export default function AdminApp() {
                 </button>
                 <div className="nav-items-wrap">
                   <div className="nav-items" id={id} role="group" aria-labelledby={id + '-h'}>
-                    {items.map(([k, t, ic]) => <Link key={k} to={'/admin/' + k} className={page === k ? 'on' : ''} aria-current={page === k ? 'page' : undefined}><span className="ic">{ic}</span><span className="tx">{t}</span></Link>)}
+                    {items.map(([k, t, ic]) => <Link key={k} to={'/admin/' + k} className={page === k ? 'on' : ''} aria-current={page === k ? 'page' : undefined}><span className="ic"><NavIcon k={k} fallback={ic} /></span><span className="tx">{t}</span></Link>)}
                   </div>
                 </div>
               </div>
@@ -287,6 +295,7 @@ export default function AdminApp() {
             <Route path="field-modules" element={<FieldModules />} />
             <Route path="team" element={<Team me={staff} />} />
             <Route path="roles" element={<Roles />} />
+            <Route path="backups" element={<Backups />} />
             <Route path="settings" element={<Settings />} />
             <Route path="*" element={<Navigate to={'/admin/' + home} replace />} />
           </Routes>

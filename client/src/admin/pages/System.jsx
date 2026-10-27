@@ -333,7 +333,9 @@ export function Settings() {
       </div>
       <div className="a-card st-sec" id="st-svc" style={{ '--h': 15, gap: 8 }}>
         <SecHead icon="🛠️" title="Servicing price list" sub="Regular price and the current offer price for each service" />
-        <div className="svc-row svc-head"><span>Service</span><span>Regular</span><span>Offer</span></div>
+        <div className="svc-two">
+          <div className="svc-row svc-head"><span>Service</span><span>Regular</span><span>Offer</span></div>
+          <div className="svc-row svc-head svc-h2"><span>Service</span><span>Regular</span><span>Offer</span></div>
         {s.svcPrices.map((p, i) => (
           <div key={p.t} className="svc-row">
             <span className="svc-n"><i>{i + 1}</i>{p.t}</span>
@@ -341,10 +343,11 @@ export function Settings() {
             <span className="adorn"><i>৳</i><input className="a-input" type="number" title="Offer" value={p.offer} onChange={e => setSvc(i, 'offer', e.target.value)} /></span>
           </div>
         ))}
+        </div>
       </div>
       <div className="a-save"><span>{err ? <b style={{ color: '#ffb4ab' }}>{err}</b> : msg || 'Changes apply to the storefront as soon as you save.'}</span><button className="a-btn" style={{ background: 'oklch(0.82 0.13 85)', color: '#16181d', fontWeight: 800 }}>Save all settings</button></div>
     </form>
-    {pv && <Modal kicker="Preview" title="How it looks on the website" onClose={() => setPv(null)} footer={<button type="button" className="a-btn" onClick={() => setPv(null)}>Close</button>}><PvSample kind={pv} s={s} /></Modal>}
+    {pv && <Modal kicker="Preview" title="How it looks on the website" narrow cls="pv-modal" onClose={() => setPv(null)} footer={<button type="button" className="a-btn" onClick={() => setPv(null)}>Close</button>}><PvSample kind={pv} s={s} /></Modal>}
     </SettingsCtx.Provider>
   );
 }

@@ -1,9 +1,11 @@
 // Small, safe schema upgrades that run on every server start (each one only acts when something is missing).
 import { pool } from './db.js';
+import { ensureBackupTable } from './backup.js';
 
 const STAFF_COLS = [['nid', 'VARCHAR(20)'], ['present_address', 'VARCHAR(300)'], ['contact_address', 'VARCHAR(300)'], ['ref_name', 'VARCHAR(120)'], ['ref_phone', 'VARCHAR(20)']];
 
 export async function ensureSchema() {
+  await ensureBackupTable();
   const [sc] = await pool.query("SELECT COLUMN_NAME c FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'staff'");
   if (sc.length) {
     const have = new Set(sc.map(r => r.c));

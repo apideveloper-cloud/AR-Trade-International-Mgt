@@ -304,7 +304,7 @@ export default function HubApp() {
   return (
     <div className="hub">
       <aside className="hub-side">
-        <div className="brand"><img src="/api/uploads/site/ar-icon-round.png" alt="AR Trade" /><div><b>Delivery Hub</b><small>AR TRADE · OPS</small></div></div>
+        <div className="brand"><img src="/ar-icon-round.png" alt="AR Trade" /><div><b>Delivery Hub</b><small>AR TRADE · OPS</small></div></div>
         <nav>{nav.map(([k, t, n]) => <NavLink key={k} to={'/hub/' + k} className={({ isActive }) => (isActive ? 'on' : '')}><span>{t}</span>{n > 0 && <em>{n}</em>}</NavLink>)}</nav>
         <div className="foot">{!rider && <Link to="/admin">← Admin console</Link>}<Link to="/">Storefront ↗</Link><button onClick={logout}>Sign out ({staff.name.split(' ')[0]})</button></div>
       </aside>

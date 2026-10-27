@@ -107,7 +107,7 @@ export default function Chat() {
   if (!open) {
     return (
       <button className="chat-open" onClick={() => { setOpen(true); setSeen(agentN); }}>
-        <span className="avatar"><img src="/api/uploads/site/ar-icon-round.png" alt="AR Trade" /></span>
+        <span className="avatar"><img src="/ar-icon-round.png" alt="AR Trade" /></span>
         <span className="tx"><b>Chat with us</b><small>Replies in a few minutes</small></span>
         {unread > 0 && <span className="un">{unread}</span>}
       </button>
@@ -117,7 +117,7 @@ export default function Chat() {
     <div className="chat">
       <div className="hd">
         <div className="row">
-          <div className="who"><span className="avatar"><img src="/api/uploads/site/ar-icon-round.png" alt="AR Trade" /></span><div><b>AR Trade Support</b><small>Online · Sat–Thu, 10:00–20:00</small></div></div>
+          <div className="who"><span className="avatar"><img src="/ar-icon-round.png" alt="AR Trade" /></span><div><b>AR Trade Support</b><small>Online · Sat–Thu, 10:00–20:00</small></div></div>
           <button className="min" onClick={() => { setOpen(false); setSeen(agentN); }} title="Minimise">✕</button>
         </div>
         <div className="links">

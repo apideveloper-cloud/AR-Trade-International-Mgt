@@ -81,7 +81,7 @@ function Overview({ orders, profile, reminders }) {
         <div style={{ display: 'grid', gap: 20 }}>
           <div className="ac-member">
             <span className="sheen" />
-            <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}><span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.08em', color: '#c5cce0' }}>AR TRADE MEMBER</span><img src="/api/uploads/site/ar-icon-round.png" alt="" style={{ width: 28, height: 28, borderRadius: '50%', background: '#fff', padding: 1 }} /></div>
+            <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}><span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.08em', color: '#c5cce0' }}>AR TRADE MEMBER</span><img src="/ar-icon-round.png" alt="" style={{ width: 28, height: 28, borderRadius: '50%', background: '#fff', padding: 1 }} /></div>
             <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: 6 }}>
               <span style={{ fontFamily: 'var(--disp)', fontWeight: 700, fontSize: 26, letterSpacing: '-.02em', lineHeight: 1 }}>{pct}% off your next order</span>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}><span className="mono" style={{ fontSize: 16, letterSpacing: '.18em' }}>{code}</span><span style={{ fontSize: 12, color: '#c5cce0' }}>Apply at checkout</span></div>

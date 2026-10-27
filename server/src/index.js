@@ -17,6 +17,7 @@ import { hubRouter, liveRouter } from './hub.js';
 import { mktRouter, onSubscribed, prefsRouter, startMailWorker } from './mkt.js';
 import { initPermissions } from './permissions.js';
 import { ensureSchema } from './migrate.js';
+import { startBackupSchedule } from './backup.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -544,6 +545,7 @@ app.listen(port, () => {
   console.log(`AR Trade API on http://localhost:${port}`);
   if (process.env.NODE_ENV === 'production' && !process.env.SITE_URL) console.warn('SITE_URL is not set: canonical links, the sitemap and emails will use the request Host header. Set SITE_URL=https://your-domain in server/.env.');
   startMailWorker();
+  startBackupSchedule(); // a full database backup every 6 hours (BACKUP_EVERY_HOURS)
 });
 // retention: GPS breadcrumbs older than 90 days are of no use
 const purge = () => pool.query('DELETE FROM field_track WHERE at < UTC_TIMESTAMP() - INTERVAL 90 DAY LIMIT 50000').catch(() => {});

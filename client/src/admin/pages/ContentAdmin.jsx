@@ -6,7 +6,7 @@ const readFile = f => new Promise((res, rej) => { const r = new FileReader(); r.
 const lbl = { display: 'flex', flexDirection: 'column', gap: 5, fontSize: 12, fontWeight: 700, color: '#3a3f4b', minWidth: 0 };
 
 /** Image field: preview + upload into uploads/site/<folder>/ (or paste a link). */
-function ImageField({ label, value, onChange, folder, wide }) {
+function ImageField({ label, value, onChange, folder, wide , tile }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const up = async e => {
@@ -16,6 +16,19 @@ function ImageField({ label, value, onChange, folder, wide }) {
     try { const r = await adm.post('/upload-image', { folder: 'site/' + folder, name: f.name, data: await readFile(f) }); onChange(r.url); } catch (x) { setErr(x.message); }
     setBusy(false);
   };
+  if (tile) {
+    return (
+      <div className="lt-img">
+        <label className={'lt-drop' + (value ? '' : ' empty')} title="Click to upload or change the logo">
+          {value ? <img src={value} alt="" /> : <span><b>＋</b>{busy ? 'Uploading…' : 'Add logo'}</span>}
+          {value && <em>{busy ? 'Uploading…' : 'Change logo'}</em>}
+          <input type="file" hidden accept="image/png,image/jpeg,image/gif,image/webp" onChange={up} />
+        </label>
+        {value && <button type="button" className="lt-rm" onClick={() => onChange('')} title="Remove the logo">Remove logo</button>}
+        {err && <small className="lt-err">{err}</small>}
+      </div>
+    );
+  }
   return (
     <div style={{ ...lbl, gridColumn: wide ? '1 / -1' : undefined }}>
       <span>{label}</span>
@@ -40,7 +53,7 @@ function ImageField({ label, value, onChange, folder, wide }) {
 
 function Field({ f, item, set }) {
   const v = item[f.k];
-  if (f.type === 'image') return <ImageField label={f.label} value={v} onChange={x => set(f.k, x)} folder={f.folder} wide={f.wide} />;
+  if (f.type === 'image') return <ImageField label={f.label} value={v} onChange={x => set(f.k, x)} folder={f.folder} wide={f.wide} tile={f.tile} />;
   if (f.type === 'check') { const on = v !== false && !!v; return <div className="cx-toggle"><button type="button" role="switch" aria-checked={on} className={'a-sw' + (on ? ' on' : '')} onClick={() => set(f.k, !on)} /><span>{f.label}</span></div>; }
   if (f.type === 'select') return <label style={lbl}>{f.label}<select className="a-input" value={v || f.options[0][0]} onChange={e => set(f.k, e.target.value)}>{f.options.map(([val, l]) => <option key={val} value={val}>{l}</option>)}</select></label>;
   if (f.type === 'area') return <label style={{ ...lbl, gridColumn: '1 / -1' }}>{f.label}<textarea className="a-input" rows={f.rows || 3} value={v || ''} onChange={e => set(f.k, e.target.value)} /></label>;
@@ -48,9 +61,29 @@ function Field({ f, item, set }) {
 }
 
 /** Editable list of cards: fields per item (with optional conditions), reorder, remove, add. */
-function ListEditor({ items, setItems, fields, blank, title, max = 60 }) {
+function ListEditor({ items, setItems, fields, blank, title, max = 60, tiles = false }) {
   const mv = (i, d) => setItems(a => { const b = [...a]; const j = i + d; if (j < 0 || j >= b.length) return b; [b[i], b[j]] = [b[j], b[i]]; return b; });
   const upd = (i, k, v) => setItems(a => a.map((x, j) => (j === i ? { ...x, [k]: v } : x)));
+  if (tiles) {
+    return (
+      <div className="lt-grid">
+        {items.map((it, i) => (
+          <div key={i} className={'lt-card' + (it.on === false ? ' off' : '')}>
+            <div className="lt-top">
+              <span className="cx-no">{i + 1}</span>
+              <span className="lt-sp" />
+              <button type="button" className="cx-ic" title="Move earlier" onClick={() => mv(i, -1)} disabled={i === 0}>←</button>
+              <button type="button" className="cx-ic" title="Move later" onClick={() => mv(i, 1)} disabled={i === items.length - 1}>→</button>
+              <button type="button" className="cx-ic del" title="Remove this logo" onClick={() => setItems(a => a.filter((_, j) => j !== i))}>✕</button>
+            </div>
+            {fields.filter(f => f.type === 'image').map(f => <Field key={f.k} f={{ ...f, tile: true }} item={it} set={(k, v) => upd(i, k, v)} />)}
+            {fields.filter(f => f.type !== 'image').map(f => <Field key={f.k} f={f} item={it} set={(k, v) => upd(i, k, v)} />)}
+          </div>
+        ))}
+        {items.length < max && <button type="button" className="lt-add" onClick={() => setItems(a => [...a, typeof blank === 'function' ? blank() : { ...blank }])}><b>＋</b>Add a logo<small>{items.length} of {max}</small></button>}
+      </div>
+    );
+  }
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       {items.map((it, i) => (
@@ -150,13 +183,13 @@ export function ContentAdmin() {
         </>}
 
         {tab === 'brands' && <>
-          <ListEditor items={data.brands} setItems={fn => set('brands', fn)} max={40} title={b => b.n || 'New brand'} blank={{ n: '', src: '' }}
+          <ListEditor tiles items={data.brands} setItems={fn => set('brands', fn)} max={40} title={b => b.n || 'New brand'} blank={{ n: '', src: '' }}
             fields={[{ k: 'n', label: 'Brand name' }, { k: 'src', type: 'image', label: 'Logo', folder: 'brands' }]} />
           <SaveBar keys={['brands']} />
         </>}
 
         {tab === 'clients' && <>
-          <ListEditor items={(data.clients || []).map(c => ({ src: c }))} setItems={fn => set('clients', a => fn(a.map(c => ({ src: c }))).map(x => x.src))} max={80} title={(c, i) => `Client logo ${i + 1}`} blank={{ src: '' }}
+          <ListEditor tiles items={(data.clients || []).map(c => ({ src: c }))} setItems={fn => set('clients', a => fn(a.map(c => ({ src: c }))).map(x => x.src))} max={80} title={(c, i) => `Client logo ${i + 1}`} blank={{ src: '' }}
             fields={[{ k: 'src', type: 'image', label: 'Logo', folder: 'clients' }]} />
           <SaveBar keys={['clients']} />
         </>}

@@ -1,8 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 const KEY = 'ar_admin_token';
-export const getAdminToken = () => { try { return sessionStorage.getItem(KEY); } catch { return null; } };
-export const setAdminToken = t => { try { t ? sessionStorage.setItem(KEY, t) : sessionStorage.removeItem(KEY); } catch { /* storage unavailable */ } };
+// the session token lives in this tab only; "Remember me" keeps it on this device (localStorage) until it expires or you sign out
+export const getAdminToken = () => { try { return sessionStorage.getItem(KEY) || localStorage.getItem(KEY); } catch { return null; } };
+export const setAdminToken = (t, remember = false) => {
+  try {
+    sessionStorage.removeItem(KEY); localStorage.removeItem(KEY);
+    if (t) (remember ? localStorage : sessionStorage).setItem(KEY, t);
+  } catch { /* storage unavailable */ }
+};
 
 /** Does the signed-in staff member hold the permission (or any one of a list)? The server enforces it too; this only decides what to show. */
 export const can = (staff, perm) => [].concat(perm).some(p => staff?.perms?.includes(p));

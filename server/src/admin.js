@@ -11,6 +11,7 @@ import { digits, fail, parseJson, wrap, checkPassword, secret, isLocalImg, local
 import { applyFlow, cancelOrder, FROM_STATUS } from './flow.js';
 import { buildInvoicePdf, invoiceNo } from './invoice.js';
 import { buildOverview, buildProductReport } from './overview.js';
+import { runBackup, status as backupStatus, fileOf as backupFile, deleteBackup, setDir as setBackupDir } from './backup.js';
 import { mailReady, sendMail } from './mailer.js';
 import { can, permsOf, matrix, saveRole, DEFAULTS, MASTER, MASTER_ONLY, ROLE_DEFS, ROLE_NAMES, REGISTRABLE } from './permissions.js';
 
@@ -21,7 +22,7 @@ const STATUSES = ['Pending', 'Confirmed', 'Packed', 'Shipped', 'Delivered', 'Can
 const staffOut = s => ({ id: s.id, name: s.name, email: s.email, phone: s.phone, role: s.role, status: s.status, since: s.created_at });
 /** The signed-in user as the console needs it: includes the permissions their role holds right now. */
 const meOut = s => ({ ...staffOut(s), perms: [...permsOf(s.role)] });
-const sign = s => jwt.sign({ sid: s.id, srole: s.role }, secret(), { expiresIn: '12h' });
+const sign = (s, remember = false) => jwt.sign({ sid: s.id, srole: s.role }, secret(), { expiresIn: remember ? '7d' : '12h' }); // "Remember me" keeps the session for 7 days
 
 /** Express middleware: requires a signed-in, active staff member. `need` is a permission (or a list: any one is enough) from the role matrix. */
 export const guard = need => async (req, res, next) => {
@@ -56,7 +57,7 @@ router.post('/login', wrap(async (req, res) => {
   if (want && want !== s.role) throw fail(403, `This account is not ${/^[AEIOU]/i.test(want) ? 'an' : 'a'} ${want}. It is registered as ${s.role}. Pick ${s.role} and sign in again.`);
   if (s.status === 'Pending') throw fail(403, 'Your account is waiting for an admin to approve it.');
   if (s.status !== 'Active') throw fail(403, 'This account is disabled.');
-  res.json({ token: sign(s), staff: meOut(s) });
+  res.json({ token: sign(s, req.body.remember === true), staff: meOut(s) });
 }));
 
 router.post('/register', wrap(async (req, res) => {
@@ -781,6 +782,17 @@ router.get('/staff/roles', guard('team.manage'), wrap(async (req, res) => {
   const master = req.staff.role === MASTER;
   res.json(ROLE_DEFS.map(r => ({ name: r.name, icon: r.icon, desc: r.desc, legacy: !!r.legacy, assignable: r.name !== MASTER && (master || r.name !== 'Admin'), perms: [...permsOf(r.name)].length })));
 }));
+// ---------- database backups (Master Admin only: a backup holds every customer's data) ----------
+router.get('/backups', guard(MASTER_ONLY), wrap(async (req, res) => { res.json(await backupStatus()); }));
+router.post('/backups', guard(MASTER_ONLY), wrap(async (req, res) => { res.json(await runBackup(req.body?.scope === 'files' ? 'files' : 'db', 'manual', req.staff.name)); }));
+router.put('/backups/dir', guard(MASTER_ONLY), wrap(async (req, res) => { const dir = await setBackupDir(req.body?.dir); console.log('[backup] folder changed to', dir, 'by', req.staff.name); res.json(await backupStatus()); }));
+router.get('/backups/:id/download', guard(MASTER_ONLY), wrap(async (req, res) => {
+  const f = await backupFile(req.params.id);
+  res.set('Cache-Control', 'no-store');
+  res.download(f.full, f.name);
+}));
+router.delete('/backups/:id', guard(MASTER_ONLY), wrap(async (req, res) => { await deleteBackup(req.params.id); res.json({ ok: true }); }));
+
 router.get('/roles', guard(MASTER_ONLY), wrap(async (req, res) => { res.json(await matrix()); }));
 router.put('/roles/:name', guard(MASTER_ONLY), wrap(async (req, res) => {
   const name = req.params.name;

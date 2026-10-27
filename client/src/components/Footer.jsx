@@ -39,7 +39,7 @@ export default function Footer() {
       <div className="foot-in">
         <div className="foot-cta">
           <div className="l">
-            <img src="/api/uploads/site/ar-icon-round.png" alt="AR Trade" />
+            <img src="/ar-icon-round.png" alt="AR Trade" />
             <div><b>{content.labels.needToner}</b><span style={{ fontSize: 13.5 }}>Order before 2 PM for same-day delivery inside Dhaka.</span></div>
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>

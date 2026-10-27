@@ -217,7 +217,7 @@ function Templates() {
             </div>
             <div style={{ padding: 20 }}>
               <div style={{ background: '#fff', borderRadius: 16, overflow: 'hidden' }}>
-                <div style={{ background: pv.hero, color: '#fff', padding: '28px 26px', display: 'flex', flexDirection: 'column', gap: 10 }}><img src="/api/uploads/site/ar-icon-round.png" alt="AR Trade" style={{ width: 40, height: 40, borderRadius: '50%' }} /><b style={{ fontFamily: 'var(--disp)', fontSize: 28, lineHeight: 1.1 }}>{pv.headline}</b></div>
+                <div style={{ background: pv.hero, color: '#fff', padding: '28px 26px', display: 'flex', flexDirection: 'column', gap: 10 }}><img src="/ar-icon-round.png" alt="AR Trade" style={{ width: 40, height: 40, borderRadius: '50%' }} /><b style={{ fontFamily: 'var(--disp)', fontSize: 28, lineHeight: 1.1 }}>{pv.headline}</b></div>
                 <div style={{ padding: '22px 26px', display: 'flex', flexDirection: 'column', gap: 14 }}><span style={{ fontSize: 14.5, lineHeight: 1.65, color: '#2b2e36' }}>{pv.body}</span><a href="/" style={{ alignSelf: 'flex-start', background: '#0b1631', color: '#fff', borderRadius: 999, padding: '12px 22px', fontSize: 14, fontWeight: 800 }}>{pv.cta}</a></div>
                 <div style={{ background: '#f6f8fc', padding: '16px 26px', display: 'flex', flexDirection: 'column', gap: 6, fontSize: 11.5, color: '#6b7080', borderTop: '1px solid #eef0f4' }}>
                   <span>You're receiving this because you subscribed at artradeinternational.com. We never share or sell your email.</span>

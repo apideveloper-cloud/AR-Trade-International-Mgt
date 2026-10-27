@@ -135,7 +135,7 @@ export function LoginModal() {
         <div className="l">
           <span className="o1" /><span className="o2" />
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <img src="/api/uploads/site/ar-icon-round.png" alt="AR Trade" style={{ width: 42, height: 42, borderRadius: '50%', boxShadow: '0 0 0 3px rgba(255,255,255,.18)' }} />
+            <img src="/ar-icon-round.png" alt="AR Trade" style={{ width: 42, height: 42, borderRadius: '50%', boxShadow: '0 0 0 3px rgba(255,255,255,.18)' }} />
             <span style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.15 }}>
               <b style={{ fontFamily: 'var(--disp)', fontSize: 15, color: '#fff' }}>AR Trade International</b>
               <small style={{ fontFamily: 'var(--mono)', fontSize: 10, letterSpacing: '.12em', textTransform: 'uppercase', color: '#9fb3d1' }}>Since 2011 · Dhaka</small>
@@ -211,7 +211,7 @@ export function PromoPopup() {
         <div className="promo-card">
           <span className="rays" /><span className="glow" />
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
-            <span className="brandpill"><img src="/api/uploads/site/ar-icon-round.png" alt="" />AR Trade</span><span className="lt">LIMITED TIME</span>
+            <span className="brandpill"><img src="/ar-icon-round.png" alt="" />AR Trade</span><span className="lt">LIMITED TIME</span>
           </div>
           <div className="promo-head">
             <span className="bn">ধামাকা অফার!</span>
@@ -286,7 +286,7 @@ export function NewsletterPopup() {
       <div className="nl" onClick={e => e.stopPropagation()}>
         <button className="x" onClick={() => setMode(null)} title="Close">×</button>
         <div className="l">
-          <img src="/api/uploads/site/ar-icon-round.png" alt="AR Trade" style={{ width: 48, height: 48, borderRadius: '50%' }} />
+          <img src="/ar-icon-round.png" alt="AR Trade" style={{ width: 48, height: 48, borderRadius: '50%' }} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, position: 'relative' }}>
             <span style={{ fontFamily: 'var(--mono)', fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase', color: 'oklch(0.82 0.1 230)' }}>Welcome offer</span>
             <span style={{ fontFamily: 'var(--disp)', fontWeight: 800, fontSize: 84, lineHeight: .9, letterSpacing: '-.04em' }}>10%<span style={{ fontSize: 30, letterSpacing: 0 }}> off</span></span>

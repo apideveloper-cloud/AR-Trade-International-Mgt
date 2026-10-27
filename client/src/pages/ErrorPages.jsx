@@ -36,7 +36,7 @@ export function CodeArt({ a, b, glyph = 'question' }) {
 export function ErrorScreen({ hue, a, b, glyph, title, text, actions = [], note }) {
   return (
     <div className="nf-page" style={{ '--nf-h': hue }}>
-      <header className="nf-top"><a href="/"><img src="/api/uploads/site/ar-icon-round.png" alt="" width="34" height="34" /><b>AR TRADE INTERNATIONAL</b></a></header>
+      <header className="nf-top"><a href="/"><img src="/ar-icon-round.png" alt="" width="34" height="34" /><b>AR TRADE INTERNATIONAL</b></a></header>
       <section className="nf" role="alert">
         <CodeArt a={a} b={b} glyph={glyph} />
         <h1>{title}</h1>
