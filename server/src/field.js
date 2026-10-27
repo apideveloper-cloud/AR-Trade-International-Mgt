@@ -107,7 +107,7 @@ router.get('/attendance/report', guard('field.approve'), wrap(async (req, res) =
   const dayEnd = new Date(dayStart.getTime() + 864e5);
   const monthStart = new Date(Date.parse(date.slice(0, 8) + '01T00:00:00Z') - 6 * 3600e3);
   const [staff] = await pool.query("SELECT id, name, role, phone FROM staff WHERE status = 'Active' ORDER BY name");
-  const [rows] = await pool.query(`SELECT staff_id, type, ${UTC('at')} at FROM field_attendance WHERE at >= ? AND at < ? ORDER BY at, id`, [mysqlDate(dayStart), mysqlDate(dayEnd)]);
+  const [rows] = await pool.query(`SELECT staff_id, type, ${UTC('at')} at, lat, lng FROM field_attendance WHERE at >= ? AND at < ? ORDER BY at, id`, [mysqlDate(dayStart), mysqlDate(dayEnd)]);
   const [leave] = await pool.query("SELECT DISTINCT staff_id FROM field_leave_requests WHERE status = 'Approved' AND from_date <= ? AND to_date >= ?", [date, date]);
   const [month] = await pool.query("SELECT staff_id, COUNT(DISTINCT DATE(CONVERT_TZ(at, '+00:00', '+06:00'))) days FROM field_attendance WHERE type = 'Clocked In' AND at >= ? AND at < ? GROUP BY staff_id", [mysqlDate(monthStart), mysqlDate(dayEnd)]);
   const onLeave = new Set(leave.map(l => l.staff_id));
@@ -126,7 +126,7 @@ router.get('/attendance/report', guard('field.approve'), wrap(async (req, res) =
     const onDuty = open !== null && date === today;
     if (onDuty) minutes += (Date.now() - open) / 60000;
     const status = onLeave.has(s.id) ? 'On leave' : onDuty ? 'On duty' : firstIn ? 'Present' : future ? '—' : weeklyOff ? 'Weekly off' : 'Absent';
-    return { id: s.id, name: s.name, role: roleKey(s.role), roleLabel: s.role, phone: s.phone, status, firstIn, lastOut, minutes: Math.round(minutes), monthDays: monthDays.get(s.id) || 0 };
+    return { id: s.id, name: s.name, role: roleKey(s.role), roleLabel: s.role, phone: s.phone, status, firstIn, lastOut, minutes: Math.round(minutes), monthDays: monthDays.get(s.id) || 0, punches: mine.map(r => ({ type: r.type, at: r.at, lat: r.lat == null ? null : Number(r.lat), lng: r.lng == null ? null : Number(r.lng) })) };
   });
   res.json({ date, today, weeklyOff, rows: out });
 }));

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { fld, fmtMoney, viewFieldFile } from '../adminApi.js';
-import { Summary, Switch, hueOf } from '../ui.jsx';
+import { Modal, Summary, Switch, hueOf } from '../ui.jsx';
 import { Notice, usePaged } from '../fieldKit.jsx';
 import '../field.css';
 
@@ -17,6 +17,7 @@ const Av = ({ name }) => <span className="fd-av" style={{ '--h': hueOf(name) }}>
 const Ic = ({ d }) => <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{d}</svg>;
 const ICON_CALL = <path d="M5 4h3.2l1.6 4-2 1.3a11 11 0 0 0 5 5l1.3-2 4 1.6V17a2 2 0 0 1-2 2A13 13 0 0 1 3 6a2 2 0 0 1 2-2z" />;
 const ICON_MSG = <><path d="M4 5h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H9l-4.5 3.5V17H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z" /><path d="M7.5 10h9M7.5 13h5.5" /></>;
+const ICON_INFO = <><circle cx="12" cy="12" r="9" /><path d="M12 11v5.5M12 7.6v.1" /></>;
 const ICON_PIN = <><path d="M12 21s7-6.2 7-11.5A7 7 0 0 0 5 9.5C5 14.8 12 21 12 21z" /><circle cx="12" cy="9.5" r="2.4" /></>;
 const Chip = ({ tone, children }) => <span className={'fd-chip ' + tone}>{children}</span>;
 const osm = (lat, lng) => `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=16/${lat}/${lng}`;
@@ -158,6 +159,8 @@ export function FieldTeamMap() {
     .filter(m => (flt === 'all' || m.status === flt) && (!q.trim() || (m.name + ' ' + m.roleLabel).toLowerCase().includes(q.trim().toLowerCase())))
     .sort((a, b) => (b.online - a.online) || a.name.localeCompare(b.name)), [members, flt, q]);
   const picked = members.find(m => m.id === sel);
+  const [info, setInfo] = useState(null); // the team member open in the details popup
+  const who = info && members.find(m => m.id === info);
 
   if (err && !d) return <Notice err={err} onRetry={load} />;
   if (!d) return <span className="spin" />;
@@ -197,13 +200,14 @@ export function FieldTeamMap() {
                   <Chip tone={STATE[m.status] || 'off'}>{m.status}</Chip>
                 </button>
                 <div className="fd-mrow">
-                  <span className="fd-mmeta">
+                  <span className="fd-mmeta" onClick={() => setInfo(m.id)} title="Click for the details">
                     <span title="Distance today">🛣 {m.km} km</span>
                     {m.visits && <span title="Visits done / planned">📍 {m.visits.done}/{m.visits.total}</span>}
                     <span title="Clock-in time">⏱ {m.clockIn ? hhmm(m.clockIn) : '—'}</span>
                     {m.online && <span title="Last signal">● {ago(m.ageSec)}</span>}
                   </span>
                   <span className="fd-macts">
+                    <button type="button" className="fd-ib info" onClick={() => setInfo(m.id)} title={"Details of " + m.name} aria-label={"Details of " + m.name}><Ic d={ICON_INFO} /></button>
                     {m.phone && <a className="fd-ib call" href={'tel:' + m.phone} title={'Call ' + m.name + ' (' + m.phone + ')'} aria-label={'Call ' + m.name}><Ic d={ICON_CALL} /></a>}
                     {m.phone && <a className="fd-ib msg" href={'sms:' + m.phone} title={'Send ' + m.name + ' a text message'} aria-label={'Message ' + m.name}><Ic d={ICON_MSG} /></a>}
                     {m.lat != null && <a className="fd-ib pin" href={osm(m.lat, m.lng)} target="_blank" rel="noreferrer" title="Open this position on OpenStreetMap" aria-label={'Open ' + m.name + ' on the map'}><Ic d={ICON_PIN} /></a>}
@@ -216,6 +220,22 @@ export function FieldTeamMap() {
           </div>
         </section>
       </div>
+      {who && (
+        <Modal kicker="Team member" title={who.name} narrow cls="att-modal" onClose={() => setInfo(null)}
+          footer={<>{who.lat != null && <button type="button" className="a-btn ghost" onClick={() => { setSel(who.id); setInfo(null); }}>Show on map</button>}<button type="button" className="a-btn" onClick={() => setInfo(null)}>Close</button></>}>
+          <div className="att-hd"><Av name={who.name} /><div><b>{who.name}{who.me && ' (you)'}</b><small>{who.roleLabel}</small></div><Chip tone={STATE[who.status] || 'off'}>{who.status}</Chip></div>
+          <div className="ap-facts">
+            <span><small>Mobile</small><b>{who.phone || '—'}</b></span><span><small>Email</small><b>{who.email || '—'}</b></span>
+            <span><small>Clock-in today</small><b>{who.clockIn ? hhmm(who.clockIn) : 'Not clocked in'}</b></span><span><small>Distance today</small><b>{who.km} km</b></span>
+            <span><small>Visits done / planned</small><b>{who.visits ? who.visits.done + ' / ' + who.visits.total : '—'}</b></span><span><small>Last signal</small><b>{who.online ? ago(who.ageSec) : who.seenAt ? 'Last seen ' + dayTime(who.seenAt) : 'None yet'}</b></span>
+            <span className="wide"><small>Position</small><b>{who.place || (who.lat != null ? 'Position known' : 'No position yet')}</b></span>
+          </div>
+          <div className="att-call">
+            {who.phone && <a className="a-mini" href={'tel:' + who.phone}>Call</a>}{who.phone && <a className="a-mini" href={'sms:' + who.phone}>Message</a>}
+            {who.email && <a className="a-mini" href={'mailto:' + who.email}>Email</a>}{who.lat != null && <a className="a-mini" href={osm(who.lat, who.lng)} target="_blank" rel="noreferrer">Open map ↗</a>}
+          </div>
+        </Modal>
+      )}
     </>
   );
 }
@@ -229,6 +249,7 @@ export function FieldAttendance() {
   const [err, setErr] = useState('');
   const [f, setF] = useState('all');
   const [q, setQ] = useState('');
+  const [sel, setSel] = useState(null);
   useEffect(() => {
     let stale = false;
     setErr('');
@@ -241,7 +262,7 @@ export function FieldAttendance() {
   const n = st => (d?.rows || []).filter(r => r.status === st).length;
   const exportCsv = () => {
     const esc = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
-    const csv = ['Name,Role,Status,Clock in,Clock out,Hours,Days this month', ...rows.map(r => [r.name, r.roleLabel, r.status, hhmm(r.firstIn), hhmm(r.lastOut), hours(r.minutes), r.monthDays].map(esc).join(','))].join('\n');
+    const csv = ['Name,Role,Phone,Status,Clock in,Clock out,Hours,Days this month', ...rows.map(r => [r.name, r.roleLabel, r.phone, r.status, hhmm(r.firstIn), hhmm(r.lastOut), hours(r.minutes), r.monthDays].map(esc).join(','))].join('\n');
     const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv' })), download: `attendance-${d.date}.csv` });
     document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
   };
@@ -269,11 +290,13 @@ export function FieldAttendance() {
         </div>
         <div className="fd-filters">{['all', 'Present', 'On duty', 'On leave', 'Absent', 'Weekly off'].map(k => <button key={k} type="button" className={f === k ? 'on' : ''} onClick={() => setF(k)}>{k === 'all' ? 'All' : k}</button>)}</div>
         <div className="fd-tbl" role="table">
-          <div className="fd-th" role="row"><span>SL</span><span>Staff</span><span>Status</span><span>Clock in</span><span>Clock out</span><span>Hours</span><span>Days this month</span></div>
+          <div className="fd-th att" role="row"><span>SL</span><span>Staff</span><span>Role</span><span>Phone</span><span>Status</span><span>Clock in</span><span>Clock out</span><span>Hours</span><span>Days this month</span></div>
           {pg.items.map((r, i) => (
-            <div className="fd-tr" role="row" key={r.id}>
+            <div className="fd-tr att click" role="row" key={r.id} tabIndex={0} title="Click to see the details" onClick={() => setSel(r)} onKeyDown={e => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), setSel(r))}>
               <span className="mono">{pg.start + i + 1}</span>
-              <span className="fd-who"><Av name={r.name} /><span><b>{r.name}</b><small>{r.roleLabel}</small></span></span>
+              <span className="fd-who"><Av name={r.name} /><span><b>{r.name}</b></span></span>
+              <span>{r.roleLabel}</span>
+              <span>{r.phone ? <a href={"tel:" + r.phone}>{r.phone}</a> : "—"}</span>
               <span><Chip tone={ATT[r.status] || 'off'}>{r.status}</Chip></span>
               <span>{hhmm(r.firstIn)}</span><span>{hhmm(r.lastOut)}</span><span>{hours(r.minutes)}</span><span>{r.monthDays}</span>
             </div>
@@ -281,8 +304,24 @@ export function FieldAttendance() {
           {!rows.length && <div className="a-empty">No one matches.</div>}
         </div>
         {pg.bar}
-        <small className="fd-sub">Times are Bangladesh time. A person counts as present once they hold-to-clock-in on the phone.</small>
+        <small className="fd-sub">Times are Bangladesh time. A person counts as present once they hold-to-clock-in on the phone. Click a row for the details.</small>
       </section>
+      {sel && (
+        <Modal kicker="Attendance" title={sel.name} narrow cls="att-modal" onClose={() => setSel(null)} footer={<button type="button" className="a-btn" onClick={() => setSel(null)}>Close</button>}>
+          <div className="att-hd"><Av name={sel.name} /><div><b>{sel.name}</b><small>{sel.roleLabel} · {d.date}</small></div><Chip tone={ATT[sel.status] || "off"}>{sel.status}</Chip></div>
+          <div className="att-facts">
+            <span><small>Clock in</small><b>{hhmm(sel.firstIn)}</b></span><span><small>Clock out</small><b>{hhmm(sel.lastOut)}</b></span>
+            <span><small>Hours</small><b>{hours(sel.minutes)}</b></span><span><small>Days this month</small><b>{sel.monthDays}</b></span>
+          </div>
+          {sel.phone && <div className="att-call"><a className="a-mini" href={"tel:" + sel.phone}>Call {sel.phone}</a><a className="a-mini" href={"sms:" + sel.phone}>Message</a></div>}
+          <h4 className="att-h4">Clock-in and clock-out on {d.date}</h4>
+          {sel.punches.length ? (
+            <ol className="att-log">{sel.punches.map((p, i) => (
+              <li key={i} className={p.type === "Clocked In" ? "in" : "out"}><b>{hhmm(p.at)}</b><span>{p.type}</span>{p.lat != null ? <a href={osm(p.lat, p.lng)} target="_blank" rel="noreferrer">Location ↗</a> : <em>no location</em>}</li>
+            ))}</ol>
+          ) : <p className="fd-sub">{sel.status === "On leave" ? "On approved leave this day." : "No clock-in or clock-out this day."}</p>}
+        </Modal>
+      )}
     </>
   );
 }
@@ -295,7 +334,7 @@ export function FieldApprovals({ staff }) {
   const [lv, setLv] = useState(null);
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState('');
-  const [rej, setRej] = useState(null);
+  const [rv, setRv] = useState(null); // the claim / leave request open in the review popup: { kind, it, text }
   const load = useCallback(async () => {
     try {
       const s = await fld.get('/approvals/summary');
@@ -311,7 +350,7 @@ export function FieldApprovals({ staff }) {
   const pgA = usePaged(listNow);
   const decide = async (kind, id, status, remarks = '') => {
     setBusy(kind + id); setErr('');
-    try { await fld.put(`/${kind === 'expenses' ? 'expenses' : 'leave'}/${id}/decision`, { status, remarks }); setRej(null); await load(); } catch (e) { setErr(e.message); }
+    try { await fld.put(`/${kind === 'expenses' ? 'expenses' : 'leave'}/${id}/decision`, { status, remarks }); setRv(null); await load(); } catch (e) { setErr(e.message); setRv(r => r && { ...r, err: e.message }); }
     setBusy('');
   };
   if (err && !sum) return <Notice err={err} />;
@@ -321,12 +360,6 @@ export function FieldApprovals({ staff }) {
   const active = kinds.includes(tab) ? tab : kinds[0];
   const items = active === 'expenses' ? exp : lv;
   const other = [['purchase', 'purchase orders'], ['orders', 'sales orders']].filter(([k]) => sum.kinds.includes(k) && sum.counts[k] > 0);
-  const form = (kind, id) => (rej && rej.kind === kind && rej.id === id ? (
-    <div className="fd-rej">
-      <textarea className="a-input" rows={2} placeholder="Reason for rejecting (the person will see this)" value={rej.text} onChange={e => setRej({ ...rej, text: e.target.value })} autoFocus />
-      <div><button type="button" className="a-mini" onClick={() => setRej(null)}>Cancel</button><button type="button" className="a-mini bad" disabled={!rej.text.trim() || busy} onClick={() => decide(kind, id, 'rejected', rej.text.trim())}>Confirm reject</button></div>
-    </div>
-  ) : null);
   return (
     <>
       <Summary items={[
@@ -346,7 +379,7 @@ export function FieldApprovals({ staff }) {
             const pending = active === 'expenses' ? it.status === 'pending' : it.status === 'open';
             const tone = pending ? 'amber' : it.status === 'approved' ? 'ok' : it.status === 'rejected' ? 'bad' : 'off';
             return (
-              <div key={it.id} className={'fd-ap' + (pending ? ' open' : '')}>
+              <div key={it.id} className={'fd-ap click' + (pending ? ' open' : '')} tabIndex={0} title="Click to view the details" onClick={() => setRv({ kind: active, it, text: '' })} onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget && (e.preventDefault(), setRv({ kind: active, it, text: '' }))}>
                 <Av name={it.employeeName || it.name} />
                 <div className="fd-apb">
                   <div className="fd-aph"><b>{it.employeeName || it.name}</b><Chip tone={tone}>{pending ? 'Waiting' : it.status}</Chip></div>
@@ -354,14 +387,8 @@ export function FieldApprovals({ staff }) {
                     ? <><div className="fd-aps">{it.title} · <em>{it.category}</em></div><div className="fd-apm"><strong>{fmtMoney(it.amount)}</strong><span>{dayTime(it.date)}</span>{it.voucher && <button type="button" className="fd-lnk" onClick={() => viewFieldFile(it.voucher).catch(e => setErr(e.message))}>View voucher</button>}</div></>
                     : <><div className="fd-aps">{it.type} leave · <em>{it.dates}</em> · {it.days} day{it.days === 1 ? '' : 's'}</div><div className="fd-apm"><span>{it.reason}</span></div></>}
                   {!pending && (it.decidedBy || it.remarks) && <div className="fd-apd">{it.decidedBy && <>Decided by {it.decidedBy}. </>}{it.remarks}</div>}
-                  {form(active, it.id)}
-                </div>
-                {pending && !(rej && rej.kind === active && rej.id === it.id) && (
-                  <div className="fd-apa">
-                    <button type="button" className="a-mini ok" disabled={!!busy} onClick={() => decide(active, it.id, 'approved')}>{busy === active + it.id ? '…' : 'Approve'}</button>
-                    <button type="button" className="a-mini" disabled={!!busy} onClick={() => setRej({ kind: active, id: it.id, text: '' })}>Reject</button>
-                  </div>
-                )}
+                                </div>
+                <div className="fd-apa"><button type="button" className={'a-mini' + (pending ? ' ok' : '')} onClick={e => { e.stopPropagation(); setRv({ kind: active, it, text: '' }); }}>{pending ? 'Review' : 'View'}</button></div>
               </div>
             );
           })}
@@ -370,6 +397,41 @@ export function FieldApprovals({ staff }) {
         {other.length > 0 && <small className="fd-sub">Also waiting: {other.map(([k, l]) => `${sum.counts[k]} ${l}`).join(', ')}. Those are decided in the mobile app.</small>}
         {staff && <small className="fd-sub">You cannot decide your own claims or leave.</small>}
       </section>
+      {rv && (() => {
+        const { kind, it } = rv;
+        const exp = kind === 'expenses';
+        const pending = exp ? it.status === 'pending' : it.status === 'open';
+        const tone = pending ? 'amber' : it.status === 'approved' ? 'ok' : it.status === 'rejected' ? 'bad' : 'off';
+        const who = it.employeeName || it.name;
+        const working = busy === kind + it.id;
+        return (
+          <Modal kicker={exp ? 'Expense claim' : 'Leave request'} title={who} narrow cls="ap-modal" onClose={() => !working && setRv(null)}
+            footer={pending
+              ? <><button type="button" className="a-btn ap-rej" disabled={!!busy || !rv.text.trim()} title={rv.text.trim() ? 'Reject with these remarks' : 'Write the remarks first: the person will see why'} onClick={() => decide(kind, it.id, 'rejected', rv.text.trim())}>{working ? '…' : 'Reject'}</button><button type="button" className="a-btn ap-ok" disabled={!!busy} onClick={() => decide(kind, it.id, 'approved', rv.text.trim())}>{working ? '…' : 'Approve'}</button></>
+              : <button type="button" className="a-btn" onClick={() => setRv(null)}>Close</button>}>
+            <div className="att-hd"><Av name={who} /><div><b>{who}</b><small>{exp ? 'Submitted ' + dayTime(it.date) : 'Requested leave'}</small></div><Chip tone={tone}>{pending ? 'Waiting' : it.status}</Chip></div>
+            {exp ? (
+              <div className="ap-facts">
+                <span><small>Amount</small><b>{fmtMoney(it.amount)}</b></span><span><small>Category</small><b>{it.category}</b></span>
+                <span className="wide"><small>What for</small><b>{it.title}</b></span>
+                {it.voucher && <span className="wide"><small>Voucher</small><button type="button" className="fd-lnk" onClick={() => viewFieldFile(it.voucher).catch(e => setRv(r => ({ ...r, err: e.message })))}>View voucher</button></span>}
+              </div>
+            ) : (
+              <div className="ap-facts">
+                <span><small>Type</small><b>{it.type}</b></span><span><small>Days</small><b>{it.days}</b></span>
+                <span className="wide"><small>Dates</small><b>{it.dates}</b></span>
+                <span className="wide"><small>Reason</small><b>{it.reason || '—'}</b></span>
+              </div>
+            )}
+            {pending ? (
+              <label className="ap-rm">Remarks <em>(required to reject, optional to approve)</em>
+                <textarea className="a-input" rows={3} placeholder="Write the remarks. The person will see them in the mobile app." value={rv.text} onChange={e => setRv({ ...rv, text: e.target.value })} autoFocus />
+              </label>
+            ) : (it.decidedBy || it.remarks) && <div className="fd-apd">{it.decidedBy && <>Decided by {it.decidedBy}. </>}{it.remarks}</div>}
+            {rv.err && <p className="bk-bad" style={{ color: '#b3261e', margin: 0, fontSize: 13 }}>{rv.err}</p>}
+          </Modal>
+        );
+      })()}
     </>
   );
 }
