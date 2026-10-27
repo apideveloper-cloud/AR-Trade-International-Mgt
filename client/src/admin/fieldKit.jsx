@@ -82,14 +82,16 @@ const SIZES = [10, 25, 50, 100];
 /** Pager bar in the console's style: "1-10 of 177", a page-size picker and the page buttons. */
 export function PagerBar({ total, page, pages, size, setPage, setSize }) {
   const from = total ? (page - 1) * size + 1 : 0, to = Math.min(total, page * size);
-  const list = [...new Set([1, page - 1, page, page + 1, pages].filter(p => p >= 1 && p <= pages))].sort((a, b) => a - b);
+  // every page number when there are few; otherwise first, last and the neighbours of the current page with a gap marker (so no page is silently missing)
+  const nums = pages <= 7 ? Array.from({ length: pages }, (_, i) => i + 1) : [...new Set([1, page - 1, page, page + 1, pages].filter(p => p >= 1 && p <= pages))].sort((a, b) => a - b);
+  const list = nums.flatMap((p, i) => (i && p - nums[i - 1] > 1 ? ['gap' + p, p] : [p]));
   return (
     <div className="a-pager fd-pager">
       <span>{from}–{to} of {total}</span>
       <select value={size} onChange={e => setSize(+e.target.value)} aria-label="Rows per page">{SIZES.map(s => <option key={s} value={s}>{s} / page</option>)}</select>
       {pages > 1 && <>
         <button type="button" disabled={page <= 1} onClick={() => setPage(page - 1)}>‹ Prev</button>
-        {list.map(p => <button type="button" key={p} className={p === page ? 'on' : ''} onClick={() => setPage(p)}>{p}</button>)}
+        {list.map(p => (typeof p === 'string' ? <span key={p} className="pg-gap" aria-hidden="true">…</span> : <button type="button" key={p} className={p === page ? 'on' : ''} onClick={() => setPage(p)} aria-current={p === page ? 'page' : undefined}>{p}</button>))}
         <button type="button" disabled={page >= pages} onClick={() => setPage(page + 1)}>Next ›</button>
       </>}
     </div>

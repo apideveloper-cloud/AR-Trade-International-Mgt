@@ -374,24 +374,30 @@ export function FieldApprovals({ staff }) {
         {!items && <span className="spin" />}
         {items && !items.length && <div className="a-empty">Nothing here yet.</div>}
         <input className="a-input fd-q" type="search" placeholder="Search by name, title or reason…" value={aq} onChange={e => setAq(e.target.value)} aria-label="Search approvals" />
-        <div className="fd-appr">
-          {pgA.items.map(it => {
+        <div className="fd-tbl" role="table">
+          <div className={'fd-th apt ' + active} role="row">
+            <span>SL</span><span>Employee</span>
+            {active === 'expenses' ? <><span>Title</span><span>Category</span><span>Amount</span><span>Date</span></> : <><span>Type</span><span>Dates</span><span>Days</span><span>Reason</span></>}
+            <span>Status</span><span>Decision</span><span>Action</span>
+          </div>
+          {pgA.items.map((it, i) => {
             const pending = active === 'expenses' ? it.status === 'pending' : it.status === 'open';
             const tone = pending ? 'amber' : it.status === 'approved' ? 'ok' : it.status === 'rejected' ? 'bad' : 'off';
+            const open = e => { e.stopPropagation(); setRv({ kind: active, it, text: '' }); };
             return (
-              <div key={it.id} className={'fd-ap click' + (pending ? ' open' : '')} tabIndex={0} title="Click to view the details" onClick={() => setRv({ kind: active, it, text: '' })} onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget && (e.preventDefault(), setRv({ kind: active, it, text: '' }))}>
-                <Av name={it.employeeName || it.name} />
-                <div className="fd-apb">
-                  <div className="fd-aph"><b>{it.employeeName || it.name}</b><Chip tone={tone}>{pending ? 'Waiting' : it.status}</Chip></div>
-                  {active === 'expenses'
-                    ? <><div className="fd-aps">{it.title} · <em>{it.category}</em></div><div className="fd-apm"><strong>{fmtMoney(it.amount)}</strong><span>{dayTime(it.date)}</span>{it.voucher && <button type="button" className="fd-lnk" onClick={() => viewFieldFile(it.voucher).catch(e => setErr(e.message))}>View voucher</button>}</div></>
-                    : <><div className="fd-aps">{it.type} leave · <em>{it.dates}</em> · {it.days} day{it.days === 1 ? '' : 's'}</div><div className="fd-apm"><span>{it.reason}</span></div></>}
-                  {!pending && (it.decidedBy || it.remarks) && <div className="fd-apd">{it.decidedBy && <>Decided by {it.decidedBy}. </>}{it.remarks}</div>}
-                                </div>
-                <div className="fd-apa"><button type="button" className={'a-mini' + (pending ? ' ok' : '')} onClick={e => { e.stopPropagation(); setRv({ kind: active, it, text: '' }); }}>{pending ? 'Review' : 'View'}</button></div>
+              <div key={it.id} role="row" className={'fd-tr apt click ' + active + (pending ? ' open' : '')} tabIndex={0} title="Click to view the details" onClick={() => setRv({ kind: active, it, text: '' })} onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget && (e.preventDefault(), setRv({ kind: active, it, text: '' }))}>
+                <span className="mono">{pgA.start + i + 1}</span>
+                <span className="fd-who"><Av name={it.employeeName || it.name} /><span><b>{it.employeeName || it.name}</b></span></span>
+                {active === 'expenses'
+                  ? <><span>{it.title}</span><span>{it.category}</span><span><b>{fmtMoney(it.amount)}</b></span><span>{dayTime(it.date)}</span></>
+                  : <><span>{it.type}</span><span>{it.dates}</span><span>{it.days}</span><span className="cut" title={it.reason}>{it.reason}</span></>}
+                <span><Chip tone={tone}>{pending ? 'Waiting' : it.status}</Chip></span>
+                <span className="cut" title={(it.decidedBy ? 'By ' + it.decidedBy + '. ' : '') + (it.remarks || '')}>{pending ? '—' : <>{it.decidedBy && <small>{it.decidedBy}</small>}{it.remarks ? ' ' + it.remarks : ''}</>}</span>
+                <span><button type="button" className={'a-mini' + (pending ? ' ok' : '')} onClick={open}>{pending ? 'Review' : 'View'}</button></span>
               </div>
             );
           })}
+          {items && !pgA.items.length && items.length > 0 && <div className="a-empty">No row matches your search.</div>}
         </div>
         {pgA.bar}
         {other.length > 0 && <small className="fd-sub">Also waiting: {other.map(([k, l]) => `${sum.counts[k]} ${l}`).join(', ')}. Those are decided in the mobile app.</small>}

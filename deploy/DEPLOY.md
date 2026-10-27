@@ -106,3 +106,7 @@ Rebuild locally (`npm run build`), upload a new `artrade-release.tar.gz`, unpack
 - Roles are now permission based; the existing Master Admin stays the only Master Admin. Review **Roles** in the admin console after the first sign-in.
 - Optional: set `SMTP_*` in `server/.env` to email invoices to customers (see `env.production.example`).
 - Pictures are uploaded files only; web addresses are rejected by the server.
+
+### Upgrading from v1.2.x to v1.3.0
+
+New package `tar`: run `cd server && npm ci --omit=dev` before restarting. The `backup_log` and `backup_config` tables are created on start. Backups go to `server/backups/` (database every 6 h and uploads every 6 h, copies older than 7 days deleted; env `BACKUP_EVERY_HOURS`, `BACKUP_KEEP_DAYS`). Make sure the service user (www-data) can write to `server/`. Master Admin can change the folder on the Backups page. "Remember me" now lasts 7 days.

@@ -236,7 +236,7 @@ export function FieldContacts() {
         <div className="fd-bar"><Tabs value={type} onChange={setType} items={[['all', 'All'], ['team', 'Team'], ['customer', 'Customers'], ['vendor', 'Vendors']]} />
           <input className="a-input fd-q" placeholder="Search name, company or phone…" value={q} onChange={e => setQ(e.target.value)} aria-label="Search contacts" /></div>
         {loading && !data ? <span className="spin" /> : (
-          <Grid search={false} cols="44px minmax(220px,2fr) 120px minmax(160px,1fr) 150px minmax(180px,1fr)" head={['SL', 'Name', 'Type', 'Company / title', 'Phone', 'Email']} empty="No contacts match."
+          <Grid search={false} cols="40px minmax(170px,1.3fr) 100px minmax(170px,1.3fr) 120px minmax(250px,1.6fr)" head={['SL', 'Name', 'Type', 'Company / title', 'Phone', 'Email']} empty="No contacts match."
             rows={(data?.contacts || []).map((x, i) => ({ key: x.key, cells: [i + 1, <span className="fd-who" key="n"><Av name={x.name} /><span><b>{x.name}</b>{x.online && <small style={{ color: '#17784a' }}>● online</small>}</span></span>, <Chip key="t" tone={x.type === 'team' ? 'blue' : x.type === 'vendor' ? 'violet' : 'ok'}>{x.type}</Chip>, [x.title, x.org].filter(Boolean).join(' · ') || '—', x.phone ? <a key="p" href={'tel:' + x.phone}>{x.phone}</a> : '—', x.email ? <a key="e" href={'mailto:' + x.email}>{x.email}</a> : '—'] }))} />
         )}
         {off.length > 0 && <small className="fd-sub">Head office: {off.map(o => `${o.name} ${o.phone || ''}`.trim()).join(' · ')}</small>}
