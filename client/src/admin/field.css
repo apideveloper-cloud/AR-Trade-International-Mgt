@@ -397,3 +397,5 @@
 .a-card.mk-card table.dt th { padding: 6px 12px; font-size: 10px; }
 .a-card.mk-card table.dt td { padding: 5px 12px; font-size: 13px; }
 .a-card.mk-card .a-pager { padding-top: 4px; } .a-card.mk-card .a-pager button { min-width: 28px; height: 28px; }
+
+.adm-pagewait { display: grid; place-items: center; padding: 60px 0; }

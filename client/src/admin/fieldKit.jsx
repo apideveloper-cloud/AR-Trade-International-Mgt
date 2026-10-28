@@ -181,3 +181,8 @@ export function PdfPreview({ url, title, filename, onClose }) {
 export const PdfButton = ({ onClick, title = 'Preview as PDF', label = 'PDF' }) => (
   <button type="button" className="a-mini fd-pdfbtn" title={title} aria-label={title} onClick={e => { e.stopPropagation(); onClick(); }}><PdfIcon /> <span>{label}</span></button>
 );
+
+/** A grid of small label / value boxes, as shown in the details popups. items = [[label, value, wide?]]; cols 'ap-facts' (2 per line) or 'att-facts' (4 per line). */
+export function Facts({ items, cols = 'ap-facts' }) {
+  return <div className={cols}>{items.filter(Boolean).map(([label, value, wide]) => <span key={label} className={wide ? 'wide' : ''}><small>{label}</small><b>{value}</b></span>)}</div>;
+}

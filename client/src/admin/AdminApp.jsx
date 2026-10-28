@@ -1,23 +1,26 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import './admin.css';
 import { adm, can, fld, getAdminToken, setAdminToken, setUnauthorizedHandler } from './adminApi.js';
-import { Categories, Products } from './pages/Catalog.jsx';
-import { Careers, Inbox, Marketing, Reviews, Services } from './pages/Engage.jsx';
-import { BlogAdmin } from './pages/BlogAdmin.jsx';
-import { PagesAdmin } from './pages/PagesAdmin.jsx';
-import { ContentAdmin } from './pages/ContentAdmin.jsx';
-import { Customers, Deliveries, Orders } from './pages/Sales.jsx';
 import { Dashboard } from './pages/Dashboard.jsx';
-import { Backups } from './pages/Backups.jsx';
 import { NavIcon } from './navIcons.jsx';
-import { FieldApprovals, FieldAttendance, FieldModules, FieldTeamMap } from './pages/Field.jsx';
-import { FieldContacts, FieldCustomers, FieldDeliveries, FieldOrders, FieldVisits } from './pages/FieldSales.jsx';
-import { AccCollections, AccExpenses, AccOverview, AccPurchase, AccReceivables, AccReports } from './pages/Accounts.jsx';
-import { Settings, Team } from './pages/System.jsx';
-import { Roles } from './pages/Roles.jsx';
 import { AdminFooter, TopBar } from './AdminChrome.jsx';
 import { DialogHost } from './ui.jsx';
+
+// Pages load on demand (one chunk per area), so the first screen of the console stays small; the map library only loads with the Field pages.
+const pick = (load, ...names) => Object.fromEntries(names.map(n => [n, lazy(() => load().then(m => ({ default: m[n] })))]));
+const { Categories, Products } = pick(() => import('./pages/Catalog.jsx'), 'Categories', 'Products');
+const { Careers, Inbox, Marketing, Reviews, Services } = pick(() => import('./pages/Engage.jsx'), 'Careers', 'Inbox', 'Marketing', 'Reviews', 'Services');
+const { BlogAdmin } = pick(() => import('./pages/BlogAdmin.jsx'), 'BlogAdmin');
+const { PagesAdmin } = pick(() => import('./pages/PagesAdmin.jsx'), 'PagesAdmin');
+const { ContentAdmin } = pick(() => import('./pages/ContentAdmin.jsx'), 'ContentAdmin');
+const { Customers, Deliveries, Orders } = pick(() => import('./pages/Sales.jsx'), 'Customers', 'Deliveries', 'Orders');
+const { Backups } = pick(() => import('./pages/Backups.jsx'), 'Backups');
+const { FieldApprovals, FieldAttendance, FieldModules, FieldTeamMap } = pick(() => import('./pages/Field.jsx'), 'FieldApprovals', 'FieldAttendance', 'FieldModules', 'FieldTeamMap');
+const { FieldContacts, FieldCustomers, FieldDeliveries, FieldOrders, FieldVisits } = pick(() => import('./pages/FieldSales.jsx'), 'FieldContacts', 'FieldCustomers', 'FieldDeliveries', 'FieldOrders', 'FieldVisits');
+const { AccCollections, AccExpenses, AccOverview, AccPurchase, AccReceivables, AccReports } = pick(() => import('./pages/Accounts.jsx'), 'AccCollections', 'AccExpenses', 'AccOverview', 'AccPurchase', 'AccReceivables', 'AccReports');
+const { Settings, Team } = pick(() => import('./pages/System.jsx'), 'Settings', 'Team');
+const { Roles } = pick(() => import('./pages/Roles.jsx'), 'Roles');
 
 // [page, label, icon, permission(s) from the role matrix: any one opens the page]
 const NAV = [
@@ -263,6 +266,7 @@ export default function AdminApp() {
         <TopBar staff={staff} groups={groups} page={page} title={TITLES[page] || 'Admin'} go={go} logout={logout} />
         <div className="adm-body" key={page}>
         {!allowed.includes(page) ? <div className="a-msg err">Your role cannot open this page.</div> : (
+          <Suspense fallback={<div className="adm-pagewait"><span className="spin" /></div>}>
           <Routes>
             <Route path="dashboard" element={<Dashboard go={go} staff={staff} />} />
             <Route path="orders" element={<Orders site={site} staff={staff} />} />
@@ -299,6 +303,7 @@ export default function AdminApp() {
             <Route path="settings" element={<Settings />} />
             <Route path="*" element={<Navigate to={'/admin/' + home} replace />} />
           </Routes>
+          </Suspense>
         )}
         </div>
         <AdminFooter staff={staff} />
