@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { adm, can, downloadFile, dateF, dateTimeF, fmtMoney, slNo, STATUS_COLORS, useTable } from '../adminApi.js';
+import { adm, downloadFile, dateF, dateTimeF, fmtMoney, slNo, STATUS_COLORS, useTable } from '../adminApi.js';
 import { Drawer, Empty, Modal, Pager, Pill, Summary, Toolbar, alertBox, confirmBox } from '../ui.jsx';
 import { PdfIcon, PdfPreview } from '../fieldKit.jsx';
 

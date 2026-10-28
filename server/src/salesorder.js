@@ -1,5 +1,4 @@
 // Sales-order document (PDF) for the field app's sales orders. Same look as the invoice; the drawing helpers come from invoice.js.
-import fs from 'node:fs';
 import PDFDocument from 'pdfkit';
 import { FONT_FILES, H, LINE, M, MUTED, NAVY, BLUE, INK, RIGHT, SOFT, drawHeader, measure, money, put, qrPng, when, wrap } from './invoice.js';
 

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { adm, can } from '../adminApi.js';
-import { Pill, confirmBox } from '../ui.jsx';
+import { confirmBox } from '../ui.jsx';
 
 const GROUPS = [['servicing', 'Servicing details', 'Shown on the Servicing page'], ['clients', 'Corporate clients', 'Shown on the About page'], ['company', 'Company profile', 'Profile, mission and vision']];
 const GROUP_LOOK = { servicing: ['🛠', 215], clients: ['🏢', 160], company: ['📘', 45] };

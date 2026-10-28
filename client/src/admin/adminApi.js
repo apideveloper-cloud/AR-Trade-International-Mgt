@@ -119,7 +119,7 @@ export function useTable(path, initial = {}, deps = []) {
       .then(d => { if (id === seq.current) { setData(d); setError(''); } })
       .catch(e => { if (id === seq.current) setError(e.message); })
       .finally(() => { if (id === seq.current) setLoading(false); });
-  }, [path, params]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [path, params]);
 
   useEffect(() => { load(); }, [load, ...deps]); // eslint-disable-line react-hooks/exhaustive-deps
   const set = patch => setParams(p => ({ ...p, page: 1, ...patch }));
@@ -136,8 +136,8 @@ export const STATUS_COLORS = {
   Pending: ['oklch(0.95 0.05 85)', 'oklch(0.45 0.12 70)'], Confirmed: ['oklch(0.95 0.03 240)', 'oklch(0.42 0.15 250)'], Packed: ['oklch(0.95 0.03 300)', 'oklch(0.42 0.14 300)'],
   Shipped: ['oklch(0.95 0.04 200)', 'oklch(0.42 0.12 210)'], Delivered: ['oklch(0.95 0.05 150)', 'oklch(0.4 0.12 150)'], Cancelled: ['oklch(0.96 0.03 25)', 'oklch(0.48 0.17 25)'],
   New: ['oklch(0.95 0.05 85)', 'oklch(0.45 0.12 70)'], Scheduled: ['oklch(0.95 0.03 240)', 'oklch(0.42 0.15 250)'], 'In progress': ['oklch(0.95 0.03 300)', 'oklch(0.42 0.14 300)'], Completed: ['oklch(0.95 0.05 150)', 'oklch(0.4 0.12 150)'],
-  Approved: ['oklch(0.95 0.05 150)', 'oklch(0.4 0.12 150)'], Rejected: ['oklch(0.96 0.03 25)', 'oklch(0.48 0.17 25)'],
+  Approved: ['oklch(0.95 0.05 150)', 'oklch(0.4 0.12 150)'],
   Active: ['oklch(0.95 0.05 150)', 'oklch(0.4 0.12 150)'], Disabled: ['oklch(0.96 0.03 25)', 'oklch(0.48 0.17 25)'],
   Shortlisted: ['oklch(0.95 0.03 240)', 'oklch(0.42 0.15 250)'], Interview: ['oklch(0.95 0.03 300)', 'oklch(0.42 0.14 300)'], Offered: ['oklch(0.95 0.04 200)', 'oklch(0.42 0.12 210)'], Hired: ['oklch(0.95 0.05 150)', 'oklch(0.4 0.12 150)'], Rejected: ['oklch(0.96 0.03 25)', 'oklch(0.48 0.17 25)'],
-  Confirmed_: ['oklch(0.95 0.05 150)', 'oklch(0.4 0.12 150)'], Unsubscribed: ['oklch(0.96 0.03 25)', 'oklch(0.48 0.17 25)']
+  Unsubscribed: ['oklch(0.96 0.03 25)', 'oklch(0.48 0.17 25)']
 };

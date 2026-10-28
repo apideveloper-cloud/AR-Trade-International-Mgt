@@ -5,6 +5,7 @@ import { AdminFooter, TopBar } from '../admin/AdminChrome.jsx';
 import { adm, can, getAdminToken, mktApi as api, setAdminToken, setUnauthorizedHandler } from '../admin/adminApi.js';
 import { fmt, fmtDate, fmtTime } from '../api.js';
 
+const card = { background: '#fff', borderRadius: 18, boxShadow: '0 1px 2px rgba(11,22,49,.05),0 10px 24px -18px rgba(11,22,49,.3)' };
 const inp = { border: '1px solid #d3d8e3', borderRadius: 12, padding: '11px 13px', fontSize: 14, background: '#fff', width: '100%', fontFamily: 'inherit' };
 const lbl = { display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, fontWeight: 700, color: '#56607a' };
 const pct = (a, b) => (b && a != null ? Math.round(a / b * 1000) / 10 : null);

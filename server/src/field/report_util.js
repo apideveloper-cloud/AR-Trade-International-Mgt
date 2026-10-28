@@ -24,7 +24,7 @@ const fmtDay = date => { const p = bdParts(date); return `${p.d} ${MON[p.m].slic
  */
 export function period(kind, now = new Date()) {
   const p = bdParts(now);
-  let start, end, prevStart, labels, bucketMs, label;
+  let start, end, prevStart, labels, label;
   if (kind === 'day') {
     start = bdMidnight(p.y, p.m, p.d); end = new Date(start.getTime() + DAY); prevStart = new Date(start.getTime() - DAY);
     labels = ['8a', '10a', '12p', '2p', '4p', '6p', '8p'];

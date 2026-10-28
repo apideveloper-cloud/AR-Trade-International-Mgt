@@ -196,7 +196,7 @@ export function PromoPopup() {
       if (popupAllowed('promo', mode)) { popupOpen('promo'); setOpen(true); }
     }, Math.max(0, Number(site.promoDelay ?? 1)) * 1000);
     return () => clearTimeout(t);
-  }, [pathname, site.popupMode, site.promoDelay]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [pathname, site.popupMode, site.promoDelay]);
   useEffect(() => { if (open) return () => popupClose('promo'); return undefined; }, [open]);
   if (!open) return null;
 

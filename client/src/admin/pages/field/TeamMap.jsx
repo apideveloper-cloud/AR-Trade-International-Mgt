@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { fld } from '../../adminApi.js';
-import { Modal, Summary, Switch } from '../../ui.jsx';
+import { Modal, Summary } from '../../ui.jsx';
 import { Facts, Notice } from '../../fieldKit.jsx';
 import { hhmm, dayTime, ago, initials, Av, Ic, ICON_CALL, ICON_MSG, ICON_INFO, ICON_PIN, Chip, osm, STATE, DOT } from './shared.jsx';
 import '../../field.css';
@@ -134,7 +134,7 @@ export function FieldTeamMap() {
     return () => { stale = true; };
   }, [sel, d?.updatedAt]);
 
-  const members = d?.members || [];
+  const members = useMemo(() => d?.members || [], [d]);
   const count = st => members.filter(m => m.status === st).length;
   const list = useMemo(() => members
     .filter(m => (flt === 'all' || m.status === flt) && (!q.trim() || (m.name + ' ' + m.roleLabel).toLowerCase().includes(q.trim().toLowerCase())))
