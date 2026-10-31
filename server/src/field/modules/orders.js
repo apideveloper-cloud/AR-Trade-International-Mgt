@@ -4,6 +4,7 @@
 //   GET  /api/field/orders?mine=1&limit=       recent orders (+ today's summary); RM sees own, manager/accountant/admin all
 //   GET  /api/field/orders/:id                 order detail with lines
 //   (GET /orders also takes ?approval=Pending|Approved|Rejected; order JSON carries approvalNote)
+//   (GET /orders with ?page=&size=[&q=&from=&to=&status=] returns the same JSON plus { rows (= items), total, page, size, amount, pending }; q matches order no, customer, taken-by; from/to = order date)
 //   PUT  /api/field/orders/:id/approve         { status: 'approved' | 'rejected', remarks }  (manager / admin)
 // Placing an order: prices come from the products table (never from the app), 5% order discount, synced to the ledger flag,
 // a delivery (DN-nnnn, status Ready) is created and managers are notified. Stock is NOT touched here: it is reduced when the
@@ -13,6 +14,7 @@ import { pool, fail, wrap, guard, guardRole, nextSeq, notify, staffIdsByRole, UT
 import { buildSalesOrderPdf } from '../../salesorder.js';
 import { bdDayStartUtc, creditOf, customerById, customerOut, mailCustomer, seesAll } from '../sales_util.js';
 import { skuOf } from './products.js';
+import { pageOf, addRange, addSearch, whereOf, wantsPage } from '../../listing.js';
 
 const router = Router();
 const DISCOUNT_PCT = 5;
@@ -109,11 +111,25 @@ router.get('/', guardRole('rm', 'manager', 'accountant'), wrap(async (req, res) 
   if (mine) { conds.push('o.staff_id = ?'); args.push(req.staff.id); }
   if (ap) { conds.push('o.approval_status = ?'); args.push(ap); }
   const where = conds.length ? 'WHERE ' + conds.join(' AND ') : '';
-  const [rows] = await pool.query(`${ORDER_SELECT} ${where} ORDER BY o.created_at DESC, o.id DESC LIMIT ?`, [...args, limit]);
   const [[t]] = await pool.query(`SELECT COUNT(*) n, COALESCE(SUM(total), 0) total FROM field_sales_orders o WHERE o.created_at >= ? ${mine ? 'AND o.staff_id = ?' : ''}`, mine ? [bdDayStartUtc(), req.staff.id] : [bdDayStartUtc()]);
+  const summary = { ordersToday: t.n, salesToday: Number(t.total) };
+  if (wantsPage(req)) { // paged: filtered and cut in the database (same visibility: own orders unless the role sees all)
+    const { size, page, offset } = pageOf(req);
+    const st = ['Placed', 'Delivered', 'Cancelled'].find(x => x.toLowerCase() === String(req.query.status || '').toLowerCase());
+    if (st) { conds.push('o.status = ?'); args.push(st); }
+    addRange(conds, args, 'o.created_at', req);
+    addSearch(conds, args, ['o.id', 'c.name', 's.name'], req.query.q);
+    const w = whereOf(conds), from = 'FROM field_sales_orders o JOIN field_customers c ON c.id = o.customer_id JOIN staff s ON s.id = o.staff_id';
+    const [[m]] = await pool.query(`SELECT COUNT(*) n, COALESCE(SUM(o.total), 0) amount, COALESCE(SUM(o.approval_status = 'Pending'), 0) pending ${from} ${w}`, args);
+    const [list] = await pool.query(`${ORDER_SELECT} ${w} ORDER BY o.created_at DESC, o.id DESC LIMIT ? OFFSET ?`, [...args, size, offset]);
+    const items = [];
+    for (const o of list) items.push(await orderOut(o));
+    return res.json({ summary, items, rows: items, total: Number(m.n), page, size, amount: Number(m.amount), pending: Number(m.pending) });
+  }
+  const [rows] = await pool.query(`${ORDER_SELECT} ${where} ORDER BY o.created_at DESC, o.id DESC LIMIT ?`, [...args, limit]);
   const items = [];
   for (const o of rows) items.push(await orderOut(o));
-  res.json({ summary: { ordersToday: t.n, salesToday: Number(t.total) }, items });
+  res.json({ summary, items });
 }));
 
 router.get('/:id', guard(), wrap(async (req, res) => {

@@ -188,7 +188,7 @@ export function BlogPost() {
   useEffect(() => { api.get('/blog').then(r => setAll(r.posts)).catch(() => {}); }, []);
   useEffect(() => {
     setD(null); setMissing(false); window.scrollTo(0, 0);
-    api.get('/blog/' + slug).then(r => { setD(r); document.title = r.post.title + ' | AR Trade International'; }).catch(() => setMissing(true));
+    api.get('/blog/' + slug).then(r => { setD(r); document.title = r.post.metaTitle || r.post.title + ' | AR Trade International'; }).catch(() => setMissing(true));
     return () => { document.title = 'AR Trade International'; };
   }, [slug]);
   const body = useMemo(() => (d ? withToc(d.post.body) : { html: '', toc: [] }), [d]);

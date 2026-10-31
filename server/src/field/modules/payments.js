@@ -7,6 +7,7 @@
 import { Router } from 'express';
 import { pool, fail, wrap, guardRole, nextSeq, notify, staffIdsByRole, UTC, clientRefOf } from '../common.js';
 import { bdDayStartUtc, customerById, seesAll } from '../sales_util.js';
+import { addRange, addSearch, pageOf, whereOf, wantsPage } from '../../listing.js';
 
 const router = Router();
 const guardSales = guardRole('rm', 'manager', 'accountant');
@@ -18,19 +19,40 @@ const invoiceOut = i => ({
 });
 const INV_SELECT = `SELECT i.*, ${UTC('i.created_at')} created_utc, DATEDIFF(UTC_DATE(), DATE(i.created_at)) age FROM field_invoices i`;
 
+// Optional (web console): ?from= &to= (invoice date), ?due=1 (only customers who still owe), ?page= &size= (one page of customers; the answer then
+// also carries rows (= customers), total (matching customers) and summary { invoices, due, over30, fresh } over ALL matching customers).
+// Without those parameters the answer is exactly what the mobile app has always received.
 router.get('/customers', guardSales, wrap(async (req, res) => {
+  const paged = wantsPage(req);
   const q = String(req.query.q || '').trim().slice(0, 60);
+  const inv = [], iargs = [];
+  addRange(inv, iargs, 'i.created_at', req);
+  const exist = ['i.customer_id = c.id', ...inv, ...(req.query.due === '1' ? ['i.total > i.paid'] : [])];
+  const cond = [`EXISTS (SELECT 1 FROM field_invoices i WHERE ${exist.join(' AND ')})`], args = [...iargs];
+  if (paged) addSearch(cond, args, ['c.name', 'c.area', 'c.phone', 'c.contact_person'], req.query.q);
+  else if (q) { cond.push('(c.name LIKE ? OR c.area LIKE ?)'); args.push(`%${q}%`, `%${q}%`); }
+  const where = whereOf(cond);
+  const pg = paged ? pageOf(req, { def: 25, max: 200 }) : null;
   const [custs] = await pool.query(
-    `SELECT c.id, c.name, c.area, c.phone, c.contact_person FROM field_customers c
-     WHERE EXISTS (SELECT 1 FROM field_invoices i WHERE i.customer_id = c.id) ${q ? 'AND (c.name LIKE ? OR c.area LIKE ?)' : ''} ORDER BY c.name`,
-    q ? [`%${q}%`, `%${q}%`] : []);
+    `SELECT c.id, c.name, c.area, c.phone, c.contact_person FROM field_customers c ${where} ORDER BY c.name${paged ? ', c.id LIMIT ? OFFSET ?' : ''}`,
+    paged ? [...args, pg.size, pg.offset] : args);
   const ids = custs.map(c => c.id);
-  const [invs] = ids.length ? await pool.query(`${INV_SELECT} WHERE i.customer_id IN (?) ORDER BY i.created_at, i.id`, [ids]) : [[]];
+  const [invs] = ids.length ? await pool.query(`${INV_SELECT} WHERE i.customer_id IN (?)${inv.length ? ' AND ' + inv.join(' AND ') : ''} ORDER BY i.created_at, i.id`, [ids, ...iargs]) : [[]];
   const customers = custs.map(c => {
     const invoices = invs.filter(i => i.customer_id === c.id).map(invoiceOut);
     return { id: c.id, name: c.name, area: c.area || '', phone: c.phone || '', contact: c.contact_person || '', due: invoices.reduce((t, i) => t + i.due, 0), invoices };
   });
-  res.json({ withDue: customers.filter(c => c.due > 0).length, customers });
+  if (!paged) return res.json({ withDue: customers.filter(c => c.due > 0).length, customers });
+  const [[n]] = await pool.query(`SELECT COUNT(*) n FROM field_customers c ${where}`, args);
+  const age = 'DATEDIFF(UTC_DATE(), DATE(i.created_at))', due = 'GREATEST(i.total - i.paid, 0)';
+  const [[s]] = await pool.query(
+    `SELECT COUNT(*) invoices, COALESCE(SUM(${due}), 0) due, COALESCE(SUM(CASE WHEN ${age} >= 31 THEN ${due} END), 0) over30,
+            COALESCE(SUM(CASE WHEN ${age} BETWEEN 0 AND 15 THEN ${due} END), 0) fresh, COUNT(DISTINCT CASE WHEN i.total > i.paid THEN i.customer_id END) with_due
+     FROM field_invoices i WHERE i.customer_id IN (SELECT c.id FROM field_customers c ${where})${inv.length ? ' AND ' + inv.join(' AND ') : ''}`, [...args, ...iargs]);
+  res.json({
+    withDue: Number(s.with_due), customers, rows: customers, total: n.n,
+    summary: { invoices: Number(s.invoices), due: Number(s.due), over30: Number(s.over30), fresh: Number(s.fresh) }
+  });
 }));
 
 const receiptOut = async (p, customer) => {

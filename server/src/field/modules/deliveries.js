@@ -1,5 +1,6 @@
 // Deliveries of sales orders (list -> check items -> proof -> confirm).
 //   GET  /api/field/deliveries?status=pending|delivered|all&q=   -> { counts, pendingAmount, items }
+//        with ?page=&size=[&from=&to=] (created date) the same JSON plus { rows (= items of the page), total, page, size }; counts/pendingAmount/percent still cover all of the caller's deliveries
 //   GET  /api/field/deliveries/:id                               -> delivery with order lines, customer, proof info
 //   PUT  /api/field/deliveries/:id/start                         Ready -> OnTheWay  { eta? }
 //   POST /api/field/deliveries/:id/otp                           send the customer a 4-digit code (no SMS gateway yet: devCode is returned outside production)
@@ -15,6 +16,7 @@ import { pool, fail, wrap, guardRole, nextSeq, notify, staffIdsByRole, UTC, digi
 import { secret } from '../../util.js';
 import { PROOFS, mailCustomer, removeFile, saveImage, seesAll } from '../sales_util.js';
 import { buildDeliveryNotePdf } from '../../salesorder.js';
+import { pageOf, addRange, addSearch, wantsPage } from '../../listing.js';
 
 const router = Router();
 const guardSales = guardRole('rm', 'manager', 'accountant');
@@ -46,6 +48,24 @@ async function find(req) {
 
 router.get('/', guardSales, wrap(async (req, res) => {
   const [clause, args] = mine(req.staff);
+  if (wantsPage(req)) { // paged: filtered and cut in the database
+    const { size, page, offset } = pageOf(req);
+    const tab = req.query.status === 'delivered' ? 'delivered' : req.query.status === 'all' ? 'all' : 'pending';
+    const cond = [], ca = [];
+    if (tab === 'pending') cond.push("d.status <> 'Delivered'"); else if (tab === 'delivered') cond.push("d.status = 'Delivered'");
+    addRange(cond, ca, 'd.created_at', req);
+    addSearch(cond, ca, ['d.id', 'd.order_id', 'c.name', 'd.address'], req.query.q);
+    const extra = cond.length ? 'AND ' + cond.join(' AND ') : '';
+    const base = "FROM field_deliveries d JOIN field_sales_orders o ON o.id = d.order_id JOIN field_customers c ON c.id = o.customer_id WHERE o.status <> 'Cancelled'";
+    const [[t]] = await pool.query(`SELECT COUNT(*) n, COALESCE(SUM(d.status <> 'Delivered'), 0) pend, COALESCE(SUM(IF(d.status <> 'Delivered', o.total, 0)), 0) amt ${base} ${clause}`, args);
+    const [[m]] = await pool.query(`SELECT COUNT(*) n ${base} ${clause} ${extra}`, [...args, ...ca]);
+    const [list] = await pool.query(`${SELECT} ${clause} ${extra} ORDER BY (d.status = 'Delivered'), d.created_at DESC, d.id DESC LIMIT ? OFFSET ?`, [...args, ...ca, size, offset]);
+    const n = Number(t.n), pend = Number(t.pend), items = list.map(out);
+    return res.json({
+      counts: { pending: pend, delivered: n - pend, all: n }, pendingAmount: Number(t.amt), percent: n ? Math.round((n - pend) / n * 100) : 0,
+      items, rows: items, total: Number(m.n), page, size
+    });
+  }
   const [rows] = await pool.query(`${SELECT} ${clause} ORDER BY (d.status = 'Delivered'), d.created_at DESC, d.id DESC LIMIT 200`, args);
   const all = rows.map(out);
   const pending = all.filter(d => d.status !== 'Delivered');

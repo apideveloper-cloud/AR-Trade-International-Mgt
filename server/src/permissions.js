@@ -5,6 +5,11 @@ import { pool } from './db.js';
 
 export const MASTER = 'Master Admin';
 export const MASTER_ONLY = 'roles.manage'; // never granted to anyone but the Master Admin
+// Fixed permissions: held by Master Admin and Admin only. They are not in the editable role matrix, and any grant of them to another role (even one saved in the database earlier) is ignored.
+export const AUDIT_VIEW = 'audit.view'; // the audit log
+export const PRODUCTS_WRITE = 'products.manage'; // create, edit, hide and delete products; change price and stock levels in the product list
+export const PURCHASE_APPROVE = 'inventory.approve'; // approve or reject a purchase before it goes into stock
+export const ADMIN_ONLY = [AUDIT_VIEW, PRODUCTS_WRITE, PURCHASE_APPROVE];
 
 /** [key, group, label] */
 export const PERMS = [
@@ -14,8 +19,10 @@ export const PERMS = [
   ['orders.delete', 'Sales', 'Delete cancelled orders'],
   ['customers.view', 'Sales', 'View customers'],
   ['customers.manage', 'Sales', 'Reset customer passwords'],
+  ['orders.create', 'Sales', 'Create an order for a customer (phone, walk-in or field sale)'],
+  ['quotes.view', 'Sales', 'See quotations and open their PDF'],
+  ['quotes.manage', 'Sales', 'Write, edit, send and delete quotations'],
   ['products.view', 'Catalog', 'View products and categories'],
-  ['products.manage', 'Catalog', 'Create, edit, hide products and change stock / price'],
   ['categories.manage', 'Catalog', 'Show or hide categories'],
   ['hub.view', 'Delivery', 'Delivery Hub board, returns and branches'],
   ['hub.dispatch', 'Delivery', 'Assign riders / couriers, cancel orders, decide returns'],
@@ -32,6 +39,8 @@ export const PERMS = [
   ['marketing.setup', 'Engage', 'Email provider keys and sender address'],
   ['careers.manage', 'Engage', 'Jobs, applications and applicants\' CVs'],
   ['field.approve', 'Field & mobile app', 'Approve expense claims and see live staff tracking'],
+  ['inventory.view', 'Purchasing & stock', 'See vendors, purchases, stock, damage, returns and vendor payments'],
+  ['inventory.manage', 'Purchasing & stock', 'Receive stock, record damage and returns, add vendors, pay vendors'],
   ['team.manage', 'System', 'Approve staff accounts and set their roles'],
   ['settings.manage', 'System', 'Store settings (fees, coupons, payments, contact)'],
   [MASTER_ONLY, 'System', 'Edit this role matrix']
@@ -44,9 +53,10 @@ export const ROLE_DEFS = [
   { name: 'Admin', icon: '◆', desc: 'Limited access: exactly what the Master Admin grants here.' },
   { name: 'Manager', icon: '☰', desc: 'Runs daily operations: orders, deliveries, approvals.' },
   { name: 'Accountant', icon: '৳', desc: 'Money side: order values, rider cash, expense claims.' },
-  { name: 'Purchase Officer', icon: '▣', desc: 'Buying and stock: products, prices and stock levels.' },
+  { name: 'Purchase Officer', icon: '▣', desc: 'Buying and stock: vendors, purchases, stock, damage and payments. Sees products but cannot change them.' },
   { name: 'RM', icon: '☺', desc: 'Relationship Manager: customers, enquiries, reviews and campaigns.' },
   { name: 'Field Officer', icon: '⚑', desc: 'Works in the mobile app (attendance, tracking, expenses). No admin console pages by default.' },
+  { name: 'Call center agent', icon: '☎', desc: 'Takes orders by phone: creates orders for customers, follows them up, looks up customers and products.' },
   { name: 'Delivery rider', icon: '🚚', desc: 'Existing role: sees pick-up orders and runs own deliveries.', legacy: true },
   { name: 'Marketing manager', icon: '✉', desc: 'Existing role: campaigns, subscribers, inbox, reviews.', legacy: true },
   { name: 'Content writer', icon: '✎', desc: 'Existing role: blog and site pages.', legacy: true }
@@ -61,20 +71,22 @@ const ALL_BUT_MASTER = PERM_KEYS.filter(k => k !== MASTER_ONLY);
 export const DEFAULTS = {
   [MASTER]: PERM_KEYS,
   Admin: ALL_BUT_MASTER,
-  Manager: ['dashboard.view', 'orders.view', 'orders.status', 'customers.view', 'products.view', 'hub.view', 'hub.dispatch', 'hub.cash', 'services.manage', 'reviews.moderate', 'messages.manage', 'field.approve'],
-  Accountant: ['dashboard.view', 'orders.view', 'customers.view', 'products.view', 'hub.cash', 'field.approve'],
-  'Purchase Officer': ['dashboard.view', 'orders.view', 'products.view', 'products.manage', 'media.upload'],
-  RM: ['dashboard.view', 'orders.view', 'customers.view', 'services.manage', 'reviews.moderate', 'messages.manage', 'marketing.manage'],
+  Manager: ['orders.create', 'quotes.view', 'quotes.manage', 'inventory.view', 'inventory.manage', 'dashboard.view', 'orders.view', 'orders.status', 'customers.view', 'products.view', 'hub.view', 'hub.dispatch', 'hub.cash', 'services.manage', 'reviews.moderate', 'messages.manage', 'field.approve'],
+  Accountant: ['quotes.view', 'inventory.view', 'inventory.manage', 'dashboard.view', 'orders.view', 'customers.view', 'products.view', 'hub.cash', 'field.approve'],
+  'Call center agent': ['orders.view', 'orders.status', 'orders.create', 'customers.view', 'products.view', 'quotes.view', 'quotes.manage', 'media.upload'],
+  'Purchase Officer': ['inventory.view', 'inventory.manage', 'dashboard.view', 'orders.view', 'products.view', 'media.upload'],
+  RM: ['orders.create', 'quotes.view', 'quotes.manage', 'dashboard.view', 'orders.view', 'customers.view', 'services.manage', 'reviews.moderate', 'messages.manage', 'marketing.manage'],
   'Field Officer': [],
   'Delivery rider': ['orders.view', 'orders.status', 'hub.deliver'],
   'Marketing manager': ['reviews.moderate', 'messages.manage', 'marketing.manage'],
   'Content writer': ['blog.manage', 'pages.manage', 'media.upload']
 };
 
+const ADDED = ['inventory.view', 'inventory.manage', 'quotes.view', 'quotes.manage', 'orders.create'];
 let cache = new Map(); // role -> Set(perm)
 
 export async function loadPermissions() {
-  const [rows] = await pool.query("SELECT role, perm FROM role_perms WHERE perm <> '*seeded'");
+  const [rows] = await pool.query("SELECT role, perm FROM role_perms WHERE perm NOT LIKE '*%'");
   const m = new Map();
   rows.forEach(r => { if (!m.has(r.role)) m.set(r.role, new Set()); m.get(r.role).add(r.perm); });
   cache = m;
@@ -96,10 +108,26 @@ export async function initPermissions() {
     const rows = [[role, '*seeded'], ...DEFAULTS[role].map(p => [role, p])];
     await pool.query('INSERT IGNORE INTO role_perms (role, perm) VALUES ?', [rows]);
   }
+  // permissions added after a role was first seeded: grant each role its default once (marker row), so later edits in the matrix stick
+  for (const key of ADDED) {
+    const [done] = await pool.query('SELECT role FROM role_perms WHERE perm = ?', ['*added:' + key]);
+    const marked = new Set(done.map(r => r.role));
+    for (const role of ROLE_NAMES) {
+      if (marked.has(role) || !have.has(role)) continue;
+      const rows = [[role, '*added:' + key]];
+      if (DEFAULTS[role].includes(key)) rows.push([role, key]);
+      await pool.query('INSERT IGNORE INTO role_perms (role, perm) VALUES ?', [rows]);
+    }
+  }
   await loadPermissions();
 }
 
-export const permsOf = role => (role === MASTER ? new Set(PERM_KEYS) : new Set([...(cache.get(role) || [])].filter(p => p !== MASTER_ONLY)));
+export const permsOf = role => {
+  const admin = role === MASTER || role === 'Admin';
+  const set = role === MASTER ? new Set(PERM_KEYS) : new Set([...(cache.get(role) || [])].filter(p => p !== MASTER_ONLY && (admin || !ADMIN_ONLY.includes(p))));
+  if (admin) ADMIN_ONLY.forEach(p => set.add(p));
+  return set;
+};
 /** Does this staff member hold the permission (or any of a list of permissions)? */
 export const can = (staff, perm) => {
   const set = permsOf(staff?.role);
@@ -120,7 +148,7 @@ export async function saveRole(role, perms, staff) {
   const next = new Set((Array.isArray(perms) ? perms : []).filter(p => PERM_KEYS.includes(p) && p !== MASTER_ONLY));
   const before = permsOf(role);
   await pool.query('DELETE FROM role_perms WHERE role = ?', [role]);
-  await pool.query('INSERT INTO role_perms (role, perm) VALUES ?', [[[role, '*seeded'], ...[...next].map(p => [role, p])]]);
+  await pool.query('INSERT INTO role_perms (role, perm) VALUES ?', [[[role, '*seeded'], ...ADDED.map(k => [role, '*added:' + k]), ...[...next].map(p => [role, p])]]);
   await loadPermissions();
   const added = [...next].filter(p => !before.has(p)), removed = [...before].filter(p => !next.has(p));
   if (added.length || removed.length) {

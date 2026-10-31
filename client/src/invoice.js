@@ -19,7 +19,7 @@ export function printInvoice(o, site) {
 <div class=sum><div><div class=qr><img src="${qr}"><div><b>Scan to verify</b><div class=mu>Invoice ${inv}<br>Order ${o.id}<br>artradeinternational.com</div></div></div><span class=paid>${paid ? '✓ PAYMENT RECEIVED' : 'PAYMENT DUE ON DELIVERY'}</span></div>
 <div class=tt><div class=row><span>Subtotal</span><span>${fmt(o.subtotal)}</span></div><div class=row><span>Discount</span><span>− ${fmt(o.discount)}</span></div><div class=row><span>Delivery</span><span>${o.delivery ? fmt(o.delivery) : 'Free'}</span></div><div class=row><span>Includes VAT</span><span>${fmt(o.vat)}</span></div><div class=grand><span>Total</span><b>${fmt(o.total)}</b></div></div></div>
 <div class=sig><div>Customer signature</div><div style="text-align:right">For AR Trade International</div></div></div>
-<div class=ft><span><b>Thank you for shopping with us.</b> Warranty as per manufacturer terms.</span><span>Computer-generated invoice · no signature required</span></div></div><script>onload=()=>setTimeout(()=>print(),300)<\/script></body></html>`;
+<div class=ft><span><b>Thank you for shopping with us.</b> Warranty as per manufacturer terms.</span><span>Computer-generated invoice · no signature required</span></div></div><script>onload=()=>setTimeout(()=>print(),300)</script></body></html>`;
   const w = window.open('', '_blank');
   if (!w) return false;
   w.document.write(html); w.document.close();

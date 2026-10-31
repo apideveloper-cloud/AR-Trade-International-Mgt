@@ -62,8 +62,8 @@ export function mountSeo(app, dist) {
     const base = baseUrl(req);
     const [cats] = await pool.query('SELECT id FROM categories WHERE hidden = 0');
     const [prods] = await pool.query('SELECT id, img FROM products WHERE active = 1 ORDER BY id DESC');
-    const [posts] = await pool.query('SELECT slug, DATE_FORMAT(COALESCE(updated_at, published), "%Y-%m-%d") d FROM blog_posts WHERE status = "Published"');
-    const [pages] = await pool.query('SELECT slug FROM site_pages WHERE status = "Published" AND grp = "servicing"');
+    const [posts] = await pool.query('SELECT slug, DATE_FORMAT(COALESCE(updated_at, published), "%Y-%m-%d") d FROM blog_posts WHERE status = "Published" AND noindex = 0');
+    const [pages] = await pool.query('SELECT slug FROM site_pages WHERE status = "Published" AND grp = "servicing" AND noindex = 0');
     const u = (loc, pri, extra = '') => `<url><loc>${esc(base + loc)}</loc><priority>${pri}</priority>${extra}</url>`;
     const out = [
       ...Object.keys(STATIC).map(p => u(p, p === '/' ? '1.0' : '0.8')),
@@ -112,20 +112,30 @@ export function mountSeo(app, dist) {
         m = { path: p, type: 'product', title: x.meta_title || `${x.name} | ${NAME}`, desc: x.meta_desc || clip(plain(x.description), 155) || x.name, keywords: x.meta_keywords, image: imgs[0], ld: [prod, crumbs] };
       }
     } else if ((r = p.match(/^\/blog\/([^/]+)$/))) {
-      const [[x]] = await pool.query('SELECT slug, title, excerpt, cover, author, body, DATE_FORMAT(published, "%Y-%m-%d") d FROM blog_posts WHERE slug = ? AND status = "Published"', [decodeURIComponent(r[1])]);
+      const [[x]] = await pool.query('SELECT slug, title, excerpt, cover, author, body, meta_title, meta_desc, meta_keywords, noindex, DATE_FORMAT(published, "%Y-%m-%d") d FROM blog_posts WHERE slug = ? AND status = "Published"', [decodeURIComponent(r[1])]);
       if (x) {
-        const desc = x.excerpt || clip(plain(x.body), 155);
-        m = { path: p, type: 'article', title: `${x.title} | ${NAME}`, desc, image: x.cover, ld: [{ '@context': 'https://schema.org', '@type': 'BlogPosting', headline: x.title, description: desc, image: x.cover ? abs(base, x.cover) : undefined, datePublished: x.d, author: { '@type': 'Person', name: x.author }, publisher: { '@type': 'Organization', name: NAME, logo: { '@type': 'ImageObject', url: base + '/api/uploads/site/artrade-logo.png' } }, mainEntityOfPage: base + p }] };
+        const desc = x.meta_desc || x.excerpt || clip(plain(x.body), 155);
+        m = { path: p, type: 'article', title: x.meta_title || `${x.title} | ${NAME}`, desc, keywords: x.meta_keywords, noindex: !!x.noindex, image: x.cover, ld: [{ '@context': 'https://schema.org', '@type': 'BlogPosting', headline: x.title, description: desc, image: x.cover ? abs(base, x.cover) : undefined, datePublished: x.d, author: { '@type': 'Person', name: x.author }, publisher: { '@type': 'Organization', name: NAME, logo: { '@type': 'ImageObject', url: base + '/api/uploads/site/artrade-logo.png' } }, mainEntityOfPage: base + p }] };
       }
     } else if ((r = p.match(/^\/services\/([^/]+)$/))) {
-      const [[x]] = await pool.query('SELECT title, excerpt, cover, body FROM site_pages WHERE slug = ? AND status = "Published"', [decodeURIComponent(r[1])]);
-      if (x) m = { path: p, title: `${x.title} | ${NAME}`, desc: x.excerpt || clip(plain(x.body), 155), image: x.cover };
+      const [[x]] = await pool.query('SELECT title, excerpt, cover, body, meta_title, meta_desc, meta_keywords, noindex FROM site_pages WHERE slug = ? AND status = "Published"', [decodeURIComponent(r[1])]);
+      if (x) m = { path: p, title: x.meta_title || `${x.title} | ${NAME}`, desc: x.meta_desc || x.excerpt || clip(plain(x.body), 155), keywords: x.meta_keywords, noindex: !!x.noindex, image: x.cover };
     } else if ((r = p.match(/^\/shop\/([^/]+)$/)) && r[1] !== 'all') {
       const [[x]] = await pool.query('SELECT title, description FROM categories WHERE id = ?', [r[1]]);
       if (x) m = { path: p, title: `${x.title} Price in Bangladesh | ${NAME}`, desc: `Buy genuine ${x.title.toLowerCase()} online in Bangladesh. ${x.description || ''} Best prices and fast delivery in Dhaka.`.replace(/\s+/g, ' ').trim() };
     } else if (STATIC[p] || p === '/shop/all') {
-      const [t, d] = STATIC[p === '/shop/all' ? '/shop' : p];
-      m = { path: p === '/shop/all' ? '/shop' : p, title: t, desc: d, ld: p === '/' ? [org, { '@context': 'https://schema.org', '@type': 'WebSite', name: NAME, url: base, potentialAction: { '@type': 'SearchAction', target: `${base}/shop/all?q={search_term_string}`, 'query-input': 'required name=search_term_string' } }] : undefined };
+      let [t, d] = STATIC[p === '/shop/all' ? '/shop' : p];
+      let kw = '', hide = false;
+      if (p === '/about') {
+        // the About page is built from three admin pages; the Company profile leads, the keywords of all three are merged
+        const [ap] = await pool.query("SELECT slug, meta_title, meta_desc, meta_keywords, noindex FROM site_pages WHERE slug IN ('company-profile', 'mission-vision', 'our-clients') AND status = 'Published'");
+        const lead = ap.find(a => a.slug === 'company-profile');
+        if (lead?.meta_title) t = lead.meta_title;
+        if (lead?.meta_desc) d = lead.meta_desc;
+        hide = !!lead?.noindex;
+        kw = [...new Set(ap.flatMap(a => String(a.meta_keywords || '').split(',')).map(k => k.trim()).filter(Boolean))].join(', ');
+      }
+      m = { path: p === '/shop/all' ? '/shop' : p, title: t, desc: d, keywords: kw || undefined, noindex: hide, ld: p === '/' ? [org, { '@context': 'https://schema.org', '@type': 'WebSite', name: NAME, url: base, potentialAction: { '@type': 'SearchAction', target: `${base}/shop/all?q={search_term_string}`, 'query-input': 'required name=search_term_string' } }] : undefined };
     }
     if (!m) m = { path: p, title: NAME, desc: STATIC['/'][1], noindex: PRIVATE.test(p) || p !== '/' };
     else if (PRIVATE.test(p)) m.noindex = true;

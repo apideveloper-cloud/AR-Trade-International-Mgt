@@ -7,7 +7,7 @@
 .adm-brand img { width: 40px; height: 40px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 4px rgba(255,255,255,.06), 0 0 24px oklch(0.6 0.14 240 / .55); }
 .adm-brand b { font-family: var(--disp); font-weight: 800; font-size: 18px; color: #fff; letter-spacing: -.02em; display: block; line-height: 1.1; }
 .adm-brand small { font-family: var(--mono); font-size: 9.5px; letter-spacing: .16em; text-transform: uppercase; color: oklch(0.78 0.1 230); }
-.adm-nav { display: flex; flex-direction: column; gap: 10px; overflow-y: auto; flex: 1; min-height: 0; margin: 0 -14px; padding: 0 14px; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.15) transparent; }
+.adm-nav { display: flex; flex-direction: column; gap: 10px; overflow-y: auto; overflow-x: hidden; flex: 1; min-height: 0; margin: 0 -14px; padding: 0 14px; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.15) transparent; }
 .adm-nav h6 { font-family: var(--mono); font-size: 9.5px; letter-spacing: .16em; text-transform: uppercase; color: #5f6b8a; padding: 0 10px 2px; margin: 0; font-weight: 500; }
 .adm-nav a { position: relative; display: flex; align-items: center; gap: 10px; padding: 6px 10px; border-radius: 11px; font-size: 13.5px; font-weight: 600; color: #aeb8d0; transition: background .2s, color .2s, transform .2s; }
 .adm-nav a:hover { background: rgba(255,255,255,.06); color: #fff; transform: translateX(3px); }
@@ -1036,3 +1036,68 @@ a.rl2:hover { transform: translateY(-3px); border-color: oklch(0.72 0.12 var(--h
 .pg-add b { width: 54px; height: 54px; border-radius: 50%; display: grid; place-items: center; font-size: 28px; color: #fff; background: linear-gradient(135deg, oklch(0.64 0.15 250), oklch(0.5 0.17 262)); box-shadow: 0 12px 22px -10px oklch(0.5 0.17 256 / .9); transition: transform .2s; } .pg-add:hover b { transform: rotate(90deg) scale(1.08); }
 .pg-card > .a-empty { margin: 0 20px 20px; }
 @media (prefers-reduced-motion: reduce) { .pg-cover img, .pg-ed, .pg-add b, .pg-tabs button i { transition: none; } }
+.a-bar .a-btn + .vt { margin-left: 8px; }
+
+/* ===== One look for every table (a-table, fd-tbl, table.dt) =====
+   Header: small mono capitals on a pale blue band. Rows: 6px / 14px padding, 13px text, a pale divider and a light hover.
+   Written with the .adm prefix so it wins over the older per-page rules, whatever order the files load in. */
+.adm .a-table, .adm .fd-tbl { border: 1px solid #e3e9f3; border-radius: 14px; background: #fff; }
+.adm .a-table .head, .adm .fd-th, .adm table.dt th { padding: 8px 14px; font-family: var(--mono); font-size: 10.5px; font-weight: 400; letter-spacing: .08em; text-transform: uppercase; color: #7a8399; background: #f5f8fc; border-bottom: 1px solid #e3e9f3; }
+.adm .a-table .row, .adm .fd-tr, .adm table.dt td { padding-top: 6px; padding-bottom: 6px; font-size: 13px; border-bottom: 1px solid #f0f3f8; }
+.adm .a-table .row, .adm .fd-tr { padding-left: 14px; padding-right: 14px; gap: 10px; }
+.adm table.dt td { padding-left: 14px; padding-right: 14px; border-top: 0; }
+.adm .a-table .row:last-child, .adm .fd-tr:last-child, .adm table.dt tbody tr:last-child td { border-bottom: 0; }
+.adm .a-table .row:hover, .adm .fd-tr:hover, .adm table.dt tbody tr:hover { background: #f7f9fd; }
+.adm .fd-tr.full:hover { background: #f8fbff; }
+
+/* ===== "Rows per page" line under a filter card: no second white card ===== */
+.adm .a-bar.slim { background: none; border: 0; box-shadow: none; padding: 0 4px; margin-top: -2px; }
+/* everything in a slim bar sits in one group on the right: [view toggle] [action buttons] [count] [rows per page] */
+.adm .a-bar.slim { justify-content: flex-end; }
+.adm .a-bar.slim .vt { margin-left: 0; }
+.adm .a-bar.slim .info { margin-left: 8px; }
+
+/* ===== Read-only product list (everyone except Master Admin and Admin) ===== */
+.adm .ro-note { margin-right: auto; display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 99px; background: #eef3fc; border: 1px solid #d3dff3; color: #3b4968; font-size: 12px; font-weight: 700; }
+.adm .ro-val { font-size: 13px; font-weight: 600; color: #26304a; font-variant-numeric: tabular-nums; }
+.adm .ro-live { display: inline-block; padding: 3px 11px; border-radius: 99px; font-size: 11.5px; font-weight: 800; background: #f1f2f6; color: #7a8399; }
+.adm .ro-live.on { background: #e5f6ec; color: #1a6b43; }
+.adm .a-chip:disabled { opacity: 1; }
+
+/* ===== Icon buttons for Edit / Delete / View (IconBtn.jsx) ===== */
+.adm .ic-row { display: inline-flex; align-items: center; gap: 6px; }
+.adm .ic-btn { width: 30px; height: 30px; flex: none; border-radius: 9px; display: inline-grid; place-items: center; border: 1px solid #d5dbe7; background: #fff; color: #173a7a; cursor: pointer; padding: 0; text-decoration: none; transition: background .15s, border-color .15s, color .15s; }
+.adm .ic-btn:hover { background: #eef3fc; border-color: #9db3e0; }
+.adm .ic-btn.pri { background: #0b1631; border-color: #0b1631; color: #fff; }
+.adm .ic-btn.pri:hover { background: #173a7a; border-color: #173a7a; }
+.adm .ic-btn.bad { color: #b3261e; }
+.adm .ic-btn.bad:hover { background: #fdecea; border-color: #f0c4bf; }
+.adm .ic-btn:disabled { opacity: .45; cursor: default; }
+.adm .ic-btn svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+
+/* Blog editor: compact type, scoped to the admin editor only (the storefront article keeps its own size) */
+.adm .bw-editor.bp-body { font-size: 14px; line-height: 1.65; }
+.adm .bw-editor.bp-body p { margin: 0 0 10px; }
+.adm .bw-editor.bp-body > p:first-of-type { font-size: 14px; line-height: 1.65; color: inherit; }
+.adm .bw-editor.bp-body h2 { font-size: 18px; margin: 18px 0 8px; padding-bottom: 4px; border-bottom-width: 1px; }
+.adm .bw-editor.bp-body h3 { font-size: 15.5px; margin: 14px 0 6px; }
+.adm .bw-editor.bp-body h4, .adm .bw-editor.bp-body h5 { font-size: 14px; margin: 12px 0 6px; }
+.adm .bw-editor.bp-body ul, .adm .bw-editor.bp-body ol { margin: 0 0 10px; padding-left: 20px; gap: 3px; }
+.adm .bw-editor.bp-body img { margin: 12px auto; border-radius: 10px; }
+.adm .bw-editor.bp-body blockquote { margin: 12px 0; padding: 8px 14px; }
+.adm .bw-editor.bp-body hr { margin: 16px 0; }
+.adm .bw-grid .a-card h3 { font-size: 14px; }
+.adm .bw-grid .a-btn.sm { font-size: 12.5px; }
+
+/* Compact dialogs: a slimmer header and footer in every modal */
+.adm .a-modal .hd { padding: 9px 16px; gap: 10px; }
+.adm .a-modal .hd small { font-size: 9.5px; letter-spacing: .1em; line-height: 1.2; }
+.adm .a-modal .hd b { font-size: 16px; line-height: 1.2; }
+.adm .a-modal .hd .a-x { width: 28px; height: 28px; font-size: 12px; }
+.adm .a-modal .ft { padding: 7px 16px; gap: 8px; }
+.adm .a-modal .ft .a-btn { padding: 7px 16px; font-size: 13px; line-height: 1.2; min-height: 0; }
+.adm .a-modal .ft .a-btn.sm { padding: 6px 12px; }
+.adm .a-modal .bd { padding: 12px 16px; }
+
+/* a slightly smaller page title in the top bar */
+.adm-top h1, .adm-main h1 { font-size: 19px; }

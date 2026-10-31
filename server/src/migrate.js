@@ -1,11 +1,33 @@
 // Small, safe schema upgrades that run on every server start (each one only acts when something is missing).
 import { pool } from './db.js';
 import { ensureBackupTable } from './backup.js';
+import { ensureInventory } from './inventory.js';
+import { ensureQuotes } from './quotation.js';
+import { ensureAudit } from './audit.js';
 
 const STAFF_COLS = [['nid', 'VARCHAR(20)'], ['present_address', 'VARCHAR(300)'], ['contact_address', 'VARCHAR(300)'], ['ref_name', 'VARCHAR(120)'], ['ref_phone', 'VARCHAR(20)']];
 
 export async function ensureSchema() {
   await ensureBackupTable();
+  await ensureInventory();
+  await ensureQuotes();
+  // who generated the order: the customer on the website, or a call center agent, an admin or a seller in the console
+  const [oc] = await pool.query("SELECT COLUMN_NAME c FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'orders'");
+  if (oc.length) {
+    const haveO = new Set(oc.map(r => r.c));
+    if (!haveO.has('source')) await pool.query("ALTER TABLE orders ADD COLUMN source VARCHAR(16) NOT NULL DEFAULT 'Customer'");
+    if (!haveO.has('placed_by')) await pool.query("ALTER TABLE orders ADD COLUMN placed_by VARCHAR(120) NOT NULL DEFAULT ''");
+  }
+  // search-engine fields the admin fills in for blog articles and site pages (title, description, keywords, hide from Google)
+  for (const table of ['blog_posts', 'site_pages']) {
+    const [tc] = await pool.query('SELECT COLUMN_NAME c FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?', [table]);
+    if (!tc.length) continue;
+    const haveT = new Set(tc.map(r => r.c));
+    for (const [c, def] of [['meta_title', "VARCHAR(160) NOT NULL DEFAULT ''"], ['meta_desc', "VARCHAR(320) NOT NULL DEFAULT ''"], ['meta_keywords', "VARCHAR(500) NOT NULL DEFAULT ''"], ['noindex', 'TINYINT(1) NOT NULL DEFAULT 0']]) {
+      if (!haveT.has(c)) await pool.query(`ALTER TABLE ${table} ADD COLUMN ${c} ${def}`);
+    }
+  }
+  await ensureAudit();
   const [sc] = await pool.query("SELECT COLUMN_NAME c FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'staff'");
   if (sc.length) {
     const have = new Set(sc.map(r => r.c));
@@ -15,6 +37,19 @@ export async function ensureSchema() {
   if (cols.length && !cols.some(r => r.c === 'img')) {
     await pool.query('ALTER TABLE categories ADD COLUMN img VARCHAR(500) NULL');
     console.log('Added categories.img (category pictures)');
+  }
+  // campaign designer: headline, hero colour, picked products and button, stored as one JSON document
+  const [mk] = await pool.query("SELECT COLUMN_NAME c FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'mkt_campaigns'");
+  if (mk.length && !mk.some(r => r.c === 'design')) {
+    await pool.query('ALTER TABLE mkt_campaigns ADD COLUMN design JSON NULL');
+    console.log('Added mkt_campaigns.design');
+  }
+  // order timeline: who made each entry, and whether it is a status change or a plain comment
+  const [oh] = await pool.query("SELECT COLUMN_NAME c FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'order_history'");
+  if (oh.length) {
+    const have = new Set(oh.map(r => r.c));
+    if (!have.has('by_name')) await pool.query("ALTER TABLE order_history ADD COLUMN by_name VARCHAR(120) NOT NULL DEFAULT ''");
+    if (!have.has('kind')) await pool.query("ALTER TABLE order_history ADD COLUMN kind VARCHAR(10) NOT NULL DEFAULT 'status'");
   }
   // contact-form messages are worked through in the admin Inbox: a status, a private note and who handled it
   const [mc] = await pool.query("SELECT COLUMN_NAME c FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'messages'");

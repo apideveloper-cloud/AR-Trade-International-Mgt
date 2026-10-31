@@ -97,6 +97,20 @@ export const mktApi = {
   del: url => call('DELETE', url, undefined, '/api/mkt')
 };
 
+export const invApi = {
+  get: url => call('GET', url, undefined, '/api/inv'),
+  post: (url, body) => call('POST', url, body, '/api/inv'),
+  put: (url, body) => call('PUT', url, body, '/api/inv'),
+  del: url => call('DELETE', url, undefined, '/api/inv')
+};
+
+export const quoteApi = {
+  get: url => call('GET', url, undefined, '/api/quotes'),
+  post: (url, body) => call('POST', url, body, '/api/quotes'),
+  put: (url, body) => call('PUT', url, body, '/api/quotes'),
+  del: url => call('DELETE', url, undefined, '/api/quotes')
+};
+
 export const hubApi = {
   get: url => call('GET', url, undefined, '/api/hub'),
   post: (url, body) => call('POST', url, body, '/api/hub'),
@@ -104,7 +118,7 @@ export const hubApi = {
 };
 
 /** Server-side paged list with search/filters, the way the design's "G_*" grids work. */
-export function useTable(path, initial = {}, deps = []) {
+export function useTable(path, initial = {}, deps = [], api = adm) {
   const [params, setParams] = useState({ q: '', page: 1, size: 10, ...initial });
   const [data, setData] = useState({ rows: [], total: 0 });
   const [loading, setLoading] = useState(true);
@@ -115,11 +129,11 @@ export function useTable(path, initial = {}, deps = []) {
     const id = ++seq.current;
     setLoading(true);
     const qs = new URLSearchParams(Object.entries(params).filter(([, v]) => v !== '' && v != null)).toString();
-    adm.get(`${path}?${qs}`)
+    api.get(`${path}?${qs}`)
       .then(d => { if (id === seq.current) { setData(d); setError(''); } })
       .catch(e => { if (id === seq.current) setError(e.message); })
       .finally(() => { if (id === seq.current) setLoading(false); });
-  }, [path, params]);
+  }, [path, params, api]);
 
   useEffect(() => { load(); }, [load, ...deps]); // eslint-disable-line react-hooks/exhaustive-deps
   const set = patch => setParams(p => ({ ...p, page: 1, ...patch }));

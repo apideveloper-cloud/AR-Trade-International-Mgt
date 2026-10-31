@@ -1,11 +1,13 @@
 // Contact directory: team (staff), customers (field_customers, if the customers module is installed), vendors and head-office numbers.
 //   GET /api/field/contacts?type=all|team|customer|vendor&q=
+//        with ?page=&size= the answer carries one page: { total (all matching), online, contacts (the page), rows (= contacts), page, size }
 //   GET /api/field/contacts/office
 //   POST /api/field/contacts          { name, phone, type: customer|vendor|other, title?, org?, email?, address? }   my own address-book entry
 //   DELETE /api/field/contacts/:key   remove one of my own entries (key 'p-<id>')
 // Every contact carries lastCall { via, seconds, at } from my own call log when I called that number before.
 import { Router } from 'express';
 import { pool, wrap, guard, roleKey, fail, digits, UTC_TS } from '../common.js';
+import { pageOf, wantsPage } from '../../listing.js';
 
 const router = Router();
 
@@ -97,7 +99,13 @@ router.get('/', guard(), wrap(async (req, res) => {
     ? out.filter(c => `${c.name} ${c.title} ${c.org} ${c.phone}`.toLowerCase().replace(/-/g, '').includes(q.replace(/-/g, '')))
     : out;
   list.sort((a, b) => a.name.localeCompare(b.name));
-  res.json({ total: list.length, online: list.filter(c => c.online).length, contacts: list });
+  const online = list.filter(c => c.online).length;
+  if (wantsPage(req)) {
+    const { size, page, offset } = pageOf(req);
+    const part = list.slice(offset, offset + size);
+    return res.json({ total: list.length, online, contacts: part, rows: part, page, size });
+  }
+  res.json({ total: list.length, online, contacts: list });
 }));
 
 router.post('/', guard(), wrap(async (req, res) => {

@@ -12,7 +12,8 @@ import { applyFlow, cancelOrder, FROM_STATUS } from './flow.js';
 import { buildInvoicePdf, invoiceNo } from './invoice.js';
 import { buildOverview, buildProductReport } from './overview.js';
 import { runBackup, status as backupStatus, fileOf as backupFile, deleteBackup, setDir as setBackupDir } from './backup.js';
-import { mailReady, sendMail } from './mailer.js';
+import { mailReady, mailSetupHint, sendMail } from './mailer.js';
+import { addRange, day } from './listing.js';
 import { can, permsOf, matrix, saveRole, DEFAULTS, MASTER, MASTER_ONLY, ROLE_DEFS, ROLE_NAMES, REGISTRABLE } from './permissions.js';
 
 const router = Router();
@@ -46,6 +47,7 @@ const page = req => {
   return { size, p, offset: (p - 1) * size };
 };
 const like = q => `%${String(q || '').trim()}%`;
+const inRange = (d, req) => { const a = day(req.query.from), b = day(req.query.to); const t = d ? new Date(d).getTime() : NaN; return (!a || t >= Date.parse(a + 'T00:00:00')) && (!b || t < Date.parse(b + 'T00:00:00') + 864e5); };
 
 // ---------- auth ----------
 router.post('/login', wrap(async (req, res) => {
@@ -125,11 +127,11 @@ async function loadOrders(where, params, extra = '') {
   const [hist] = await pool.query('SELECT * FROM order_history WHERE order_id IN (?) ORDER BY id', [ids]);
   return rows.map(r => ({
     id: r.id, date: r.created_at, status: r.status, payment: r.payment, gateway: r.gateway, payStatus: r.pay_status, area: r.area, address: r.address,
-    note: r.note, slot: r.slot, partial: r.partial, hold: !!r.hold, holdNote: r.hold_note, vatInvoice: !!r.vat_invoice, company: r.company, bin: r.bin, express: !!r.express,
+    note: r.note, slot: r.slot, partial: r.partial, hold: !!r.hold, holdNote: r.hold_note, vatInvoice: !!r.vat_invoice, company: r.company, bin: r.bin, express: !!r.express, source: r.source || 'Customer', placedBy: r.placed_by || '',
     customer: { name: r.customer_name, phone: r.customer_phone, email: r.customer_email },
     subtotal: r.subtotal, discount: r.discount + r.member_discount, delivery: r.delivery, total: r.total, vat: r.vat,
     items: items.filter(i => i.order_id === r.id).map(i => ({ id: i.product_id, name: i.name, img: i.img, price: i.price, qty: i.qty, backorder: i.backorder })),
-    history: hist.filter(h => h.order_id === r.id).map(h => ({ s: h.status, at: h.at }))
+    history: hist.filter(h => h.order_id === r.id).map(h => ({ s: h.status, at: h.at, kind: h.kind, note: h.note, by: h.by_name }))
   }));
 }
 
@@ -137,8 +139,21 @@ router.get('/orders', guard('orders.view'), wrap(async (req, res) => {
   const { size, offset } = page(req);
   const cond = [], params = [];
   if (req.query.q) { cond.push('(id LIKE ? OR customer_name LIKE ? OR customer_phone LIKE ?)'); params.push(like(req.query.q), like(req.query.q), like(req.query.q)); }
-  if (STATUSES.includes(req.query.status)) { cond.push('status = ?'); params.push(req.query.status); }
+  const wanted = String(req.query.status || '').split(',').filter(x => STATUSES.includes(x));
+  if (wanted.length === 1) { cond.push('status = ?'); params.push(wanted[0]); } else if (wanted.length > 1) { cond.push(`status IN (${wanted.map(() => '?').join(',')})`); params.push(...wanted); }
   if (req.query.pay) { cond.push('payment LIKE ?'); params.push(like(req.query.pay)); }
+  if (['Customer', 'Call center', 'Admin', 'Seller'].includes(req.query.source)) { cond.push('source = ?'); params.push(req.query.source); }
+  if (['inside', 'suburb', 'outside'].includes(req.query.area)) { cond.push('area = ?'); params.push(req.query.area); }
+  // advanced search: by customer, by product, by date, by amount
+  const w = v => String(v || '').trim().slice(0, 80);
+  if (w(req.query.customer)) { const c = like(w(req.query.customer)); cond.push('(customer_name LIKE ? OR customer_phone LIKE ? OR customer_email LIKE ? OR company LIKE ?)'); params.push(c, c, c, c); }
+  if (w(req.query.product)) { cond.push('EXISTS (SELECT 1 FROM order_items oi WHERE oi.order_id = orders.id AND oi.name LIKE ?)'); params.push(like(w(req.query.product))); }
+  const day = v => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) && !isNaN(Date.parse(v + 'T00:00:00Z')) ? String(v) : null);
+  if (day(req.query.from)) { cond.push('created_at >= ?'); params.push(day(req.query.from) + ' 00:00:00'); }
+  if (day(req.query.to)) { cond.push('created_at < DATE_ADD(?, INTERVAL 1 DAY)'); params.push(day(req.query.to)); }
+  const money = v => (v !== undefined && v !== '' && Number.isFinite(Number(v)) ? Math.max(0, Math.round(Number(v))) : null);
+  if (money(req.query.min) !== null) { cond.push('total >= ?'); params.push(money(req.query.min)); }
+  if (money(req.query.max) !== null) { cond.push('total <= ?'); params.push(money(req.query.max)); }
   if (req.staff.role === 'Delivery rider') { cond.push('(status IN ("Packed","Shipped") OR rider_id = ?)'); params.push(req.staff.id); } // riders: the pick-up queue plus their own deliveries
   const where = cond.length ? 'WHERE ' + cond.join(' AND ') : '';
   const [[{ n }]] = await pool.query(`SELECT COUNT(*) n FROM orders ${where}`, params);
@@ -155,7 +170,12 @@ router.get('/orders', guard('orders.view'), wrap(async (req, res) => {
     const live = a.total - a.cancelled;
     summary = { total: Number(a.total), cancelled: Number(a.cancelled), revenue: Number(a.revenue), avg: live ? Math.round(Number(a.revenue) / live) : 0, today: Number(a.today), todayRevenue: Number(a.todayRevenue), open: Number(a.open), openValue: Number(a.openValue), unpaid: Number(a.unpaid) };
   }
-  res.json({ total: n, counts: Object.fromEntries(counts.map(c => [c.status, c.c])), summary, rows: await loadOrders(where, params, `LIMIT ${size} OFFSET ${offset}`) });
+  let queue; // Deliveries page: cash still to collect on orders that are packed or on the road
+  if (req.query.queue === '1') {
+    const [[qd]] = await pool.query("SELECT COALESCE(SUM(CASE WHEN pay_status <> 'Paid' THEN total END), 0) cod, COALESCE(SUM(pay_status <> 'Paid'), 0) codCount FROM orders WHERE status IN ('Packed','Shipped')");
+    queue = { cod: Number(qd.cod), codCount: Number(qd.codCount) };
+  }
+  res.json({ total: n, counts: Object.fromEntries(counts.map(c => [c.status, c.c])), summary, queue, rows: await loadOrders(where, params, `LIMIT ${size} OFFSET ${offset}`) });
 }));
 
 router.get('/orders/:id', guard('orders.view'), wrap(async (req, res) => {
@@ -165,9 +185,22 @@ router.get('/orders/:id', guard('orders.view'), wrap(async (req, res) => {
   res.json(o);
 }));
 
+/** Staff comment on an order: kept on the order's timeline, never shown to the customer. */
+router.post('/orders/:id/comments', guard('orders.view'), wrap(async (req, res) => {
+  const text = String(req.body.text || '').trim().slice(0, 255);
+  if (!text) throw fail(400, 'Write the comment first');
+  const rider = req.staff.role === 'Delivery rider';
+  const [[o]] = await pool.query('SELECT status, rider_id FROM orders WHERE id = ?', [req.params.id]);
+  if (!o || (rider && !(o.rider_id === req.staff.id || (!o.rider_id && ['Packed', 'Shipped'].includes(o.status))))) throw fail(404, 'Order not found');
+  await pool.query("INSERT INTO order_history (order_id,status,flow,note,by_name,kind) VALUES (?,?,?,?,?,'comment')", [req.params.id, o.status, null, text, req.staff.name]);
+  res.json((await loadOrders('WHERE id = ?', [req.params.id]))[0]);
+}));
+
 router.put('/orders/:id/status', guard('orders.status'), wrap(async (req, res) => {
   const { status } = req.body;
   if (!STATUSES.includes(status)) throw fail(400, 'Unknown status');
+  const remarks = String(req.body.remarks || '').trim().slice(0, 255);
+  if (remarks.length < 3) throw fail(400, 'Write the remarks for this status change (at least 3 characters)');
   const rider = req.staff.role === 'Delivery rider';
   // riders only start their own trip here; closing a delivery needs the OTP / signature and cash tick in the Delivery Hub
   if (rider && status !== 'Shipped') throw fail(403, 'Riders start the trip here; close the delivery with the OTP or signature in the Delivery Hub');
@@ -176,7 +209,7 @@ router.put('/orders/:id/status', guard('orders.status'), wrap(async (req, res) =
   if (rider && !(o.rider_id === req.staff.id || (!o.rider_id && o.status === 'Packed'))) throw fail(404, 'Order not found');
   if (o.status === 'Delivered' && status !== 'Delivered') throw fail(400, 'A delivered order cannot be moved back');
   if (o.status !== status) {
-    if (status === 'Cancelled') await cancelOrder(req.params.id, 'Cancelled in admin console'); // also puts the stock back
+    if (status === 'Cancelled') await cancelOrder(req.params.id, remarks, req.staff.name); // also puts the stock back
     else {
       const extra = {};
       if (status === 'Shipped') { // same trip details the Delivery Hub creates, so the OTP proof works
@@ -185,7 +218,7 @@ router.put('/orders/:id/status', guard('orders.status'), wrap(async (req, res) =
         extra.otp = cur.otp || String(1000 + crypto.randomInt(9000));
         if (rider) extra.rider_id = req.staff.id;
       }
-      await applyFlow(req.params.id, FROM_STATUS[status], 'Updated in admin console', extra);
+      await applyFlow(req.params.id, FROM_STATUS[status], remarks, extra, req.staff.name);
       if (status === 'Delivered') await pool.query('UPDATE orders SET pay_status = IF(payment = "Cash on delivery", "Paid", pay_status) WHERE id = ?', [req.params.id]);
     }
   }
@@ -209,7 +242,7 @@ router.post('/orders/:id/invoice/email', guard('orders.status'), wrap(async (req
   const o = await invoiceOrder(req);
   const to = String(req.body.to || o.customer.email || '').trim().toLowerCase();
   if (!/^[^\s,;<>"()]+@[^\s,;<>"()]+\.[^\s,;<>"()]+$/.test(to) || to.length > 160) throw fail(400, 'Enter one valid email address for the customer');
-  if (!mailReady()) throw fail(409, 'Email sending is not set up yet. Add the SMTP settings (SMTP_HOST ...) to server/.env, or download the PDF and send it yourself.');
+  if (!mailReady('sales')) throw fail(409, 'Email sending is not set up yet. ' + mailSetupHint('sales'));
   const site = await siteInfo();
   const inv = invoiceNo(o.id);
   const money = n => '৳ ' + Math.round(Number(n) || 0).toLocaleString('en-US');
@@ -217,7 +250,7 @@ router.post('/orders/:id/invoice/email', guard('orders.status'), wrap(async (req
   const note = String(req.body.message || '').trim().slice(0, 1000);
   const paid = o.payStatus === 'Paid';
   const pdf = await buildInvoicePdf(o, site);
-  await sendMail({
+  await sendMail({ channel: 'sales',
     to, replyTo: site.email || undefined, subject: `Your invoice ${inv} from AR Trade International`,
     text: `Hello ${o.customer.name},\n\n${note ? note + '\n\n' : ''}Thank you for your order ${o.id}. Your invoice ${inv} is attached as a PDF.\n\nOrder total: ${money(o.total)} (${paid ? 'paid' : 'payment due'})\nStatus: ${o.status}\n\nAR Trade International\n${[site.phone, site.email].filter(Boolean).join(' · ')}`,
     html: `<div style="font-family:Arial,sans-serif;max-width:520px;color:#0b1631"><p>Hello ${esc(o.customer.name)},</p>${note ? `<p style="white-space:pre-wrap">${esc(note)}</p>` : ''}<p>Thank you for your order <b>${esc(o.id)}</b>. Your invoice <b>${inv}</b> is attached as a PDF.</p><table cellpadding="6" style="background:#f4f7fc;border-radius:8px"><tr><td>Order total</td><td><b>${money(o.total)}</b> (${paid ? 'paid' : 'payment due'})</td></tr><tr><td>Status</td><td>${esc(o.status)}</td></tr></table><p style="color:#6b7388;font-size:13px">AR Trade International<br>${esc([site.phone, site.email].filter(Boolean).join(' · '))}</p></div>`,
@@ -321,11 +354,42 @@ router.delete('/products/:id', guard('products.manage'), wrap(async (req, res) =
 }));
 
 router.get('/categories', guard('products.view'), wrap(async (req, res) => {
-  const [rows] = await pool.query('SELECT c.id, c.title, c.description, c.hidden, c.img, (SELECT COUNT(*) FROM products p WHERE p.category_id = c.id AND p.active = 1) n FROM categories c ORDER BY c.sort_order');
-  res.json(rows.map(r => ({ id: r.id, title: r.title, description: r.description, hidden: !!r.hidden, img: r.img || '', count: r.n })));
+  const [rows] = await pool.query('SELECT c.id, c.title, c.description, c.hidden, c.img, (SELECT COUNT(*) FROM products p WHERE p.category_id = c.id AND p.active = 1) n, (SELECT COUNT(*) FROM products p WHERE p.category_id = c.id) total FROM categories c ORDER BY c.sort_order');
+  res.json(rows.map(r => ({ id: r.id, title: r.title, description: r.description, hidden: !!r.hidden, img: r.img || '', count: r.n, total: r.total })));
+}));
+/** New product category. The id is made from the name (it becomes the shop address /shop/<id>) and made unique. */
+router.post('/categories', guard('categories.manage'), wrap(async (req, res) => {
+  const title = String(req.body.title || '').trim().slice(0, 120);
+  if (title.length < 2) throw fail(400, 'Give the category a name (at least 2 characters)');
+  const [[dupe]] = await pool.query('SELECT id FROM categories WHERE LOWER(title) = LOWER(?)', [title]);
+  if (dupe) throw fail(409, 'A category with this name already exists');
+  // keep Bangla vowel signs and joiners (they are marks, not letters), otherwise a name like ক্যামেরা falls apart in the address
+  const base = (title.toLowerCase().replace(/[^\p{L}\p{M}\p{N}]+/gu, '-').replace(/^-+|-+$/g, '').slice(0, 36) || 'category');
+  let id = ['all', 'new', 'search'].includes(base) ? base + '-category' : base;
+  for (let i = 2; (await pool.query('SELECT 1 FROM categories WHERE id = ?', [id]))[0].length; i++) id = base + '-' + i;
+  const img = req.body.image ? localImg(req.body.image, 'The picture must be uploaded here') : null;
+  const [[m]] = await pool.query('SELECT COALESCE(MAX(sort_order), 0) m FROM categories');
+  await pool.query('INSERT INTO categories (id, title, description, sort_order, hidden, img) VALUES (?,?,?,?,?,?)', [id, title, String(req.body.description || '').trim().slice(0, 255), m.m + 1, +!!req.body.hidden, img || null]);
+  res.json({ id });
+}));
+/** Only a category with no products at all can be deleted. */
+router.delete('/categories/:id', guard('categories.manage'), wrap(async (req, res) => {
+  const [[n]] = await pool.query('SELECT COUNT(*) n FROM products WHERE category_id = ?', [req.params.id]);
+  if (n.n) throw fail(409, `This category still has ${n.n} product${n.n === 1 ? '' : 's'}. Move or delete them first, or just hide the category.`);
+  const [r] = await pool.query('DELETE FROM categories WHERE id = ?', [req.params.id]);
+  if (!r.affectedRows) throw fail(404, 'Category not found');
+  res.json({ ok: true });
 }));
 router.put('/categories/:id', guard('categories.manage'), wrap(async (req, res) => {
   const sets = [], vals = [];
+  if ('title' in req.body) {
+    const title = String(req.body.title || '').trim().slice(0, 120);
+    if (title.length < 2) throw fail(400, 'Give the category a name (at least 2 characters)');
+    const [[dupe]] = await pool.query('SELECT id FROM categories WHERE LOWER(title) = LOWER(?) AND id <> ?', [title, req.params.id]);
+    if (dupe) throw fail(409, 'Another category already has this name');
+    sets.push('title = ?'); vals.push(title);
+  }
+  if ('description' in req.body) { sets.push('description = ?'); vals.push(String(req.body.description || '').trim().slice(0, 255)); }
   if ('hidden' in req.body) { sets.push('hidden = ?'); vals.push(+!!req.body.hidden); }
   if ('image' in req.body) { // the picture shown on the storefront category tile; empty = go back to the automatic one
     const u = localImg(req.body.image, 'The picture must be uploaded here');
@@ -345,7 +409,8 @@ router.get('/customers', guard('customers.view'), wrap(async (req, res) => {
   const map = new Map(orders.map(o => [digits(o.phone).slice(-10), { name: o.name, phone: o.phone, email: o.email, n: o.n, ltv: Number(o.ltv), last: o.last }]));
   users.forEach(u => { const k = digits(u.phone).slice(-10); if (!map.has(k)) map.set(k, { name: u.name, phone: u.phone, email: u.email, userId: u.id, n: 0, ltv: 0, last: null }); else { const c = map.get(k); if (!c.email) c.email = u.email; c.userId = u.id; } });
   const q = String(req.query.q || '').toLowerCase();
-  let list = [...map.values()].filter(c => !q || `${c.name} ${c.phone} ${c.email}`.toLowerCase().includes(q));
+  const ranged = !!(day(req.query.from) || day(req.query.to));
+  let list = [...map.values()].filter(c => (!q || `${c.name} ${c.phone} ${c.email}`.toLowerCase().includes(q)) && (!ranged || (c.last && inRange(c.last, req))));
   list.sort((a, b) => b.ltv - a.ltv);
   const everyone = [...map.values()], buyers = everyone.filter(c => c.n > 0);
   const revenue = buyers.reduce((t, c) => t + c.ltv, 0);
@@ -383,6 +448,7 @@ router.get('/services', guard('services.manage'), wrap(async (req, res) => {
   const cond = [], params = [];
   if (req.query.q) { cond.push('(id LIKE ? OR name LIKE ? OR phone LIKE ? OR model LIKE ?)'); params.push(...Array(4).fill(like(req.query.q))); }
   if (req.query.status) { cond.push('status = ?'); params.push(req.query.status); }
+  addRange(cond, params, 'created_at', req);
   const where = cond.length ? 'WHERE ' + cond.join(' AND ') : '';
   const [[{ n }]] = await pool.query(`SELECT COUNT(*) n FROM service_requests ${where}`, params);
   const [rows] = await pool.query(`SELECT * FROM service_requests ${where} ORDER BY created_at DESC LIMIT ${size} OFFSET ${offset}`, params);
@@ -409,7 +475,10 @@ const SAN = {
 };
 const slugify = s => String(s || '').toLowerCase().trim().replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-+|-+$/g, '').slice(0, 120);
 const textOf = html => sanitizeHtml(html, { allowedTags: [], allowedAttributes: {} }).replace(/\s+/g, ' ').trim();
-const blogRow = r => ({ id: r.id, slug: r.slug, title: r.title, category: r.category, cover: r.cover, excerpt: r.excerpt, body: r.body, date: r.published, status: r.status, author: r.author, authorId: r.author_id, updated: r.updated_at });
+/** The SEO fields a blog article or a site page carries. */
+const seoIn = b => ({ metaTitle: String(b.metaTitle || '').trim().slice(0, 160), metaDesc: String(b.metaDesc || '').replace(/\s+/g, ' ').trim().slice(0, 320), metaKeywords: String(b.metaKeywords || '').replace(/\s+/g, ' ').trim().slice(0, 500), noindex: b.noindex ? 1 : 0 });
+const seoOut = r => ({ metaTitle: r.meta_title || '', metaDesc: r.meta_desc || '', metaKeywords: r.meta_keywords || '', noindex: !!r.noindex });
+const blogRow = r => ({ id: r.id, slug: r.slug, title: r.title, category: r.category, cover: r.cover, excerpt: r.excerpt, body: r.body, date: r.published, status: r.status, author: r.author, authorId: r.author_id, updated: r.updated_at, ...seoOut(r) });
 const IMG_TYPES = { png: [0x89, 0x50, 0x4e, 0x47], jpg: [0xff, 0xd8, 0xff], gif: [0x47, 0x49, 0x46], webp: [0x52, 0x49, 0x46, 0x46] };
 
 router.get('/blog', guard('blog.manage'), wrap(async (req, res) => {
@@ -417,6 +486,7 @@ router.get('/blog', guard('blog.manage'), wrap(async (req, res) => {
   const cond = [], params = [];
   if (req.query.q) { cond.push('(title LIKE ? OR category LIKE ? OR author LIKE ?)'); params.push(like(req.query.q), like(req.query.q), like(req.query.q)); }
   if (req.query.status) { cond.push('status = ?'); params.push(req.query.status); }
+  addRange(cond, params, 'published', req);
   const where = cond.length ? 'WHERE ' + cond.join(' AND ') : '';
   const [[{ n }]] = await pool.query(`SELECT COUNT(*) n FROM blog_posts ${where}`, params);
   const [rows] = await pool.query(`SELECT id, slug, title, category, cover, excerpt, author, author_id, status, DATE_FORMAT(published, "%Y-%m-%d") AS published, updated_at FROM blog_posts ${where} ORDER BY published DESC, id DESC LIMIT ${size} OFFSET ${offset}`, params);
@@ -442,20 +512,20 @@ const savePost = async (req, id) => {
   let slug = slugify(b.slug || title) || 'post-' + Date.now();
   const [dup] = await pool.query('SELECT id FROM blog_posts WHERE slug = ? AND id <> ?', [slug, id || 0]);
   if (dup.length) { if (b.slug) throw fail(409, 'This web address is already used by another article'); slug += '-' + Date.now().toString(36).slice(-4); }
-  return { title, body, category, status, date, excerpt, cover, slug };
+  return { title, body, category, status, date, excerpt, cover, slug, ...seoIn(b) };
 };
 router.post('/blog', guard('blog.manage'), wrap(async (req, res) => {
   const p = await savePost(req, 0);
-  const [r] = await pool.query('INSERT INTO blog_posts (slug, title, category, cover, excerpt, body, published, status, author, author_id, edited, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,1,NOW())',
-    [p.slug, p.title, p.category, p.cover, p.excerpt, p.body, p.date, p.status, req.staff.name, req.staff.id]);
+  const [r] = await pool.query('INSERT INTO blog_posts (slug, title, category, cover, excerpt, body, published, status, author, author_id, meta_title, meta_desc, meta_keywords, noindex, edited, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,NOW())',
+    [p.slug, p.title, p.category, p.cover, p.excerpt, p.body, p.date, p.status, req.staff.name, req.staff.id, p.metaTitle, p.metaDesc, p.metaKeywords, p.noindex]);
   res.json({ id: r.insertId, slug: p.slug });
 }));
 router.put('/blog/:id', guard('blog.manage'), wrap(async (req, res) => {
   const [[cur]] = await pool.query('SELECT id FROM blog_posts WHERE id = ?', [req.params.id]);
   if (!cur) throw fail(404, 'Article not found');
   const p = await savePost(req, cur.id);
-  await pool.query('UPDATE blog_posts SET slug=?, title=?, category=?, cover=?, excerpt=?, body=?, published=?, status=?, edited=1, updated_at=NOW() WHERE id=?',
-    [p.slug, p.title, p.category, p.cover, p.excerpt, p.body, p.date, p.status, cur.id]);
+  await pool.query('UPDATE blog_posts SET slug=?, title=?, category=?, cover=?, excerpt=?, body=?, published=?, status=?, meta_title=?, meta_desc=?, meta_keywords=?, noindex=?, edited=1, updated_at=NOW() WHERE id=?',
+    [p.slug, p.title, p.category, p.cover, p.excerpt, p.body, p.date, p.status, p.metaTitle, p.metaDesc, p.metaKeywords, p.noindex, cur.id]);
   res.json({ ok: true, slug: p.slug });
 }));
 router.delete('/blog/:id', guard('blog.manage'), wrap(async (req, res) => {
@@ -487,7 +557,7 @@ router.post('/upload-image', guard('media.upload'), wrap(async (req, res) => {
 }));
 
 // ---------- site pages: servicing details, corporate clients, company profile ----------
-const pageRow = r => ({ id: r.id, slug: r.slug, group: r.grp, title: r.title, excerpt: r.excerpt, body: r.body, cover: r.cover, images: parseJson(r.images) || [], status: r.status, order: r.sort_order, edited: !!r.edited, updated: r.updated_at });
+const pageRow = r => ({ id: r.id, slug: r.slug, group: r.grp, title: r.title, excerpt: r.excerpt, body: r.body, cover: r.cover, images: parseJson(r.images) || [], status: r.status, order: r.sort_order, edited: !!r.edited, updated: r.updated_at, ...seoOut(r) });
 router.get('/pages', guard('pages.manage'), wrap(async (req, res) => {
   const [rows] = await pool.query('SELECT * FROM site_pages ORDER BY FIELD(grp, "servicing", "clients", "company"), sort_order, id');
   res.json(rows.map(pageRow));
@@ -502,13 +572,13 @@ const savePage = (b) => {
   if (title.length < 3) throw fail(400, 'Please enter a title');
   const body = sanitizeHtml(String(b.body || ''), SAN);
   const cover = localImg(b.cover, 'The cover must be an uploaded image');
-  return { title, body, cover, excerpt: (String(b.excerpt || '').trim() || textOf(body)).slice(0, 190), status: b.status === 'Draft' ? 'Draft' : 'Published', order: parseInt(b.order, 10) || 0 };
+  return { title, body, cover, excerpt: (String(b.excerpt || '').trim() || textOf(body)).slice(0, 190), status: b.status === 'Draft' ? 'Draft' : 'Published', order: parseInt(b.order, 10) || 0, ...seoIn(b) };
 };
 router.put('/pages/:id', guard('pages.manage'), wrap(async (req, res) => {
   const p = savePage(req.body);
   const imgs = [...p.body.matchAll(/<img src="([^"]+)"/g)].map(m => m[1]);
-  const [r] = await pool.query('UPDATE site_pages SET title=?, excerpt=?, body=?, cover=?, images=?, status=?, sort_order=?, edited=1, updated_at=NOW() WHERE id=?',
-    [p.title, p.excerpt, p.body, p.cover, JSON.stringify(imgs), p.status, p.order, req.params.id]);
+  const [r] = await pool.query('UPDATE site_pages SET title=?, excerpt=?, body=?, cover=?, images=?, status=?, sort_order=?, meta_title=?, meta_desc=?, meta_keywords=?, noindex=?, edited=1, updated_at=NOW() WHERE id=?',
+    [p.title, p.excerpt, p.body, p.cover, JSON.stringify(imgs), p.status, p.order, p.metaTitle, p.metaDesc, p.metaKeywords, p.noindex, req.params.id]);
   if (!r.affectedRows) throw fail(404, 'Page not found');
   res.json({ ok: true });
 }));
@@ -519,8 +589,8 @@ router.post('/pages', guard('pages.manage'), wrap(async (req, res) => {
   const [dup] = await pool.query('SELECT id FROM site_pages WHERE slug = ?', [slug]);
   if (dup.length) slug += '-' + Date.now().toString(36).slice(-4);
   const imgs = [...p.body.matchAll(/<img src="([^"]+)"/g)].map(m => m[1]);
-  const [r] = await pool.query('INSERT INTO site_pages (slug, grp, title, excerpt, body, cover, images, sort_order, status, edited, updated_at) VALUES (?,?,?,?,?,?,?,?,?,1,NOW())',
-    [slug, grp, p.title, p.excerpt, p.body, p.cover, JSON.stringify(imgs), p.order, p.status]);
+  const [r] = await pool.query('INSERT INTO site_pages (slug, grp, title, excerpt, body, cover, images, sort_order, status, meta_title, meta_desc, meta_keywords, noindex, edited, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,1,NOW())',
+    [slug, grp, p.title, p.excerpt, p.body, p.cover, JSON.stringify(imgs), p.order, p.status, p.metaTitle, p.metaDesc, p.metaKeywords, p.noindex]);
   res.json({ id: r.insertId, slug });
 }));
 router.delete('/pages/:id', guard('pages.delete'), wrap(async (req, res) => { await pool.query('DELETE FROM site_pages WHERE id = ?', [req.params.id]); res.json({ ok: true }); }));
@@ -575,6 +645,7 @@ router.get('/reviews', guard('reviews.moderate'), wrap(async (req, res) => {
   const cond = [], params = [];
   if (req.query.q) { cond.push('(r.name LIKE ? OR r.body LIKE ? OR p.name LIKE ?)'); params.push(like(req.query.q), like(req.query.q), like(req.query.q)); }
   if (req.query.status) { cond.push('r.status = ?'); params.push(req.query.status); }
+  addRange(cond, params, 'r.created_at', req);
   const where = cond.length ? 'WHERE ' + cond.join(' AND ') : '';
   const from = 'FROM reviews r LEFT JOIN products p ON p.id = r.product_id';
   const [[{ n }]] = await pool.query(`SELECT COUNT(*) n ${from} ${where}`, params);
@@ -612,8 +683,10 @@ router.delete('/messages/:id', guard('messages.manage'), wrap(async (req, res) =
 // ---------- marketing: subscribers, consent log, campaigns ----------
 router.get('/subscribers', guard('marketing.manage'), wrap(async (req, res) => {
   const { size, offset } = page(req);
-  const q = req.query.q ? 'WHERE email LIKE ?' : '';
-  const params = req.query.q ? [like(req.query.q)] : [];
+  const cond = [], params = [];
+  if (req.query.q) { cond.push('email LIKE ?'); params.push(like(req.query.q)); }
+  addRange(cond, params, 'created_at', req);
+  const q = cond.length ? 'WHERE ' + cond.join(' AND ') : '';
   const [[{ n }]] = await pool.query(`SELECT COUNT(*) n FROM subscribers ${q}`, params);
   const [rows] = await pool.query(`SELECT email, created_at FROM subscribers ${q} ORDER BY created_at DESC LIMIT ${size} OFFSET ${offset}`, params);
   res.json({ total: n, rows });
@@ -634,6 +707,7 @@ router.get('/consents', guard('marketing.manage'), wrap(async (req, res) => {
   const cond = [], params = [];
   if (req.query.q) { cond.push('(email LIKE ? OR source LIKE ?)'); params.push(like(req.query.q), like(req.query.q)); }
   if (req.query.status) { cond.push('status = ?'); params.push(req.query.status); }
+  addRange(cond, params, 'created_at', req);
   const where = cond.length ? 'WHERE ' + cond.join(' AND ') : '';
   const [[{ n }]] = await pool.query(`SELECT COUNT(*) n FROM consents ${where}`, params);
   const [rows] = await pool.query(`SELECT * FROM consents ${where} ORDER BY created_at DESC LIMIT ${size} OFFSET ${offset}`, params);

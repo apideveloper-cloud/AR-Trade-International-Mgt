@@ -24,7 +24,7 @@ export function analyse(raw, has) {
   const sales = has('orders.view') && has('dashboard.view');
   const followsMoney = has('hub.cash') || has('field.approve') || has('orders.status'); // roles that follow up payments
   // what this person's dashboard leads with: buyers start from stock, everyone else from sales
-  out.focus = has('products.manage') && !has('orders.status') && has('products.view') ? 'stock' : 'sales';
+  out.focus = has('inventory.manage') && !has('orders.status') && !has('hub.cash') && has('products.view') ? 'stock' : 'sales';
 
   // ---------- daily series (zero-filled, up to and including the reference day; long enough for the chosen period and its previous twin) ----------
   const N = RANGES[raw.range] ? Number(raw.range) : 30, S = Math.max(60, 2 * N), lab = RANGES[N];

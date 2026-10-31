@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react';
-import { adm, fmtMoney, slNo, useTable } from '../adminApi.js';
+import { adm, can, fmtMoney, slNo, useTable } from '../adminApi.js';
+import { CategoryForm } from './catalog/CategoryForm.jsx';
+import { ListFilter } from '../ListFilter.jsx';
+import { IconBtn } from '../IconBtn.jsx';
 import { Empty, Modal, Pager, Summary, Switch, Toolbar, ViewToggle, alertBox, confirmBox, useView } from '../ui.jsx';
 
 const BLANK = { name: '', brand: '', cat: '', price: '', old: '', stock: 10, img: '', part: '', tech: '', color: '', yield: '', compat: '', spec: '', description: '', gallery: [], metaTitle: '', metaDesc: '', metaKeywords: '' };
@@ -100,25 +103,25 @@ function Editor({ product, cats, onClose, onSaved }) {
 }
 
 /** Grid view of the product list: one card per product, same inline editing as the table. */
-function ProductCards({ t, patch, catName, setEdit }) {
+function ProductCards({ t, patch, catName, setEdit, canWrite }) {
   return (
     <div className="pg-grid" style={{ opacity: t.loading ? .6 : 1 }}>
       {t.data.rows.map((p, i) => (
         <div key={p.id} className="pg-card" style={{ opacity: p.active ? 1 : .6 }}>
           <span className="pg-sl">{slNo(t, i)}</span>
-          <button type="button" className="pg-img" style={{ backgroundImage: p.img ? `url('${p.img}')` : 'none' }} onClick={() => setEdit(p)} aria-label={'Edit ' + p.name}>{!p.img && <small>No photo</small>}</button>
-          <button type="button" className="pg-name" onClick={() => setEdit(p)}>{p.name}</button>
+          <button type="button" className="pg-img" disabled={!canWrite} style={{ backgroundImage: p.img ? `url('${p.img}')` : 'none', cursor: canWrite ? 'pointer' : 'default' }} onClick={() => setEdit(p)} aria-label={canWrite ? 'Edit ' + p.name : p.name}>{!p.img && <small>No photo</small>}</button>
+          <button type="button" className="pg-name" disabled={!canWrite} style={{ cursor: canWrite ? 'pointer' : 'default', color: 'inherit' }} onClick={() => setEdit(p)}>{p.name}</button>
           <span className="pg-meta">{p.brand} · #{p.id} · {catName(p.cat)}</span>
           <div className="pg-nums">
             {[['price', 'Price'], ['old', 'Regular'], ['stock', 'Stock']].map(([k, l]) => (
-              <label key={k}><small>{l}</small><input className="a-mini" type="number" min="0" defaultValue={p[k]} style={k === 'stock' && p.price && p.stock <= 5 ? { borderColor: 'oklch(0.6 0.2 350)' } : undefined} onBlur={e => { if (+e.target.value !== p[k]) patch(p, { [k]: +e.target.value }); }} /></label>
+              <label key={k}><small>{l}</small>{!canWrite ? <b className="ro-val">{p[k]}</b> : <input className="a-mini" type="number" min="0" defaultValue={p[k]} style={k === 'stock' && p.price && p.stock <= 5 ? { borderColor: 'oklch(0.6 0.2 350)' } : undefined} onBlur={e => { if (+e.target.value !== p[k]) patch(p, { [k]: +e.target.value }); }} />}</label>
             ))}
           </div>
           <div className="pg-foot">
             <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-              {[['popular', 'Popular'], ['isNew', 'New']].map(([k, l]) => <button key={k} type="button" className="a-chip" style={{ padding: '3px 8px', fontSize: 11, background: p[k] ? 'oklch(0.95 0.04 150)' : '#fff' }} onClick={() => patch(p, { [k]: !p[k] })}>{l}</button>)}
+              {[['popular', 'Popular'], ['isNew', 'New']].filter(([k]) => canWrite || p[k]).map(([k, l]) => <button key={k} type="button" className="a-chip" disabled={!canWrite} style={{ padding: '3px 8px', fontSize: 11, background: p[k] ? 'oklch(0.95 0.04 150)' : '#fff', cursor: canWrite ? 'pointer' : 'default' }} onClick={() => patch(p, { [k]: !p[k] })}>{l}</button>)}
             </div>
-            <Switch on={p.active} onChange={v => patch(p, { active: v })} title="Visible on the store" />
+            {canWrite ? <Switch on={p.active} onChange={v => patch(p, { active: v })} title="Visible on the store" /> : <span className={'ro-live ' + (p.active ? 'on' : '')}>{p.active ? 'Live' : 'Hidden'}</span>}
           </div>
         </div>
       ))}
@@ -126,7 +129,8 @@ function ProductCards({ t, patch, catName, setEdit }) {
   );
 }
 
-export function Products({ cats }) {
+export function Products({ cats, staff }) {
+  const canWrite = can(staff, 'products.manage'); // Master Admin and Admin only; everyone else sees the list read-only
   const t = useTable('/products', { cat: '', stock: '', live: '' });
   const [view, setView] = useView('products');
   const [edit, setEdit] = useState(null); // null | 'new' | product
@@ -146,25 +150,27 @@ export function Products({ cats }) {
           ['No photo', m.noImage, 'Live products without an image', 'red', 'image']
         ]} />;
       })()}
-      <Toolbar t={t} filters={[
-        { key: 'cat', label: 'All categories', options: cats.map(c => ({ v: c.id, t: c.title })) },
-        { key: 'stock', label: 'Any stock', options: [{ v: 'low', t: 'Low stock (≤5)' }] },
-        { key: 'live', label: 'Live + hidden', options: [{ v: '0', t: 'Hidden only' }] }
-      ]}><ViewToggle view={view} setView={setView} /><button className="a-btn sm" style={{ marginLeft: 4 }} onClick={() => setEdit('new')}>+ Add product</button></Toolbar>
-      {view === 'grid' ? <ProductCards t={t} patch={patch} catName={catName} setEdit={setEdit} /> : <div className="a-table" style={{ opacity: t.loading ? .6 : 1 }}>
+      <ListFilter t={t} noun="product" title="Search products" search={{ placeholder: 'Name, brand, part no. or ID', span: 'c4' }} resetSpan="c1"
+        selects={[
+          { key: 'cat', label: 'Category', all: 'All categories', icon: 'grid', span: 'c3', options: cats.map(c => ({ v: c.id, t: c.title })) },
+          { key: 'stock', label: 'Stock', all: 'Any stock', icon: 'box', span: 'c2', options: [{ v: 'low', t: 'Low stock (5 or fewer)' }] },
+          { key: 'live', label: 'Visibility', all: 'Live and hidden', icon: 'status', span: 'c2', options: [{ v: '0', t: 'Hidden only' }] }
+        ]} />
+      <Toolbar t={t} search={false}>{!canWrite && <span className="ro-note" title="Only an Admin or the Master Admin can change products">👁 View only</span>}<ViewToggle view={view} setView={setView} />{canWrite && <button className="a-btn sm" style={{ marginLeft: 4 }} onClick={() => setEdit('new')}>+ Add product</button>}</Toolbar>
+      {view === 'grid' ? <ProductCards t={t} patch={patch} catName={catName} setEdit={setEdit} canWrite={canWrite} /> : <div className="a-table" style={{ opacity: t.loading ? .6 : 1 }}>
         <div style={{ minWidth: 904 }}>
           <div className="head" style={{ gridTemplateColumns: cols }}><span>SL</span><span /><span>Product</span><span>Category</span><span>Price</span><span>Regular</span><span>Stock</span><span>Flags</span><span>Live</span></div>
           {t.data.rows.map((p, i) => (
             <div key={p.id} className="row" style={{ gridTemplateColumns: cols, opacity: p.active ? 1 : .55 }}>
               <span className="sl">{slNo(t, i)}</span>
               <div className="a-thumb" style={{ backgroundImage: p.img ? `url('${p.img}')` : 'none' }} />
-              <button onClick={() => setEdit(p)} style={{ textAlign: 'left', border: 0, background: 'transparent', padding: 0, display: 'flex', flexDirection: 'column', gap: 2 }}><b>{p.name}</b><span style={{ color: '#5d6270', fontSize: 12 }}>{p.brand} · #{p.id} · Edit</span></button>
+              <button disabled={!canWrite} onClick={() => setEdit(p)} style={{ textAlign: 'left', border: 0, background: 'transparent', padding: 0, display: 'flex', flexDirection: 'column', gap: 2, cursor: canWrite ? 'pointer' : 'default', color: 'inherit' }}><b>{p.name}</b><span style={{ color: '#5d6270', fontSize: 12 }}>{p.brand} · #{p.id} · Edit</span></button>
               <span style={{ color: '#5d6270' }}>{catName(p.cat)}</span>
-              {['price', 'old', 'stock'].map(k => <input key={k} className="a-mini" type="number" min="0" defaultValue={p[k]} style={k === 'stock' && p.price && p.stock <= 5 ? { borderColor: 'oklch(0.6 0.2 350)' } : undefined} onBlur={e => { if (+e.target.value !== p[k]) patch(p, { [k]: +e.target.value }); }} />)}
+              {['price', 'old', 'stock'].map(k => !canWrite ? <span key={k} className="ro-val" style={k === 'stock' && p.price && p.stock <= 5 ? { color: 'oklch(0.55 0.2 350)', fontWeight: 800 } : undefined}>{p[k]}</span> : <input key={k} className="a-mini" type="number" min="0" defaultValue={p[k]} style={k === 'stock' && p.price && p.stock <= 5 ? { borderColor: 'oklch(0.6 0.2 350)' } : undefined} onBlur={e => { if (+e.target.value !== p[k]) patch(p, { [k]: +e.target.value }); }} />)}
               <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                {[['popular', 'Popular'], ['isNew', 'New']].map(([k, l]) => <button key={k} className="a-chip" style={{ padding: '3px 8px', fontSize: 11, background: p[k] ? 'oklch(0.95 0.04 150)' : '#fff' }} onClick={() => patch(p, { [k]: !p[k] })}>{l}</button>)}
+                {[['popular', 'Popular'], ['isNew', 'New']].filter(([k]) => canWrite || p[k]).map(([k, l]) => <button key={k} className="a-chip" disabled={!canWrite} style={{ padding: '3px 8px', fontSize: 11, background: p[k] ? 'oklch(0.95 0.04 150)' : '#fff', cursor: canWrite ? 'pointer' : 'default' }} onClick={() => patch(p, { [k]: !p[k] })}>{l}</button>)}
               </div>
-              <Switch on={p.active} onChange={v => patch(p, { active: v })} title="Visible on the store" />
+              {canWrite ? <Switch on={p.active} onChange={v => patch(p, { active: v })} title="Visible on the store" /> : <span className={'ro-live ' + (p.active ? 'on' : '')}>{p.active ? 'Live' : 'Hidden'}</span>}
             </div>
           ))}
         </div>
@@ -180,6 +186,7 @@ export function Categories({ onChanged }) {
   const [view, setView] = useView('categories', 'grid');
   const [busy, setBusy] = useState('');
   const [err, setErr] = useState('');
+  const [form, setForm] = useState(null); // 'new', or the category being edited
   const load = () => adm.get('/categories').then(setRows).catch(e => setErr(e.message));
   useEffect(() => { load(); }, []);
   const toggle = async c => { await adm.put('/categories/' + c.id, { hidden: !c.hidden }); await load(); onChanged?.(); };
@@ -199,10 +206,21 @@ export function Categories({ onChanged }) {
     try { await adm.put('/categories/' + c.id, { image: '' }); await load(); onChanged?.(); } catch (e) { setErr(e.message); }
     setBusy('');
   };
+  const remove = async c => {
+    if (!(await confirmBox('Delete the category “' + c.title + '”? It has no products. This cannot be undone.', { danger: true, confirmLabel: 'Delete category' }))) return;
+    setErr('');
+    try { await adm.del('/categories/' + c.id); await load(); onChanged?.(); } catch (e) { setErr(e.message); }
+  };
   return (
     <>
+      <Summary items={[
+        ['Categories', rows.length, 'product groups', 'blue', 'tag'],
+        ['Visible', rows.filter(c => !c.hidden).length, 'shown on the store', 'green', 'check'],
+        ['Hidden', rows.filter(c => c.hidden).length, 'not on the store', 'amber', 'alert'],
+        ['Products', rows.reduce((t, c) => t + (c.total || 0), 0), 'in all categories', 'violet', 'box']
+      ]} />
       {err && <div className="a-msg err">{err}</div>}
-      <div className="a-bar"><b>{rows.length} categories</b><span className="info">Click a picture to change it</span><ViewToggle view={view} setView={setView} /></div>
+      <div className="a-bar"><b>{rows.length} categories</b><span className="info">Click a picture to change it</span><button type="button" className="a-btn sm grad" onClick={() => setForm('new')}>＋ Add category</button><ViewToggle view={view} setView={setView} /></div>
       <div className={'vw cats ' + view} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(300px,1fr))', gap: 12 }}>
         {rows.map(c => (
           <div key={c.id} className="a-card" style={{ display: 'grid', gridTemplateColumns: '64px minmax(0,1fr) auto', alignItems: 'center', gap: 12, padding: 14 }}>
@@ -214,8 +232,10 @@ export function Categories({ onChanged }) {
               <b>{c.title}</b>
               <span style={{ fontSize: 12, color: '#5d6270' }}>{c.count} products · {c.hidden ? 'hidden on store' : 'visible'}</span>
               <span style={{ fontSize: 12, color: '#5d6270' }}>{c.description}</span>
-              <span style={{ display: 'flex', gap: 10, fontSize: 12, fontWeight: 700 }}>
+              <span style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 10px', fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap' }}>
                 <label style={{ color: 'oklch(0.48 0.16 254)', cursor: 'pointer' }}>{busy === c.id ? 'Uploading…' : c.img ? 'Change photo' : 'Add photo'}<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden onChange={e => { pick(c, e.target.files[0]); e.target.value = ''; }} /></label>
+                <span className="ic-row"><IconBtn icon="edit" title="Edit the name and description" onClick={() => setForm(c)} />
+                {!c.total && <IconBtn icon="trash" tone="bad" title="Delete this empty category" onClick={() => remove(c)} />}</span>
                 {c.img && <button type="button" onClick={() => clear(c)} style={{ border: 0, background: 'transparent', color: '#b3261e', fontWeight: 700, padding: 0, cursor: 'pointer' }}>Remove</button>}
               </span>
             </div>
@@ -223,6 +243,7 @@ export function Categories({ onChanged }) {
           </div>
         ))}
       </div>
+      {form && <CategoryForm cat={form === 'new' ? null : form} onClose={() => setForm(null)} onSaved={() => { load(); onChanged?.(); }} />}
     </>
   );
 }

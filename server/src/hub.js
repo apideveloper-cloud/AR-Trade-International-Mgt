@@ -207,7 +207,7 @@ pub.get('/live', wrap(async (req, res) => {
   const [[o]] = await pool.query('SELECT * FROM orders WHERE id = ?', [id]);
   if (!o || !digits(req.query.phone) || digits(o.customer_phone).slice(-10) !== digits(req.query.phone).slice(-10)) throw fail(404, 'No order found with that ID and mobile number.');
   const [items] = await pool.query('SELECT * FROM order_items WHERE order_id = ?', [o.id]);
-  const [hist] = await pool.query('SELECT * FROM order_history WHERE order_id = ? ORDER BY id', [o.id]);
+  const [hist] = await pool.query("SELECT * FROM order_history WHERE order_id = ? AND kind = 'status' ORDER BY id", [o.id]);
   const branches = await getBranches();
   const [[rider]] = o.rider_id ? await pool.query('SELECT * FROM staff WHERE id = ?', [o.rider_id]) : [[null]];
   const [[ret]] = await pool.query('SELECT * FROM order_returns WHERE order_id = ?', [o.id]);

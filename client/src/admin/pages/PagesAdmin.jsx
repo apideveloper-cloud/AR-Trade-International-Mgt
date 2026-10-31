@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { adm, can } from '../adminApi.js';
 import { confirmBox } from '../ui.jsx';
+import { IconBtn } from '../IconBtn.jsx';
+import { SeoPanel } from '../SeoPanel.jsx';
 
 const GROUPS = [['servicing', 'Servicing details', 'Shown on the Servicing page'], ['clients', 'Corporate clients', 'Shown on the About page'], ['company', 'Company profile', 'Profile, mission and vision']];
 const GROUP_LOOK = { servicing: ['🛠', 215], clients: ['🏢', 160], company: ['📘', 45] };
@@ -13,7 +15,7 @@ const TOOLS = [
 const Field = ({ label, children }) => <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12.5, fontWeight: 700, color: '#3a3f4b' }}><span>{label}</span>{children}</label>;
 
 function PageEditor({ id, group, onDone }) {
-  const [f, setF] = useState({ title: '', slug: '', excerpt: '', cover: '', status: 'Published', order: 0 });
+  const [f, setF] = useState({ title: '', slug: '', excerpt: '', cover: '', status: 'Published', order: 0, metaTitle: '', metaDesc: '', metaKeywords: '', noindex: false });
   const [loading, setLoading] = useState(!!id);
   const [busy, setBusy] = useState(false);
   const [upl, setUpl] = useState(false);
@@ -25,7 +27,7 @@ function PageEditor({ id, group, onDone }) {
   useEffect(() => {
     if (!id) { if (ed.current) ed.current.innerHTML = '<p><br></p>'; return; }
     adm.get('/pages/' + id).then(r => {
-      setF({ title: r.title, slug: r.slug, excerpt: r.excerpt, cover: r.cover, status: r.status, order: r.order });
+      setF({ title: r.title, slug: r.slug, excerpt: r.excerpt, cover: r.cover, status: r.status, order: r.order, metaTitle: r.metaTitle, metaDesc: r.metaDesc, metaKeywords: r.metaKeywords, noindex: r.noindex });
       setLoading(false);
       setTimeout(() => { if (ed.current) ed.current.innerHTML = r.body; }, 0);
     }).catch(e => { setMsg({ err: true, t: e.message }); setLoading(false); });
@@ -80,6 +82,10 @@ function PageEditor({ id, group, onDone }) {
         </div>
         <div ref={ed} contentEditable suppressContentEditableWarning className="bp-body" style={{ minHeight: 420, maxHeight: '65vh', overflow: 'auto', padding: '18px 22px', border: '1px solid #cfccc4', borderRadius: '0 0 10px 10px', background: '#fff', outline: 0 }} />
       </div>
+      <div style={{ border: '1px solid #e3e8f2', borderRadius: 14, padding: 14, background: '#f9fbff' }}>
+        <SeoPanel value={f} onChange={patch => setF(p => ({ ...p, ...patch }))} path={group === 'servicing' ? 'services/' + (f.slug || '…') : group === 'company' ? 'about' : 'about'} title={f.title} summary={f.excerpt} />
+        {group !== 'servicing' && <small style={{ display: 'block', marginTop: 8, color: '#6b7388', fontSize: 11.5 }}>This page is shown on the About page. Its title and description are used for /about when this is the Company profile; keywords of all three About pages are merged.</small>}
+      </div>
     </div>
   );
 }
@@ -125,8 +131,8 @@ export function PagesAdmin({ staff }) {
                 <div className="pg-t"><b>{r.title}</b>{r.edited && <em>edited</em>}</div>
                 <p>{r.excerpt || 'No summary yet.'}</p>
                 <div className="pg-act">
-                  <button type="button" className="a-btn sm" onClick={() => setEdit({ id: r.id })}>Edit</button>
-                  {isAdmin && <button type="button" className="a-btn ghost sm pg-del" onClick={() => del(r)}>Delete</button>}
+                  <IconBtn icon="edit" tone="pri" title="Edit the page" onClick={() => setEdit({ id: r.id })} />
+                  {isAdmin && <IconBtn icon="trash" tone="bad" title="Delete the page" onClick={() => del(r)} />}
                 </div>
               </div>
             </article>

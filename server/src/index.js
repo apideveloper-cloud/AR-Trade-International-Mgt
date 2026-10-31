@@ -8,12 +8,15 @@ import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { pool } from './db.js';
 import { digits, fail, parseJson, wrap, checkPassword, isPrivateUploadPath, nextSeq, signCustomer, readCustomer } from './util.js';
-import adminRouter from './admin.js';
+import adminRouter, { guard } from './admin.js';
 import { mailContact, mailReady, sendMail, siteUrl } from './mailer.js';
 import { mountSeo } from './seo.js';
 import accountRouter from './account.js';
 import fieldRouter from './field.js';
 import { hubRouter, liveRouter } from './hub.js';
+import { invRouter } from './inventory.js';
+import { quoteRouter } from './quotation.js';
+import { auditMiddleware, auditRouter, startAuditPrune } from './audit.js';
 import { mktRouter, onSubscribed, prefsRouter, startMailWorker } from './mkt.js';
 import { initPermissions } from './permissions.js';
 import { ensureSchema } from './migrate.js';
@@ -54,7 +57,9 @@ const limit = (name, max, windowMs) => async (req, res, next) => {
 };
 app.use(compression()); // the catalogue JSON is large; gzip keeps first load fast
 if (process.env.NODE_ENV !== 'production') app.use(cors()); // production serves the app and API from one origin
+app.use(auditMiddleware); // records every change made through the staff APIs (see audit.js)
 app.use('/api/admin', express.json({ limit: '10mb' })); // image uploads (base64) are staff-only
+app.use('/api/quotes/scan', express.json({ limit: '9mb' })); // a photo of the terms (base64), staff-only
 app.use('/api/field/expenses', express.json({ limit: '8mb' })); // voucher photos (base64, up to 4 MB as a file) arrive in the expense claim; parsed here first so the global 3mb parser skips it
 app.use(express.json({ limit: '3mb' })); // everything else: small bodies (CV uploads are capped at 2 MB)
 // blog images live in the project (server/uploads/blog) and are served through /api so the Vite dev proxy covers them too
@@ -118,7 +123,7 @@ app.get('/api/products/:id', wrap(async (req, res) => {
 }));
 
 // servicing details, corporate clients and company pages managed from the admin console
-const pageOut = r => ({ id: r.id, slug: r.slug, group: r.grp, title: r.title, excerpt: r.excerpt, cover: r.cover, images: parseJson(r.images) || [], body: r.body });
+const pageOut = r => ({ id: r.id, slug: r.slug, group: r.grp, title: r.title, metaTitle: r.meta_title || '', excerpt: r.excerpt, cover: r.cover, images: parseJson(r.images) || [], body: r.body });
 app.get('/api/pages', wrap(async (req, res) => {
   const g = ['servicing', 'clients', 'company'].includes(req.query.group) ? req.query.group : null;
   const [rows] = await pool.query(`SELECT * FROM site_pages WHERE status = 'Published' ${g ? 'AND grp = ?' : ''} ORDER BY grp, sort_order, id`, g ? [g] : []);
@@ -192,7 +197,7 @@ app.post('/api/auth/social', limit('social', 20, 600000), wrap(async (req, res) 
   const cfg = SOCIAL();
   if (!['google', 'facebook'].includes(provider) || !cfg[provider]) throw fail(400, (provider === 'facebook' ? 'Facebook' : 'Google') + ' sign-in is not set up yet.');
   if (!token) throw fail(400, 'Missing sign-in token');
-  let email, name, ok = false;
+  let email, name, ok;
   if (provider === 'google') {
     const j = await getJ('https://oauth2.googleapis.com/tokeninfo?id_token=' + encodeURIComponent(token));
     ok = j.aud === cfg.google && (j.email_verified === 'true' || j.email_verified === true);
@@ -301,11 +306,11 @@ async function hydrateOrders(rows) {
   if (!rows.length) return [];
   const ids = rows.map(r => r.id);
   const [items] = await pool.query('SELECT * FROM order_items WHERE order_id IN (?)', [ids]);
-  const [hist] = await pool.query('SELECT * FROM order_history WHERE order_id IN (?) ORDER BY id', [ids]);
+  const [hist] = await pool.query("SELECT * FROM order_history WHERE order_id IN (?) AND kind = 'status' ORDER BY id", [ids]);
   return rows.map(r => ({
     id: r.id, date: r.created_at, status: r.status, payment: r.payment, gateway: r.gateway, payStatus: r.pay_status, area: r.area,
     address: r.address, note: r.note, slot: r.slot, partial: r.partial, hold: !!r.hold, holdNote: r.hold_note, vatInvoice: !!r.vat_invoice,
-    company: r.company, bin: r.bin, express: !!r.express,
+    company: r.company, bin: r.bin, express: !!r.express, source: r.source || 'Customer', placedBy: r.placed_by || '',
     customer: { name: r.customer_name, phone: r.customer_phone, email: r.customer_email },
     subtotal: r.subtotal, discount: r.discount + r.member_discount, delivery: r.delivery, total: r.total, vat: r.vat,
     items: items.filter(i => i.order_id === r.id).map(i => ({ id: i.product_id, name: i.name, img: i.img, price: i.price, qty: i.qty, backorder: i.backorder })),
@@ -313,16 +318,17 @@ async function hydrateOrders(rows) {
   }));
 }
 
-app.post('/api/orders', limit('order', 20, 3600000), auth(false), wrap(async (req, res) => {
-  const { items, customer: cust = {}, area, coupon, express, partial, vatInvoice } = req.body;
+/** Prices and saves one order. `source` says who generated it: Customer (the website), or Call center / Admin / Seller (staff in the console). */
+async function placeOrder(body, { userId = null, source = 'Customer', placedBy = '' } = {}) {
+  const { items, customer: cust = {}, area, coupon, express, partial, vatInvoice } = body;
   // payment status is never taken from the browser: orders start Unpaid and staff / the delivery flow mark them Paid
   const str = (v, n) => String(v ?? '').trim().slice(0, n);
   const customer = { name: str(cust.name, 120), phone: str(cust.phone, 40), email: str(cust.email, 160) };
-  const address = str(req.body.address, 500), payment = str(req.body.payment, 60), gateway = str(req.body.gateway, 60), note = str(req.body.note, 500), slot = str(req.body.slot, 60), company = str(req.body.company, 160), bin = str(req.body.bin, 60);
+  const address = str(body.address, 500), payment = str(body.payment, 60), gateway = str(body.gateway, 60), note = str(body.note, 500), slot = str(body.slot, 60), company = str(body.company, 160), bin = str(body.bin, 60);
   if (!Array.isArray(items) || !items.length) throw fail(400, 'Your cart is empty');
   if (!customer.name || !customer.phone || !address) throw fail(400, 'Name, phone and delivery address are required');
   if (!/^01\d{9}$/.test(digits(customer.phone).slice(-11))) throw fail(400, 'Enter a valid mobile number (01XXXXXXXXX)');
-  const t = await priceOrder(items, { area, coupon, userId: req.user?.id, express, partial, phone: customer.phone });
+  const t = await priceOrder(items, { area, coupon, userId: userId, express, partial, phone: customer.phone });
   const live = t.lines.filter(l => l.chargeQty > 0);
   if (!live.length) throw fail(400, 'None of the items in your cart are in stock right now');
 
@@ -333,10 +339,10 @@ app.post('/api/orders', limit('order', 20, 3600000), auth(false), wrap(async (re
     const hold = t.heldN > 0;
     await conn.query(
       `INSERT INTO orders (id,user_id,customer_name,customer_phone,customer_email,company,bin,address,area,subtotal,discount,member_discount,delivery,express,total,vat,
-         payment,gateway,pay_status,partial,slot,vat_invoice,hold,hold_note,note,coupon) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-      [id, req.user?.id || null, customer.name, customer.phone, customer.email, vatInvoice ? company : '', vatInvoice ? bin : '', address, t.zone,
+         payment,gateway,pay_status,partial,slot,vat_invoice,hold,hold_note,note,coupon,source,placed_by) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [id, userId || null, customer.name, customer.phone, customer.email, vatInvoice ? company : '', vatInvoice ? bin : '', address, t.zone,
         t.subtotal, t.discount, t.member, t.delivery, +!!t.express, t.total, t.vat, payment || 'Cash on delivery', gateway, 'Unpaid',
-        t.partial, slot, +!!vatInvoice, +hold, hold ? 'High-value / special-order items held until our team approves them' : '', note, t.coupon]);
+        t.partial, slot, +!!vatInvoice, +hold, hold ? 'High-value / special-order items held until our team approves them' : '', note, t.coupon, source, placedBy]);
     for (const l of live) {
       if (l.avail) {
         const [u] = await conn.query('UPDATE products SET stock = stock - ? WHERE id = ? AND stock >= ?', [l.avail, l.p.id, l.avail]);
@@ -348,11 +354,24 @@ app.post('/api/orders', limit('order', 20, 3600000), auth(false), wrap(async (re
     await conn.query('INSERT INTO order_history (order_id,status) VALUES (?,?)', [id, 'Pending']);
     await conn.commit();
     const [rows] = await pool.query('SELECT * FROM orders WHERE id = ?', [id]);
-    res.json((await hydrateOrders(rows))[0]);
+    return (await hydrateOrders(rows))[0];
   } catch (e) {
     await conn.rollback();
     throw e;
   } finally { conn.release(); }
+}
+
+app.post('/api/orders', limit('order', 20, 3600000), auth(false), wrap(async (req, res) => {
+  res.json(await placeOrder(req.body, { userId: req.user?.id }));
+}));
+
+const ORDER_SOURCES = ['Call center', 'Admin', 'Seller'];
+/** Staff create an order for a customer. The source is chosen on the form; when it is not sent it follows the person's role. */
+app.post('/api/admin/orders', guard('orders.create'), wrap(async (req, res) => {
+  const role = req.staff.role;
+  const fallback = role === 'Call center agent' ? 'Call center' : ['RM', 'Field Officer'].includes(role) ? 'Seller' : 'Admin';
+  const source = ORDER_SOURCES.includes(req.body?.source) ? req.body.source : fallback;
+  res.json(await placeOrder(req.body, { source, placedBy: req.staff.name }));
 }));
 
 app.get('/api/orders', auth(true), wrap(async (req, res) => {
@@ -475,7 +494,7 @@ app.get('/api/blog/:slug', wrap(async (req, res) => {
   const [[r]] = await pool.query('SELECT *, DATE_FORMAT(published, "%Y-%m-%d") AS published FROM blog_posts WHERE slug = ? AND status = "Published"', [req.params.slug]);
   if (!r) throw fail(404, 'Article not found');
   const [rel] = await pool.query('SELECT slug, title, category, cover, excerpt, author, DATE_FORMAT(published, "%Y-%m-%d") AS published FROM blog_posts WHERE status = "Published" AND slug <> ? ORDER BY (category = ?) DESC, published DESC LIMIT 3', [r.slug, r.category]);
-  res.json({ post: { ...blogOut(r), body: r.body }, related: rel.map(blogOut) });
+  res.json({ post: { ...blogOut(r), body: r.body, metaTitle: r.meta_title || '' }, related: rel.map(blogOut) });
 }));
 
 // ---------- careers ----------
@@ -513,7 +532,10 @@ app.use(['/api/admin/login', '/api/admin/register'], limit('stafflogin', 15, 10 
 app.use('/api/field/login', limit('fieldlogin', 15, 10 * 60000));
 app.use('/api/field/forgot', limit('fieldforgot', 20, 30 * 60000)); // security-code requests and guesses, per IP
 app.use('/api/live', limit('live', 40, 10 * 60000)); // order lookup / return by order id + mobile number
+app.use('/api/admin/audit', auditRouter); // before adminRouter so /audit is never taken for an admin id
 app.use('/api/admin', adminRouter);
+app.use('/api/inv', invRouter);
+app.use('/api/quotes', quoteRouter);
 app.use('/api/account', accountRouter);
 app.use('/api/field', fieldRouter);
 app.use('/api/hub', hubRouter);
@@ -545,6 +567,7 @@ app.listen(port, () => {
   console.log(`AR Trade API on http://localhost:${port}`);
   if (process.env.NODE_ENV === 'production' && !process.env.SITE_URL) console.warn('SITE_URL is not set: canonical links, the sitemap and emails will use the request Host header. Set SITE_URL=https://your-domain in server/.env.');
   startMailWorker();
+  startAuditPrune(); // old log rows are deleted daily (AUDIT_KEEP_DAYS, default 365)
   startBackupSchedule(); // a full database backup every 6 hours (BACKUP_EVERY_HOURS)
 });
 // retention: GPS breadcrumbs older than 90 days are of no use

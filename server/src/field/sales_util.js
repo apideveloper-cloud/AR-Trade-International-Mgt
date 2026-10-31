@@ -63,12 +63,12 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': 
  */
 export async function mailCustomer(customerId, subject, lines) {
   try {
-    if (!mailReady()) return false;
+    if (!mailReady('sales')) return false;
     const [[c]] = await pool.query('SELECT name, email FROM field_customers WHERE id = ?', [customerId]);
     if (!c || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c.email || '')) return false;
     const text = [`Dear ${c.name},`, '', ...lines, '', 'AR Trade International'].join('\n');
     const html = `<p>Dear ${esc(c.name)},</p>${lines.map(l => `<p style="margin:4px 0">${esc(l)}</p>`).join('')}<p>AR Trade International</p>`;
-    const sent = await Promise.race([sendMail({ to: c.email, subject, text, html }), new Promise(r => setTimeout(() => r(false), 9000))]);
+    const sent = await Promise.race([sendMail({ channel: 'sales', to: c.email, subject, text, html }), new Promise(r => setTimeout(() => r(false), 9000))]);
     return sent === true;
   } catch (e) { console.error('customer mail failed:', e.message); return false; }
 }

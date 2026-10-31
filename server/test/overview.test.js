@@ -89,7 +89,7 @@ test('to-do list only has actions the person can take, and guide lines are cappe
 });
 
 test('a buying role leads with stock and never sees payments to chase', () => {
-  const purchase = only('dashboard.view', 'orders.view', 'products.view', 'products.manage', 'media.upload');
+  const purchase = only('dashboard.view', 'orders.view', 'products.view', 'inventory.manage', 'media.upload');
   const a = analyse(raw({ stock: { rows: [{ id: 1, name: 'Toner', stock: 4, sold30: 60 }], out: 1, low: 2, noImg: 3 }, finance: { unpaidN: 9, unpaidV: 9000, unpaidOldN: 4, unpaidOldV: 4000, expN: 2, expV: 500 }, pendingOldOrders: 3 }), purchase);
   assert.equal(a.focus, 'stock');
   assert.equal(a.finance, undefined);

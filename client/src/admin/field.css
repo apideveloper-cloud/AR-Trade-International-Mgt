@@ -187,20 +187,20 @@
 @media (max-width: 560px) { .er-card { flex-wrap: wrap; } .er-retry { width: 100%; } } @media (prefers-reduced-motion: reduce) { .er-card { animation: none; } }
 
 /* PDF preview: a wide panel whose frame fills all the height, with readable footer buttons */
-.a-modal.pdf { width: min(1000px, 100vw); }
+.a-modal.pdf { width: min(1240px, 100vw); }
 .a-modal.pdf .bd { display: flex; flex-direction: column; padding: 14px 16px; }
 .a-modal.pdf .fd-pdf { flex: 1; min-height: 0; height: auto; }
 .a-modal.pdf .ft a.a-btn:not(.ghost) { color: #fff; }
 /* the PDF viewer opens above any drawer or panel that launched it */
 .a-scrim.pdf { z-index: 129; }
 .a-modal.pdf { z-index: 130; }
-/* compact PDF viewer: the whole page fits the panel */
-.a-modal.pdf { width: min(720px, 100vw); }
-.a-modal.pdf .bd { padding: 10px 12px; background: #e9edf4; }
+/* PDF viewer: the page fills the panel's width (no grey bands at the sides), the panel is sized to an A4 page */
+.a-modal.pdf { width: min(920px, 100vw); }
+.a-modal.pdf .bd { padding: 6px 6px; background: #e9edf4; }
 .a-modal.pdf .hd { padding: 12px 18px; }
 .a-modal.pdf .ft { padding: 10px 14px; gap: 8px; }
 .a-modal.pdf .ft .a-btn { padding: 8px 14px; font-size: 12.5px; }
-.a-modal.pdf .fd-pdf { border-radius: 8px; }
+.a-modal.pdf .fd-pdf { border-radius: 6px; border: 0; }
 
 /* team list: compact cards (name, status and one line of facts) */
 .fd-listcard { gap: 8px; }
@@ -394,8 +394,10 @@
 /* search / paging bars of the Marketing lists */
 .mk-right > .a-tb, .mk-right > div:first-child:not(.a-card):not(.mk-card) { padding: 6px 10px; border-radius: 12px; }
 .mk-right input[type="search"], .mk-card input[type="search"], .a-tb input { height: 32px; font-size: 13px; }
-.a-card.mk-card table.dt th { padding: 6px 12px; font-size: 10px; }
 .a-card.mk-card table.dt td { padding: 5px 12px; font-size: 13px; }
 .a-card.mk-card .a-pager { padding-top: 4px; } .a-card.mk-card .a-pager button { min-width: 28px; height: 28px; }
 
 .adm-pagewait { display: grid; place-items: center; padding: 60px 0; }
+
+/* PDF button with no label: a small square holding just the file icon */
+.a-mini.fd-pdfbtn.icon { min-width: 0; width: 32px; height: 32px; padding: 0; gap: 0; border-radius: 9px; }

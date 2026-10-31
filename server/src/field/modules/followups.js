@@ -1,11 +1,14 @@
 // RM follow-up tracker. Follow-ups are created when a visit is saved (see visits.js).
 //   GET /api/field/followups?bucket=overdue|today|upcoming|all[&staff_id=]  -> { items, counts }
+//        with ?page=&size= (and optional ?q=, ?status=Open|Done, ?from=&to= on the due date) the same JSON plus { rows (= items of the page), total (matching the bucket and filters), page, size };
+//        counts always cover all of the person's follow-ups
 //   PUT /api/field/followups/:id/done        { remarks }                      (remarks required)
 //   PUT /api/field/followups/:id/reopen
 //   PUT /api/field/followups/:id/reschedule  { dueAt (ISO), reason, remarks } (remarks required)
 import { Router } from 'express';
 import { pool, guard, guardRole, wrap, fail, roleKey, UTC, parseJson } from '../common.js';
 import { bdDate, bdToDate, addDays, utcSql } from '../crm_util.js';
+import { pageOf, addRange, addSearch, whereOf, wantsPage } from '../../listing.js';
 
 const router = Router();
 const isBoss = s => ['manager', 'admin'].includes(roleKey(s.role));
@@ -37,6 +40,25 @@ router.get('/', guard(), wrap(async (req, res) => {
   let sid = req.staff.id;
   const q = parseInt(req.query.staff_id, 10);
   if (q && q !== sid) { if (!isBoss(req.staff)) throw fail(403, 'Your role cannot do this'); sid = q; }
+  if (wantsPage(req)) { // paged: bucket, search and period are applied in the database (still only this person's follow-ups)
+    const { size, page, offset } = pageOf(req);
+    const t0 = utcSql(bdToDate(bdDate())), t1 = utcSql(bdToDate(addDays(bdDate(), 1)));
+    const [[k]] = await pool.query(
+      `SELECT COALESCE(SUM(status = 'Open' AND due_at < ?), 0) overdue, COALESCE(SUM(status = 'Open' AND due_at >= ? AND due_at < ?), 0) today,
+              COALESCE(SUM(status = 'Open' AND due_at >= ?), 0) upcoming, COALESCE(SUM(status = 'Open'), 0) open FROM field_followups WHERE staff_id = ?`, [t0, t0, t1, t1, sid]);
+    const cond = ['f.staff_id = ?'], args = [sid];
+    const bk = String(req.query.bucket || 'all');
+    if (bk === 'overdue') { cond.push('f.due_at < ?'); args.push(t0); } else if (bk === 'today') { cond.push('f.due_at >= ? AND f.due_at < ?'); args.push(t0, t1); } else if (bk === 'upcoming') { cond.push('f.due_at >= ?'); args.push(t1); }
+    const st = ['Open', 'Done'].find(x => x.toLowerCase() === String(req.query.status || '').toLowerCase());
+    if (st) { cond.push('f.status = ?'); args.push(st); }
+    addRange(cond, args, 'f.due_at', req);
+    addSearch(cond, args, ['c.name', 'c.area', 'f.title', 'f.note', 'f.action'], req.query.q);
+    const w = whereOf(cond);
+    const [[m]] = await pool.query(`SELECT COUNT(*) n FROM field_followups f JOIN field_customers c ON c.id = f.customer_id ${w}`, args);
+    const [list] = await pool.query(`${SQL} ${w} ORDER BY f.due_at, f.id LIMIT ? OFFSET ?`, [...args, size, offset]);
+    const items = list.map(out);
+    return res.json({ items, rows: items, total: Number(m.n), page, size, counts: { overdue: Number(k.overdue), today: Number(k.today), upcoming: Number(k.upcoming), open: Number(k.open) } });
+  }
   const [rows] = await pool.query(SQL + ' WHERE f.staff_id = ? ORDER BY f.due_at, f.id', [sid]);
   const all = rows.map(out);
   const open = g => all.filter(f => f.group === g && f.status === 'Open').length;

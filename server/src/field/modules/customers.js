@@ -1,11 +1,13 @@
 // Customers (RM): list / search, add an upcoming customer (lead), convert to active on the first order.
 //   GET  /api/field/customers?kind=all|active|upcoming&q=   -> { items, counts }
+//        with ?page=&size=[&from=&to=] (created date) the same JSON plus { rows (= items of the page), total, page, size, dueTotal }
 //   GET  /api/field/customers/:id
 //   POST /api/field/customers            { name, mobile, person, type, area, interest[], value, source, next, note, lat, lng }
 //   POST /api/field/customers/:id/convert
 import { Router } from 'express';
 import { pool, guard, guardRole, wrap, fail, digits } from '../common.js';
 import { customerOut, duesByCustomer } from '../crm_util.js';
+import { pageOf, addRange, addSearch, whereOf, wantsPage } from '../../listing.js';
 
 const router = Router();
 const str = (v, n) => String(v ?? '').trim().slice(0, n);
@@ -13,8 +15,29 @@ const str = (v, n) => String(v ?? '').trim().slice(0, n);
 router.get('/', guard(), wrap(async (req, res) => {
   const q = str(req.query.q, 80).toLowerCase();
   const kind = String(req.query.kind || 'all').toLowerCase();
-  const [rows] = await pool.query('SELECT * FROM field_customers ORDER BY created_at DESC, id DESC');
   const dues = await duesByCustomer();
+  if (wantsPage(req)) { // paged: filtered and cut in the database; the counts still cover every customer
+    const { size, page, offset } = pageOf(req);
+    const cond = [], args = [];
+    if (kind === 'active') cond.push("kind <> 'Upcoming'"); else if (kind === 'upcoming') cond.push("kind = 'Upcoming'");
+    addRange(cond, args, 'created_at', req, {});
+    const sc = [], sa = [];
+    addSearch(sc, sa, ['name', 'contact_person', 'area', 'phone'], q);
+    if (sc.length) {
+      const d = digits(q);
+      if (d.length >= 3) { sc[0] = `(${sc[0]} OR REPLACE(REPLACE(REPLACE(phone, '-', ''), ' ', ''), '+', '') LIKE ?)`; sa.push(`%${d}%`); }
+      cond.push(sc[0]); args.push(...sa);
+    }
+    const where = whereOf(cond);
+    const [[t]] = await pool.query(`SELECT COUNT(*) n, SUM(kind <> 'Upcoming') act FROM field_customers`);
+    const [[m]] = await pool.query(`SELECT COUNT(*) n FROM field_customers ${where}`, args);
+    const [list] = await pool.query(`SELECT * FROM field_customers ${where} ORDER BY name, id LIMIT ? OFFSET ?`, [...args, size, offset]);
+    const [ids] = await pool.query(`SELECT id FROM field_customers ${where}`, args);
+    const items = list.map(c => customerOut(c, dues.get(c.id) || 0));
+    const all = Number(t.n), active = Number(t.act) || 0;
+    return res.json({ items, rows: items, total: Number(m.n), page, size, dueTotal: ids.reduce((s, r) => s + (dues.get(r.id) || 0), 0), counts: { all, active, upcoming: all - active } });
+  }
+  const [rows] = await pool.query('SELECT * FROM field_customers ORDER BY created_at DESC, id DESC');
   const isActive = c => c.kind !== 'Upcoming';
   const counts = { all: rows.length, active: rows.filter(isActive).length, upcoming: rows.filter(c => !isActive(c)).length };
   const items = rows

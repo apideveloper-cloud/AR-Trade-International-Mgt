@@ -2,14 +2,17 @@ import { useEffect, useState } from 'react';
 import { adm, downloadFile, dateF, dateTimeF, mktApi, slNo, useTable } from '../adminApi.js';
 import { Empty, Modal, Pager, Pill, Toolbar, Summary, ViewToggle, alertBox, confirmBox, hueOf, useView } from '../ui.jsx';
 import { Av, Chip, Tabs, usePaged } from '../fieldKit.jsx';
+import { ListFilter } from '../ListFilter.jsx';
+import { IconBtn } from '../IconBtn.jsx';
 
 export function Services() {
-  const t = useTable('/services', { status: '' });
+  const t = useTable('/services', { status: '', from: '', to: '' });
   const [view, setView] = useView('services');
   const set = async (id, status) => { await adm.put('/services/' + id, { status }); t.reload(); };
   return (
     <>
-      <Toolbar t={t} filters={[{ key: 'status', label: 'All statuses', options: ['New', 'Scheduled', 'In progress', 'Completed'] }]}><ViewToggle view={view} setView={setView} /></Toolbar>
+      <ListFilter t={t} noun="request" title="Search service requests" search={{ placeholder: 'Request no., name, phone or model' }} selects={[{ key: 'status', label: 'Status', all: 'All statuses', icon: 'status', options: ['New', 'Scheduled', 'In progress', 'Completed'] }]} range={{ label: 'Requested' }} />
+      <Toolbar t={t} search={false}><ViewToggle view={view} setView={setView} /></Toolbar>
       <div className={'vw ' + view} style={{ display: 'flex', flexDirection: 'column', gap: 10, opacity: t.loading ? .6 : 1 }}>
         {t.data.rows.map(v => (
           <div key={v.id} className="a-card" style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto', gap: 16, alignItems: 'center', padding: '16px 18px' }}>
@@ -29,7 +32,7 @@ export function Services() {
 }
 
 export function Reviews() {
-  const t = useTable('/reviews', { status: '' });
+  const t = useTable('/reviews', { status: '', from: '', to: '' });
   const [view, setView] = useView('reviews');
   const set = async (id, status) => { await adm.put('/reviews/' + id, { status }); t.reload(); };
   const del = async id => { if (await confirmBox('Delete this review permanently?', { danger: true, confirmLabel: 'Delete' })) { await adm.del('/reviews/' + id); t.reload(); } };
@@ -37,7 +40,8 @@ export function Reviews() {
   return (
     <>
       {t.data.pending > 0 && <div className="a-msg" style={{ background: 'oklch(0.96 0.04 85)', color: 'oklch(0.4 0.12 70)' }}>{t.data.pending} review{t.data.pending > 1 ? 's' : ''} waiting for your approval. Reviews appear on the product page only after you approve them.</div>}
-      <Toolbar t={t} filters={[{ key: 'status', label: 'All statuses', options: ['Pending', 'Approved', 'Rejected'] }]}><ViewToggle view={view} setView={setView} /></Toolbar>
+      <ListFilter t={t} noun="review" title="Search reviews" search={{ placeholder: 'Reviewer, product or text' }} selects={[{ key: 'status', label: 'Status', all: 'All statuses', icon: 'status', options: ['Pending', 'Approved', 'Rejected'] }]} range={{ label: 'Posted' }} />
+      <Toolbar t={t} search={false}><ViewToggle view={view} setView={setView} /></Toolbar>
       <div className={'vw ' + view} style={{ display: 'flex', flexDirection: 'column', gap: 10, opacity: t.loading ? .6 : 1 }}>
         {t.data.rows.map(v => (
           <div key={v.id} className="a-card" style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto', gap: 16, alignItems: 'start', padding: '16px 18px' }}>
@@ -149,8 +153,8 @@ export function Inbox() {
 }
 
 export function Marketing() {
-  const subs = useTable('/subscribers');
-  const consents = useTable('/consents', { status: '' });
+  const subs = useTable('/subscribers', { from: '', to: '' });
+  const consents = useTable('/consents', { status: '', from: '', to: '' });
   const [camps, setCamps] = useState([]);
   const [err, setErr] = useState('');
   const loadCamps = () => mktApi.get('/campaigns').then(setCamps).catch(() => setCamps([]));
@@ -194,7 +198,8 @@ export function Marketing() {
           </div>
         </div>
         <div className="mk-right">
-          <Toolbar t={subs} sizes={[10, 25]} />
+          <ListFilter t={subs} noun="subscriber" title="Search subscribers" search={{ placeholder: 'Email address' }} range={{ label: 'Joined' }} />
+          <Toolbar t={subs} sizes={[10, 25]} search={false} />
           <div className="a-card mk-card" style={{ padding: 0 }}>
             <div className="mk-hd" style={{ padding: '12px 16px' }}><b>Subscriber list</b><span className="chip">{subs.data.total}</span><span style={{ flex: 1 }} /><button className="a-btn sm ghost" onClick={() => exportCsv(subs.data.rows)}>⤓ Export CSV</button></div>
             <form onSubmit={add} className="mk-add"><input className="a-input" name="email" type="email" required placeholder="Add an email address" /><button className="a-btn sm grad">＋ Add</button></form>
@@ -214,7 +219,7 @@ export function Marketing() {
       <div className="a-card mk-card" style={{ padding: 0 }}>
         <div className="mk-hd" style={{ padding: '14px 18px 4px' }}><b>Consent log</b><span className="chip">{consents.data.total}</span></div>
         <div style={{ padding: '0 18px 8px', fontSize: 12, color: '#6b7388' }}>Double opt-in records: date, time, source and IP for every signup.</div>
-        <div style={{ padding: '0 12px 8px' }}><Toolbar t={consents} filters={[{ key: 'status', label: 'All statuses', options: ['Pending', 'Confirmed', 'Unsubscribed'] }]} /></div>
+        <div style={{ padding: '0 12px 8px' }}><ListFilter t={consents} noun="record" title="Search consent log" search={{ placeholder: 'Email or source' }} selects={[{ key: 'status', label: 'Status', all: 'All statuses', icon: 'status', options: ['Pending', 'Confirmed', 'Unsubscribed'] }]} range={{ label: 'Consent' }} /><div style={{ height: 8 }} /><Toolbar t={consents} search={false} /></div>
         <div style={{ overflow: 'auto' }}>
           <table className="dt">
             <thead><tr>{['SL', 'Email', 'Status', 'Source', 'Consent at', 'Confirmed at', 'IP', ''].map(h => <th key={h}>{h}</th>)}</tr></thead>
@@ -285,10 +290,13 @@ export function Careers() {
   const shown = apps.filter(a => !stage || a.stage === stage);
   return (
     <>
-      <div className="kpis" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))' }}>
-        {[['Open roles', jobs.filter(j => j.open && new Date(j.deadline) > new Date()).length], ['Applications', apps.length], ['New', apps.filter(a => a.stage === 'New').length], ['Interview', apps.filter(a => a.stage === 'Interview').length], ['Hired', apps.filter(a => a.stage === 'Hired').length]]
-          .map(([l, n]) => <div key={l} style={{ background: 'linear-gradient(135deg,#0b1631,#173a7a)', color: '#fff', borderRadius: 16, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 4 }}><span style={{ fontSize: 11.5, color: '#a9bbe0', fontWeight: 700 }}>{l}</span><b style={{ fontFamily: 'var(--disp)', fontSize: 24 }}>{n}</b></div>)}
-      </div>
+      <Summary items={[
+        ['Open roles', jobs.filter(j => j.open && new Date(j.deadline) > new Date()).length, 'accepting applications', 'blue', 'tag'],
+        ['Applications', apps.length, 'received in total', 'violet', 'users'],
+        ['New', apps.filter(a => a.stage === 'New').length, 'not reviewed yet', 'amber', 'plus'],
+        ['Interview', apps.filter(a => a.stage === 'Interview').length, 'in progress', 'blue', 'clock'],
+        ['Hired', apps.filter(a => a.stage === 'Hired').length, 'joined the team', 'green', 'check']
+      ]} />
       <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
         {[['apps', 'Applications'], ['jobs', 'Jobs']].map(([k, l]) => <button key={k} className={'a-chip' + (tab === k ? ' on' : '')} style={{ padding: '8px 16px', fontSize: 13 }} onClick={() => setTab(k)}>{l}</button>)}
         <span style={{ flex: 1 }} /><button className="a-btn sm grad" style={{ padding: '10px 16px', borderRadius: 10 }} onClick={() => setEdit('new')}>+ Post a job</button>
@@ -322,7 +330,7 @@ export function Careers() {
               <span className="sl">{i + 1}</span>
               <span style={{ display: 'flex', flexDirection: 'column' }}><b>{j.title}</b><span style={{ color: '#5d6270', fontSize: 12 }}>{j.id} · {j.type} · {j.salary}</span></span>
               <span>{j.dept}</span><span>{dateF(j.deadline)}</span><Pill s={j.open && new Date(j.deadline) > new Date() ? 'Active' : 'Disabled'} label={j.open && new Date(j.deadline) > new Date() ? 'Open' : 'Closed'} /><b>{j.apps}</b>
-              <span style={{ display: 'flex', gap: 6 }}><button className="a-btn sm ghost" onClick={() => setEdit(j)}>Edit</button><button className="a-btn sm ghost" style={{ color: 'oklch(0.5 0.18 25)' }} onClick={() => delJob(j)}>Delete</button></span>
+              <span className="ic-row"><IconBtn icon="edit" title="Edit the job" onClick={() => setEdit(j)} /><IconBtn icon="trash" tone="bad" title="Delete the job and its applications" onClick={() => delJob(j)} /></span>
             </div>
           ))}
         </div></div>

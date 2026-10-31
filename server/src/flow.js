@@ -38,21 +38,21 @@ export async function routeBranch(order, items, branches) {
 }
 
 /** Moves an order to `flow`, keeps the legacy status in sync and logs the change. */
-export async function applyFlow(orderId, flow, note = '', extra = {}) {
+export async function applyFlow(orderId, flow, note = '', extra = {}, by = '') {
   const sets = ['flow = ?', 'status = ?'];
   const vals = [flow, LEGACY[flow]];
   for (const [k, v] of Object.entries(extra)) { sets.push(`${k} = ?`); vals.push(v); }
   await pool.query(`UPDATE orders SET ${sets.join(', ')} WHERE id = ?`, [...vals, orderId]);
-  await pool.query('INSERT INTO order_history (order_id,status,flow,note) VALUES (?,?,?,?)', [orderId, LEGACY[flow], flow, String(note).slice(0, 255)]);
+  await pool.query('INSERT INTO order_history (order_id,status,flow,note,by_name) VALUES (?,?,?,?,?)', [orderId, LEGACY[flow], flow, String(note).slice(0, 255), String(by).slice(0, 120)]);
 }
 
 /** Cancels an open order and puts its stock back, once: a second call (or a closed order) fails instead of double-restocking. */
-export async function cancelOrder(orderId, note = '') {
+export async function cancelOrder(orderId, note = '', by = '') {
   const [r] = await pool.query("UPDATE orders SET flow = 'Cancelled', status = 'Cancelled' WHERE id = ? AND flow NOT IN ('Delivered','Cancelled','Returned')", [orderId]);
   if (!r.affectedRows) throw fail(400, 'This order is already closed');
   const [items] = await pool.query('SELECT product_id, qty, backorder FROM order_items WHERE order_id = ?', [orderId]);
   for (const i of items) await pool.query('UPDATE products SET stock = stock + ? WHERE id = ?', [Math.max(0, i.qty - i.backorder), i.product_id]);
-  await pool.query('INSERT INTO order_history (order_id,status,flow,note) VALUES (?,?,?,?)', [orderId, 'Cancelled', 'Cancelled', String(note).slice(0, 255)]);
+  await pool.query('INSERT INTO order_history (order_id,status,flow,note,by_name) VALUES (?,?,?,?,?)', [orderId, 'Cancelled', 'Cancelled', String(note).slice(0, 255), String(by).slice(0, 120)]);
 }
 
 export function returnEligible(order, reason) {

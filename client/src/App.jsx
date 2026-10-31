@@ -1,6 +1,7 @@
 import Reset from './pages/Reset.jsx';
 import { Blog, BlogPost } from './pages/Blog.jsx';
 import { lazy, Suspense, useEffect } from 'react';
+import { PageLoader } from './components/PageLoader.jsx';
 import { Route, Routes, useLocation } from 'react-router-dom';
 import { useStore } from './store.jsx';
 import Header from './components/Header.jsx';
@@ -29,15 +30,15 @@ export default function App() {
   const { pathname } = useLocation();
   useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
 
-  const spin = <div style={{ padding: 80, textAlign: 'center' }}><span className="spin" /></div>;
+  const spin = <PageLoader label="Loading…" />;
   const errorScreens = { '/server-error': <ServerErrorPage />, '/forbidden': <ForbiddenPage />, '/maintenance': <MaintenancePage />, '/offline': <OfflinePage /> };
   if (errorScreens[pathname]) return errorScreens[pathname];
   if (pathname.startsWith('/prefs/')) return <Suspense fallback={spin}><Routes><Route path="/prefs/:token" element={<Prefs />} /></Routes></Suspense>;
   if (pathname.startsWith('/email')) return <Suspense fallback={spin}><Routes><Route path="/email/*" element={<EmailApp />} /></Routes></Suspense>;
-  if (pathname.startsWith('/hub')) return <Suspense fallback={<div style={{ padding: 80, textAlign: 'center' }}><span className="spin" /></div>}><Routes><Route path="/hub/*" element={<HubApp />} /></Routes></Suspense>;
-  if (pathname.startsWith('/admin')) return <Suspense fallback={<div style={{ padding: 80, textAlign: 'center' }}><span className="spin" /></div>}><Routes><Route path="/admin/*" element={<AdminApp />} /></Routes></Suspense>;
+  if (pathname.startsWith('/hub')) return <Suspense fallback={<PageLoader label="Opening the Delivery Hub…" />}><Routes><Route path="/hub/*" element={<HubApp />} /></Routes></Suspense>;
+  if (pathname.startsWith('/admin')) return <Suspense fallback={<PageLoader label="Opening the admin console…" />}><Routes><Route path="/admin/*" element={<AdminApp />} /></Routes></Suspense>;
   if (error) return <LoadFailedPage />;
-  if (!data) return <div style={{ padding: 80, textAlign: 'center' }}><span className="spin" /></div>;
+  if (!data) return <PageLoader label="Loading the store…" />;
 
   return (
     <>

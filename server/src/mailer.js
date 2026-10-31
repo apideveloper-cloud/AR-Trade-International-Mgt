@@ -1,30 +1,55 @@
 import nodemailer from 'nodemailer';
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-let tx;
 
 /** Public https URL of the shop (SITE_URL in .env); links inside emails are built from it, never from request headers. */
 export const siteUrl = () => String(process.env.SITE_URL || '').replace(/\/$/, '');
 
-// SMTP is configured in .env (SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM, SMTP_SECURE). Without it nothing is sent.
-export const mailReady = () => !!process.env.SMTP_HOST;
-
-function transport() {
-  if (!tx) {
-    const port = Number(process.env.SMTP_PORT || 587);
-    tx = nodemailer.createTransport({
-      host: process.env.SMTP_HOST, port, secure: process.env.SMTP_SECURE ? process.env.SMTP_SECURE === 'true' : port === 465,
-      auth: process.env.SMTP_USER ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS } : undefined,
-      connectionTimeout: 10000, greetingTimeout: 10000, socketTimeout: 15000
-    });
+// Mail is sent from named accounts, each set in .env. Without a working one nothing is sent.
+//   channel 'quote'  -> SMTP_QUOTE_USER / SMTP_QUOTE_PASS  (quotations)
+//   channel 'sales'  -> SMTP_SALES_USER / SMTP_SALES_PASS  (sales-order and invoice mails to customers)
+//   no channel       -> SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM, SMTP_SECURE (everything else: marketing, contact form, security codes)
+// A channel account defaults to Gmail (smtp.gmail.com, port 465); SMTP_<NAME>_HOST / _PORT / _SECURE / _FROM override that. A channel without its
+// own account falls back to the general SMTP_* settings. Gmail needs an app password (no spaces needed; they are removed).
+const CHANNELS = { quote: 'SMTP_QUOTE', sales: 'SMTP_SALES' };
+function account(channel) {
+  const pre = CHANNELS[channel];
+  const env = process.env;
+  if (pre && env[pre + '_USER'] && env[pre + '_PASS']) {
+    const port = Number(env[pre + '_PORT'] || 465);
+    const user = env[pre + '_USER'].trim();
+    return { key: pre, host: env[pre + '_HOST'] || 'smtp.gmail.com', port, secure: env[pre + '_SECURE'] ? env[pre + '_SECURE'] === 'true' : port === 465, user, pass: String(env[pre + '_PASS']).replace(/\s+/g, ''), from: env[pre + '_FROM'] || `AR Trade International <${user}>` };
   }
-  return tx;
+  if (!env.SMTP_HOST) return null;
+  const port = Number(env.SMTP_PORT || 587);
+  return { key: 'SMTP', host: env.SMTP_HOST, port, secure: env.SMTP_SECURE ? env.SMTP_SECURE === 'true' : port === 465, user: env.SMTP_USER, pass: env.SMTP_PASS, from: env.SMTP_FROM || env.SMTP_USER };
+}
+export const mailReady = channel => !!account(channel);
+/** What to tell staff when a channel has no account yet. */
+export const mailSetupHint = channel => (CHANNELS[channel] ? `Add ${CHANNELS[channel]}_USER and ${CHANNELS[channel]}_PASS (a Gmail app password)` : 'Add the SMTP settings (SMTP_HOST ...)') + ' to server/.env, or download the PDF and send it yourself.';
+
+const transports = new Map();
+function transport(a) {
+  if (!transports.has(a.key)) {
+    transports.set(a.key, nodemailer.createTransport({
+      host: a.host, port: a.port, secure: a.secure, auth: a.user ? { user: a.user, pass: a.pass } : undefined,
+      connectionTimeout: 10000, greetingTimeout: 10000, socketTimeout: 15000
+    }));
+  }
+  return transports.get(a.key);
 }
 
-export async function sendMail({ to, subject, html, text, replyTo, attachments }) {
-  if (!mailReady()) return false;
-  await transport().sendMail({ from: process.env.SMTP_FROM || process.env.SMTP_USER, to, subject, html, text, replyTo, attachments });
+export async function sendMail({ channel, to, cc, bcc, subject, html, text, replyTo, attachments }) {
+  const a = account(channel);
+  if (!a) return false;
+  await transport(a).sendMail({ from: a.from, to, cc, bcc, subject, html, text, replyTo, attachments });
   return true;
+}
+/** Logs in to the account without sending anything: { ok, user } or { ok: false, error }. */
+export async function verifyMail(channel) {
+  const a = account(channel);
+  if (!a) return { ok: false, error: 'not configured' };
+  try { await transport(a).verify(); return { ok: true, user: a.user }; } catch (e) { return { ok: false, user: a.user, error: e.message }; }
 }
 
 // contact-form notification to the shop + a thank-you copy to the customer when they gave an email address

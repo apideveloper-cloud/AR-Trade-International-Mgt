@@ -340,6 +340,7 @@ CREATE TABLE IF NOT EXISTS mkt_campaigns (
   revenue INT NULL,
   ab_a TINYINT NULL,
   ab_b TINYINT NULL,
+  design JSON NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 

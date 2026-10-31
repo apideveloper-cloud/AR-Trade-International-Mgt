@@ -13,7 +13,7 @@ export const secret = () => {
 export const fail = (status, message) => Object.assign(new Error(message), { status });
 
 /** Pictures are only ever our own uploaded files (server/uploads), kept in the database as a path. No outside web addresses, no inline data. */
-const LOCAL_IMG = /^\/api\/(uploads|media)\/[A-Za-z0-9][A-Za-z0-9._\/-]{0,300}$/;
+const LOCAL_IMG = /^\/api\/(uploads|media)\/[A-Za-z0-9][A-Za-z0-9._/-]{0,300}$/;
 export const isLocalImg = u => typeof u === 'string' && LOCAL_IMG.test(u) && !u.includes('..') && !u.includes('//');
 /** '' for no picture; the path itself when it is one of our uploads; otherwise a 400 telling the admin to upload. */
 export const localImg = (v, message = 'Pictures must be uploaded here. Web addresses are not accepted.') => {
@@ -49,6 +49,7 @@ export const readCookie = (req, name) => {
 export const isPrivateUploadPath = raw => {
   let p = String(raw || '');
   for (let i = 0; i < 3; i++) { try { const d = decodeURIComponent(p); if (d === p) break; p = d; } catch { return true; } }
+  // eslint-disable-next-line no-control-regex -- removing NUL bytes from a path is the point
   p = p.replace(/[\\\u0000]/g, m => (m === '\\' ? '/' : ''));
   const segs = [];
   for (const s of p.split('/')) { if (s === '' || s === '.') continue; if (s === '..') segs.pop(); else segs.push(s.toLowerCase()); }

@@ -4,6 +4,7 @@ import { Login } from '../admin/AdminApp.jsx';
 import { AdminFooter, TopBar } from '../admin/AdminChrome.jsx';
 import { adm, can, getAdminToken, mktApi as api, setAdminToken, setUnauthorizedHandler } from '../admin/adminApi.js';
 import { fmt, fmtDate, fmtTime } from '../api.js';
+import { CampaignForm } from './CampaignForm.jsx';
 
 const card = { background: '#fff', borderRadius: 18, boxShadow: '0 1px 2px rgba(11,22,49,.05),0 10px 24px -18px rgba(11,22,49,.3)' };
 const inp = { border: '1px solid #d3d8e3', borderRadius: 12, padding: '11px 13px', fontSize: 14, background: '#fff', width: '100%', fontFamily: 'inherit' };
@@ -119,35 +120,12 @@ function ResultsForm({ c, onDone }) {
 function Campaigns() {
   const [camps, setCamps] = useState(null);
   const [tpls, setTpls] = useState([]);
-  const [msg, setMsg] = useState('');
-  const [err, setErr] = useState('');
   const load = () => api.get('/campaigns').then(setCamps);
   useEffect(() => { load(); api.get('/templates').then(setTpls); }, []);
-  const create = async e => {
-    e.preventDefault(); setErr(''); setMsg('');
-    const f = e.target;
-    const d = Object.fromEntries(new FormData(f).entries());
-    try {
-      const c = await api.post('/campaigns', d);
-      setMsg(c.status === 'Sent' ? `✓ Recorded for ${c.sent} subscriber${c.sent === 1 ? '' : 's'}${c.subjB ? ' · A/B subjects saved' : ''}` : '✓ Scheduled for ' + fmtTime(c.at));
-      f.reset(); load();
-    } catch (er) { setErr(er.message); }
-  };
   const tpl = id => tpls.find(t => t.id === id);
   return (
     <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-      <form onSubmit={create} style={{ ...card, borderRadius: 20, flex: '1 1 360px', maxWidth: 460, padding: 22, display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <b style={{ fontFamily: 'var(--disp)', fontSize: 20, color: '#0b1631' }}>New campaign</b>
-        <label style={lbl}>Campaign name<input name="name" required placeholder="e.g. Victory Day toner sale" style={inp} /></label>
-        <label style={lbl}>Template<select name="tpl" style={inp}>{tpls.map(t => <option key={t.id} value={t.id}>{t.name} · {t.kind}</option>)}</select></label>
-        <label style={lbl}>Subject line A<input name="subjA" required placeholder="Eid Mubarak: office restock, 18% off" style={inp} /></label>
-        <label style={lbl}>Subject line B <span style={{ fontWeight: 500, color: '#8a8f9b' }}>Optional — for an A/B test; enter the winner's open rates after sending</span><input name="subjB" placeholder="Your Eid toner deal is inside" style={inp} /></label>
-        <label style={lbl}>Audience<select name="aud" style={inp}><option value="offers">Subscribers who want offers</option><option value="festivals">Subscribers who want festival campaigns</option><option value="tips">Subscribers who want health tips</option><option value="all">All confirmed subscribers</option></select></label>
-        <label style={lbl}>Schedule <span style={{ fontWeight: 500, color: '#8a8f9b' }}>Leave empty to send now</span><input name="when" type="datetime-local" style={inp} /></label>
-        {msg && <span style={{ fontSize: 13, fontWeight: 700, color: 'oklch(0.42 0.12 150)' }}>{msg}</span>}{err && <span style={{ fontSize: 13, fontWeight: 700, color: 'oklch(0.5 0.18 25)' }}>{err}</span>}
-        <button style={{ border: 0, background: 'linear-gradient(135deg,oklch(0.6 0.14 240),oklch(0.46 0.16 256))', color: '#fff', borderRadius: 999, padding: 14, fontSize: 14.5, fontWeight: 800 }}>Schedule / send campaign</button>
-        <Note>Unsubscribe and preference links are added to the footer automatically.</Note>
-      </form>
+      <CampaignForm tpls={tpls} onDone={load} />
       <div style={{ flex: '999 1 520px', display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 }}>
         {camps && !camps.length && <div style={{ ...card, padding: 28, textAlign: 'center', color: '#6b7080' }}>No campaigns yet. Create the first one.</div>}
         {camps?.map(c => {

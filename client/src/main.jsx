@@ -21,7 +21,7 @@ if (splash) {
   const born = performance.now();
   const hide = () => setTimeout(() => {
     splash.classList.add('out');
-    try { sessionStorage.setItem('arSplash', '1'); } catch (e) { /* private mode */ }
+    try { sessionStorage.setItem('arSplash', '1'); } catch { /* private mode */ }
     setTimeout(() => splash.remove(), 700);
   }, Math.max(0, 1200 - (performance.now() - born)));
   if (document.readyState === 'complete') hide(); else window.addEventListener('load', hide);

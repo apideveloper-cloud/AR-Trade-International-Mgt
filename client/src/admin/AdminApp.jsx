@@ -1,4 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { PageLoader } from '../components/PageLoader.jsx';
 import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import './admin.css';
 import { adm, can, fld, getAdminToken, setAdminToken, setUnauthorizedHandler } from './adminApi.js';
@@ -19,23 +20,27 @@ const { Backups } = pick(() => import('./pages/Backups.jsx'), 'Backups');
 const { FieldApprovals, FieldAttendance, FieldModules, FieldTeamMap } = pick(() => import('./pages/Field.jsx'), 'FieldApprovals', 'FieldAttendance', 'FieldModules', 'FieldTeamMap');
 const { FieldContacts, FieldCustomers, FieldDeliveries, FieldOrders, FieldVisits } = pick(() => import('./pages/FieldSales.jsx'), 'FieldContacts', 'FieldCustomers', 'FieldDeliveries', 'FieldOrders', 'FieldVisits');
 const { AccCollections, AccExpenses, AccOverview, AccPurchase, AccReceivables, AccReports } = pick(() => import('./pages/Accounts.jsx'), 'AccCollections', 'AccExpenses', 'AccOverview', 'AccPurchase', 'AccReceivables', 'AccReports');
+const { InvDamage, InvPayments, InvPurchases, InvStock, InvVendors } = pick(() => import('./pages/Inventory.jsx'), 'InvDamage', 'InvPayments', 'InvPurchases', 'InvStock', 'InvVendors');
+const { Quotations } = pick(() => import('./pages/Quotations.jsx'), 'Quotations');
 const { Settings, Team } = pick(() => import('./pages/System.jsx'), 'Settings', 'Team');
 const { Roles } = pick(() => import('./pages/Roles.jsx'), 'Roles');
+const { Audit } = pick(() => import('./pages/Audit.jsx'), 'Audit');
 
 // [page, label, icon, permission(s) from the role matrix: any one opens the page]
 const NAV = [
   ['Overview', [['dashboard', 'Dashboard', '▦', 'dashboard.view']]],
-  ['Sales', [['orders', 'Orders', '▤', 'orders.view'], ['deliveries', 'Deliveries', '⚑', ['hub.view', 'hub.deliver']], ['customers', 'Customers', '☺', 'customers.view']]],
+  ['Sales', [['orders', 'Orders', '▤', 'orders.view'], ['deliveries', 'Deliveries', '⚑', ['hub.view', 'hub.deliver']], ['customers', 'Customers', '☺', 'customers.view'], ['quotes', 'Quotations', '❝', 'quotes.view']]],
   ['Catalog', [['products', 'Products', '▣', 'products.view'], ['categories', 'Categories', '☰', 'products.view']]],
   ['Engage', [['services', 'Servicing', '✦', 'services.manage'], ['blog', 'Blog', '✎', 'blog.manage'], ['pages', 'Site pages', '❏', 'pages.manage'], ['content', 'Site content', '▧', 'pages.manage'], ['reviews', 'Reviews', '★', 'reviews.moderate'], ['inbox', 'Inbox', '✉', 'messages.manage'], ['marketing', 'Marketing', '✺', 'marketing.manage'], ['careers', 'Careers', '☷', 'careers.manage']]],
   ['Field team', [['field-map', 'Team map', '◎', 'field.approve'], ['field-attendance', 'Attendance', '◷', 'field.approve'], ['field-approvals', 'Approvals', '✔', 'field.approve'], ['field-modules', 'Field modules', '⚙', 'settings.manage']]],
   ['Field sales', [['field-customers', 'Field customers', '☺', 'field.approve'], ['field-visits', 'Visits & follow-ups', '⚑', 'field.approve'], ['field-orders', 'Field orders', '▤', 'field.approve'], ['field-deliveries', 'Field deliveries', '⛟', 'field.approve'], ['field-contacts', 'Contacts', '☎', 'field.approve']]],
   ['Accounts', [['acc-overview', 'Accounts overview', '◈', ['field.approve', 'hub.cash']], ['acc-receivables', 'Receivables', '⇣', ['field.approve', 'hub.cash']], ['acc-collections', 'Collections', '⇡', ['field.approve', 'hub.cash']], ['acc-expenses', 'Expenses', '₿', ['field.approve', 'hub.cash']], ['acc-purchase', 'Purchase orders', '▥', ['field.approve', 'hub.cash']], ['acc-reports', 'Reports', '▦', ['field.approve', 'hub.cash']]]],
-  ['System', [['team', 'Team', '☻', 'team.manage'], ['roles', 'Roles', '⚿', 'roles.manage'], ['backups', 'Backups', '⛁', 'roles.manage'], ['settings', 'Settings', '⚙', 'settings.manage']]]
+  ['Purchasing & stock', [['inv-vendors', 'Vendors', '☎', 'inventory.view'], ['inv-purchases', 'Purchases', '▥', 'inventory.view'], ['inv-stock', 'Stock', '▣', 'inventory.view'], ['inv-damage', 'Damage & returns', '⚠', 'inventory.view'], ['inv-payments', 'Vendor payments', '৳', 'inventory.view']]],
+  ['System', [['team', 'Team', '☻', 'team.manage'], ['roles', 'Roles', '⚿', 'roles.manage'], ['audit', 'Audit log', '⌕', 'audit.view'], ['backups', 'Backups', '⛁', 'roles.manage'], ['settings', 'Settings', '⚙', 'settings.manage']]]
 ];
 // the field-app module behind a menu page (a page is hidden when the module is off for the signed-in role)
 const MODULE_OF = { 'field-map': 'team', 'field-attendance': 'attendance', 'field-approvals': 'approvals', 'field-customers': 'customers', 'field-visits': 'visits', 'field-orders': 'sales', 'field-deliveries': 'delivery', 'field-contacts': 'contacts', 'acc-collections': 'collection', 'acc-purchase': 'purchase', 'acc-reports': 'reports', 'acc-expenses': 'expenses' };
-const TITLES = { backups: 'Backups', 'field-customers': 'Field customers', 'field-visits': 'Visits & follow-ups', 'field-orders': 'Field sales orders', 'field-deliveries': 'Field deliveries', 'field-contacts': 'Contacts', 'acc-overview': 'Accounts overview', 'acc-receivables': 'Receivables', 'acc-collections': 'Collections', 'acc-expenses': 'Expense ledger', 'acc-purchase': 'Purchase orders', 'acc-reports': 'Accounts reports', 'field-map': 'Team live map', 'field-attendance': 'Attendance', 'field-approvals': 'Field approvals', 'field-modules': 'Field app modules', dashboard: 'Dashboard', orders: 'Orders', deliveries: 'Deliveries', customers: 'Customers', products: 'Products', categories: 'Categories', services: 'Service requests', blog: 'Blog articles', pages: 'Servicing, clients & company pages', content: 'Storefront content (slider, logos, FAQs, policies)', reviews: 'Product reviews', inbox: 'Inbox', marketing: 'Marketing', careers: 'Careers', team: 'Team & accounts', roles: 'Roles & permissions', settings: 'Settings' };
+const TITLES = { quotes: 'Quotations: price offers to customers', audit: 'Audit log: who did what, and when', 'inv-vendors': 'Vendors & suppliers', 'inv-purchases': 'Purchases (goods received)', 'inv-stock': 'Stock', 'inv-damage': 'Damage & returns to vendors', 'inv-payments': 'Vendor payments', backups: 'Backups', 'field-customers': 'Field customers', 'field-visits': 'Visits & follow-ups', 'field-orders': 'Field sales orders', 'field-deliveries': 'Field deliveries', 'field-contacts': 'Contacts', 'acc-overview': 'Accounts overview', 'acc-receivables': 'Receivables', 'acc-collections': 'Collections', 'acc-expenses': 'Expense ledger', 'acc-purchase': 'Purchase orders', 'acc-reports': 'Accounts reports', 'field-map': 'Team live map', 'field-attendance': 'Attendance', 'field-approvals': 'Field approvals', 'field-modules': 'Field app modules', dashboard: 'Dashboard', orders: 'Orders', deliveries: 'Deliveries', customers: 'Customers', products: 'Products', categories: 'Categories', services: 'Service requests', blog: 'Blog articles', pages: 'Servicing, clients & company pages', content: 'Storefront content (slider, logos, FAQs, policies)', reviews: 'Product reviews', inbox: 'Inbox', marketing: 'Marketing', careers: 'Careers', team: 'Team & accounts', roles: 'Roles & permissions', settings: 'Settings' };
 
 /** Password box with a show / hide eye, so a mistyped password can be checked before signing in. */
 function PasswordInput({ name, autoComplete, minLength }) {
@@ -164,7 +169,6 @@ export function Login({ onDone }) {
 export default function AdminApp() {
   const [staff, setStaff] = useState(null);
   const [ready, setReady] = useState(false);
-  const [site, setSite] = useState(null);
   const [cats, setCats] = useState([]);
   const [menuQ, setMenuQ] = useState(''); // left-menu search
   // left menu behaves as an accordion: one group open at a time, and the group of the page you are on opens by itself
@@ -200,13 +204,11 @@ export default function AdminApp() {
     if (!getAdminToken()) { setReady(true); return; }
     adm.get('/me').then(r => setStaff(r.staff)).catch(() => setAdminToken(null)).finally(() => setReady(true));
   }, []);
-  const loadMeta = useCallback(() => fetch('/api/bootstrap').then(r => r.json()).then(d => { setSite(d.site); }).catch(() => {}), []);
-  useEffect(() => { loadMeta(); }, [loadMeta]);
   const loadCats = useCallback(() => adm.get('/categories').then(r => setCats(r.map(c => ({ id: c.id, title: c.title })))).catch(() => {}), []);
   useEffect(() => { if (staff && can(staff, 'products.view')) loadCats(); }, [staff, loadCats]);
   useEffect(() => { if (staff) fld.get('/modules/me').then(r => setMods(r.modules)).catch(() => setMods(null)); else setMods(null); }, [staff]);
 
-  if (!ready) return <div style={{ padding: 80, textAlign: 'center' }}><span className="spin" /></div>;
+  if (!ready) return <PageLoader label="Checking your sign-in…" />;
   if (!staff) return <Login onDone={s => { setStaff(s); }} />;
 
   const groups = NAV.map(([g, items]) => [g, items.filter(i => can(staff, i[3]) && (!MODULE_OF[i[0]] || !mods || mods.includes(MODULE_OF[i[0]])))]).filter(([, i]) => i.length);
@@ -263,16 +265,16 @@ export default function AdminApp() {
       </aside>
       <DialogHost />
       <main className="adm-main">
-        <TopBar staff={staff} groups={groups} page={page} title={TITLES[page] || 'Admin'} go={go} logout={logout} />
+        <TopBar staff={staff} groups={groups} page={page} title={allowed.includes(page) ? TITLES[page] || 'Admin' : 'No access'} go={go} logout={logout} />
         <div className="adm-body" key={page}>
         {!allowed.includes(page) ? <div className="a-msg err">Your role cannot open this page.</div> : (
-          <Suspense fallback={<div className="adm-pagewait"><span className="spin" /></div>}>
+          <Suspense fallback={<PageLoader inline label="Loading the page…" />}>
           <Routes>
             <Route path="dashboard" element={<Dashboard go={go} staff={staff} />} />
-            <Route path="orders" element={<Orders site={site} staff={staff} />} />
+            <Route path="orders" element={<Orders staff={staff} />} />
             <Route path="deliveries" element={<Deliveries />} />
             <Route path="customers" element={<Customers />} />
-            <Route path="products" element={<Products cats={cats} />} />
+            <Route path="products" element={<Products cats={cats} staff={staff} />} />
             <Route path="categories" element={<Categories onChanged={loadCats} />} />
             <Route path="services" element={<Services />} />
             <Route path="blog" element={<BlogAdmin staff={staff} />} />
@@ -300,6 +302,13 @@ export default function AdminApp() {
             <Route path="team" element={<Team me={staff} />} />
             <Route path="roles" element={<Roles />} />
             <Route path="backups" element={<Backups />} />
+            <Route path="audit" element={<Audit />} />
+            <Route path="inv-vendors" element={<InvVendors staff={staff} />} />
+            <Route path="quotes" element={<Quotations staff={staff} />} />
+            <Route path="inv-purchases" element={<InvPurchases staff={staff} />} />
+            <Route path="inv-stock" element={<InvStock staff={staff} />} />
+            <Route path="inv-damage" element={<InvDamage staff={staff} />} />
+            <Route path="inv-payments" element={<InvPayments staff={staff} />} />
             <Route path="settings" element={<Settings />} />
             <Route path="*" element={<Navigate to={'/admin/' + home} replace />} />
           </Routes>

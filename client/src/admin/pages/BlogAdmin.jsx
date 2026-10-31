@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { adm, dateF, useTable } from '../adminApi.js';
 import { Empty, Pager, Pill, Toolbar, ViewToggle, alertBox, confirmBox, useView } from '../ui.jsx';
+import { ListFilter } from '../ListFilter.jsx';
+import { IconBtn } from '../IconBtn.jsx';
+import { SeoPanel } from '../SeoPanel.jsx';
 
 const today = () => new Date().toISOString().slice(0, 10);
 const readFile = f => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(f); });
@@ -19,7 +22,7 @@ const TOOLS = [
 
 /** Create / edit one article. The body is a small rich-text editor; the server sanitises it again on save. */
 function Editor({ id, cats, onDone }) {
-  const [f, setF] = useState({ title: '', slug: '', category: '', excerpt: '', cover: '', status: 'Draft', date: today() });
+  const [f, setF] = useState({ title: '', slug: '', category: '', excerpt: '', cover: '', status: 'Draft', date: today(), metaTitle: '', metaDesc: '', metaKeywords: '', noindex: false });
   const [loading, setLoading] = useState(!!id);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(null);
@@ -30,7 +33,7 @@ function Editor({ id, cats, onDone }) {
   useEffect(() => {
     if (!id) { if (ed.current) ed.current.innerHTML = '<p><br></p>'; return; }
     adm.get('/blog/' + id).then(r => {
-      setF({ title: r.title, slug: r.slug, category: r.category, excerpt: r.excerpt, cover: r.cover, status: r.status, date: r.date });
+      setF({ title: r.title, slug: r.slug, category: r.category, excerpt: r.excerpt, cover: r.cover, status: r.status, date: r.date, metaTitle: r.metaTitle, metaDesc: r.metaDesc, metaKeywords: r.metaKeywords, noindex: r.noindex });
       setSlugTouched(true); setLoading(false);
       setTimeout(() => { if (ed.current) ed.current.innerHTML = r.body; }, 0);
     }).catch(e => { setMsg({ err: true, t: e.message }); setLoading(false); });
@@ -72,14 +75,14 @@ function Editor({ id, cats, onDone }) {
           </span>
         </div>
         {msg && <div className={'a-msg ' + (msg.err ? 'err' : 'ok')}>{msg.t}</div>}
-        <Field label="Title"><input className="a-input" value={f.title} onChange={e => { set('title', e.target.value); if (!slugTouched) set('slug', e.target.value.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-+|-+$/g, '')); }} placeholder="Article title" style={{ fontSize: 18, fontWeight: 700 }} /></Field>
+        <Field label="Title"><input className="a-input" value={f.title} onChange={e => { set('title', e.target.value); if (!slugTouched) set('slug', e.target.value.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-+|-+$/g, '')); }} placeholder="Article title" style={{ fontSize: 15, fontWeight: 600 }} /></Field>
         <div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, padding: 8, border: '1px solid #cfccc4', borderBottom: 0, borderRadius: '10px 10px 0 0', background: '#f6f5f2', position: 'sticky', top: 0, zIndex: 2 }}>
-            {TOOLS.map(([l, t, fn, st]) => <button key={l} type="button" title={t} onMouseDown={e => e.preventDefault()} onClick={() => fn(cmd)} className="a-btn ghost sm" style={{ padding: '7px 10px', ...st }}>{l}</button>)}
-            <button type="button" title="Link" onMouseDown={e => e.preventDefault()} onClick={addLink} className="a-btn ghost sm" style={{ padding: '7px 10px' }}>🔗 Link</button>
-            <label className="a-btn ghost sm" style={{ padding: '7px 10px', cursor: 'pointer' }}>{upl ? 'Uploading…' : '🖼 Image'}<input type="file" accept="image/png,image/jpeg,image/gif,image/webp" hidden onChange={addImage} /></label>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, padding: 6, border: '1px solid #cfccc4', borderBottom: 0, borderRadius: '8px 8px 0 0', background: '#f6f5f2', position: 'sticky', top: 0, zIndex: 2 }}>
+            {TOOLS.map(([l, t, fn, st]) => <button key={l} type="button" title={t} onMouseDown={e => e.preventDefault()} onClick={() => fn(cmd)} className="a-btn ghost sm" style={{ padding: '4px 9px', ...st }}>{l}</button>)}
+            <button type="button" title="Link" onMouseDown={e => e.preventDefault()} onClick={addLink} className="a-btn ghost sm" style={{ padding: '4px 9px' }}>🔗 Link</button>
+            <label className="a-btn ghost sm" style={{ padding: '4px 9px', cursor: 'pointer' }}>{upl ? 'Uploading…' : '🖼 Image'}<input type="file" accept="image/png,image/jpeg,image/gif,image/webp" hidden onChange={addImage} /></label>
           </div>
-          <div ref={ed} contentEditable suppressContentEditableWarning className="bw-editor bp-body" style={{ minHeight: 460, padding: '18px 22px', border: '1px solid #cfccc4', borderRadius: '0 0 10px 10px', background: '#fff', outline: 0, overflow: 'auto', maxHeight: '70vh' }} />
+          <div ref={ed} contentEditable suppressContentEditableWarning className="bw-editor bp-body" style={{ minHeight: 380, padding: '12px 16px', border: '1px solid #cfccc4', borderRadius: '0 0 10px 10px', background: '#fff', outline: 0, overflow: 'auto', maxHeight: '70vh' }} />
         </div>
       </div>
 
@@ -106,6 +109,9 @@ function Editor({ id, cats, onDone }) {
           <span style={{ fontSize: 11.5, color: '#8a8f9b' }}>PNG, JPG, GIF or WebP up to 6 MB. Best at 16:9 (e.g. 1600×900).</span>
         </div>
         <div className="a-card">
+          <SeoPanel value={f} onChange={patch => setF(p => ({ ...p, ...patch }))} path={'blog/' + (f.slug || '…')} title={f.title} summary={f.excerpt} category={f.category} />
+        </div>
+        <div className="a-card">
           <h3>Details</h3>
           <Field label="Category"><input className="a-input" list="blog-cats" value={f.category} onChange={e => set('category', e.target.value)} placeholder="e.g. Toner" /><datalist id="blog-cats">{cats.map(c => <option key={c} value={c} />)}</datalist></Field>
           <Field label="Short summary" hint="shown on cards · optional"><textarea className="a-input" rows={3} maxLength={190} value={f.excerpt} onChange={e => set('excerpt', e.target.value)} placeholder="Leave empty to use the first lines of the article" /></Field>
@@ -118,7 +124,7 @@ function Editor({ id, cats, onDone }) {
 
 /** Blog management for Admins and the Content writer role. */
 export function BlogAdmin({ staff }) {
-  const t = useTable('/blog', { status: '' });
+  const t = useTable('/blog', { status: '', from: '', to: '' });
   const [view, setView] = useView('blog');
   const [edit, setEdit] = useState(null); // null = list, 'new' or an id
   const isWriter = staff.role === 'Content writer';
@@ -126,7 +132,8 @@ export function BlogAdmin({ staff }) {
   if (edit) return <Editor id={edit === 'new' ? null : edit} cats={t.data.categories || []} onDone={id => { setEdit(id || null); t.reload(); }} />;
   return (
     <>
-      <Toolbar t={t} filters={[{ key: 'status', label: 'All statuses', options: ['Published', 'Draft'] }]}>
+      <ListFilter t={t} noun="article" title="Search articles" search={{ placeholder: 'Title, category or author' }} selects={[{ key: 'status', label: 'Status', all: 'All statuses', icon: 'status', options: ['Published', 'Draft'] }]} range={{ label: 'Published' }} />
+      <Toolbar t={t} search={false}>
         <ViewToggle view={view} setView={setView} />
         <button className="a-btn grad" onClick={() => setEdit('new')}>+ New article</button>
       </Toolbar>
@@ -138,10 +145,10 @@ export function BlogAdmin({ staff }) {
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}><b style={{ fontSize: 14.5 }}>{r.title}</b><Pill s={r.status === 'Published' ? 'Active' : 'Pending'} label={r.status} /></div>
               <span style={{ color: '#5d6270', fontSize: 12.5 }}>{r.category} · {dateF(r.date)} · by {r.author}{r.updated ? ' · edited' : ''}</span>
             </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              {r.status === 'Published' && <a className="a-btn ghost sm" href={'/blog/' + encodeURIComponent(r.slug)} target="_blank" rel="noreferrer">View</a>}
-              <button className="a-btn sm" onClick={() => setEdit(r.id)}>Edit</button>
-              {(!isWriter || r.authorId === staff.id) && <button className="a-btn ghost sm" style={{ color: '#b3261e' }} onClick={() => del(r)}>Delete</button>}
+            <div className="ic-row">
+              {r.status === 'Published' && <IconBtn icon="view" title="View on the site" href={'/blog/' + encodeURIComponent(r.slug)} />}
+              <IconBtn icon="edit" tone="pri" title="Edit the article" onClick={() => setEdit(r.id)} />
+              {(!isWriter || r.authorId === staff.id) && <IconBtn icon="trash" tone="bad" title="Delete the article" onClick={() => del(r)} />}
             </div>
           </div>
         ))}

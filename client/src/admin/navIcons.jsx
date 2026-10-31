@@ -1,6 +1,7 @@
 // One line-icon set for the whole left menu (same stroke, same size), instead of mixed text symbols that render differently per device.
 const P = {
   dashboard: <><rect x="3" y="3" width="7" height="9" rx="1.5" /><rect x="14" y="3" width="7" height="5" rx="1.5" /><rect x="14" y="12" width="7" height="9" rx="1.5" /><rect x="3" y="16" width="7" height="5" rx="1.5" /></>,
+  quotes: <><path d="M6 3h9l4 4v14H6z" /><path d="M14 3v5h5M9 12h7M9 16h7M9 8.5h2" /></>,
   orders: <><path d="M6 3h12l2 4v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7z" /><path d="M4 7h16M9 11a3 3 0 0 0 6 0" /></>,
   deliveries: <><path d="M3 6h11v10H3zM14 9h4l3 3v4h-7" /><circle cx="7" cy="18" r="1.8" /><circle cx="17" cy="18" r="1.8" /></>,
   customers: <><circle cx="9" cy="8" r="3.2" /><path d="M3 20c.6-3.4 3-5.2 6-5.2s5.4 1.8 6 5.2" /><path d="M16 5.4a3 3 0 0 1 0 5.6M18.4 14.6c1.6.7 2.4 2.4 2.6 5.4" /></>,
@@ -31,6 +32,12 @@ const P = {
   'acc-reports': <><path d="M6 3h9l4 4v14H6z" /><path d="M9 17v-4M12 17v-6M15 17v-2" /></>,
   team: <><circle cx="12" cy="8" r="3.4" /><path d="M5 20c.7-3.6 3.6-5.6 7-5.6s6.3 2 7 5.6" /><path d="M18 3.5v3M16.5 5h3" /></>,
   roles: <><path d="M12 3 4 6v6c0 4.6 3.4 8 8 9 4.6-1 8-4.4 8-9V6z" /><path d="m9 12 2.2 2.2L15.5 10" /></>,
+  'inv-vendors': <><path d="M3 6h11v10H3zM14 9h4l3 3v4h-7" /><circle cx="7" cy="18" r="1.8" /><circle cx="17" cy="18" r="1.8" /></>,
+  'inv-purchases': <><path d="M3 4h2l2.4 11h10.2L20 8H6.2" /><circle cx="9" cy="19.5" r="1.4" /><circle cx="17" cy="19.5" r="1.4" /></>,
+  'inv-stock': <><path d="M12 3 3 7.5v9L12 21l9-4.5v-9z" /><path d="M3 7.5 12 12l9-4.5M12 12v9" /></>,
+  'inv-damage': <><path d="M12 3.5 2.8 19.5h18.4L12 3.5z" /><path d="M12 10v4.5" /><circle cx="12" cy="17.2" r=".7" fill="currentColor" /></>,
+  'inv-payments': <><rect x="3" y="6" width="18" height="13" rx="2" /><path d="M3 10h18M7 15h3M15 15h2" /></>,
+  audit: <><path d="M6 3h9l4 4v14H6z" /><path d="M14 3v4h4M9 12h6M9 16h4" /><circle cx="17" cy="17" r="3" /><path d="m19.2 19.2 1.8 1.8" /></>,
   backups: <><ellipse cx="12" cy="6" rx="8" ry="3" /><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6" /></>,
   settings: <><circle cx="12" cy="12" r="3" /><path d="M19.4 14a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V20a2 2 0 1 1-4 0v-.1a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H4a2 2 0 1 1 0-4h.1a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3h0a1.6 1.6 0 0 0 1-1.5V4a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5h0a1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8v0a1.6 1.6 0 0 0 1.5 1H20a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z" /></>
 };

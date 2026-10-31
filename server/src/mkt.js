@@ -4,6 +4,7 @@ import { pool } from './db.js';
 import { guard } from './admin.js';
 import { fail, parseJson, wrap } from './util.js';
 import { mailReady, sendMail, siteUrl } from './mailer.js';
+import { HEROES, renderEmail } from './emailTemplate.js';
 
 const staff = Router();
 const pub = Router();
@@ -21,7 +22,7 @@ const logPref = (email, what) => pool.query('INSERT INTO mkt_log (email,what) VA
 const prefsOf = row => ({ offers: !!(row?.offers ?? 1), festivals: !!(row?.festivals ?? 1), tips: !!(row?.tips ?? 1), refill: !!(row?.refill ?? 1) });
 const campOut = c => ({
   id: c.id, code: 'CMP-' + (200 + c.id), name: c.name, tag: c.tag, template: c.template_id, subjA: c.subj_a, subjB: c.subj_b, audience: c.audience, status: c.status, at: c.send_at,
-  sent: c.sent, opens: c.opens, clicks: c.clicks, unsubs: c.unsubs, revenue: c.revenue, ab: c.ab_a != null && c.ab_b != null ? [c.ab_a, c.ab_b] : null
+  design: parseJson(c.design) || null, sent: c.sent, opens: c.opens, clicks: c.clicks, unsubs: c.unsubs, revenue: c.revenue, ab: c.ab_a != null && c.ab_b != null ? [c.ab_a, c.ab_b] : null
 });
 
 /** Confirmed subscribers who allow this kind of email. */
@@ -31,23 +32,33 @@ async function audience(kind) {
 }
 
 // ---------- real sending: campaigns and automation steps go out through the SMTP account in .env ----------
-const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const consentToken = async email => (await pool.query('SELECT token FROM consents WHERE email = ? AND status = "Confirmed" ORDER BY id DESC LIMIT 1', [email]))[0][0]?.token;
 
 /** One marketing email with the unsubscribe / preferences link every message must carry. Returns false when the person has no confirmed consent. */
-async function sendMarketing(email, subject, { headline, body, cta, ctaUrl }) {
+async function sendMarketing(email, subject, content) {
   const token = await consentToken(email);
   if (!token) return false; // no confirmed opt-in on record: never mail them
-  const prefs = siteUrl() + '/prefs/' + token;
-  const paras = String(body || '').split(/\n+/).filter(Boolean);
-  await sendMail({
-    to: email, subject,
-    text: [headline, '', ...paras, cta && ctaUrl ? `\n${cta}: ${ctaUrl}` : '', '', 'Unsubscribe or change what you receive: ' + prefs].filter(x => x !== undefined).join('\n'),
-    html: `<div style="font-family:Arial,sans-serif;max-width:520px;margin:auto;color:#0b1631"><h2>${esc(headline || subject)}</h2>${paras.map(p => `<p>${esc(p)}</p>`).join('')}${cta && ctaUrl ? `<p><a href="${esc(ctaUrl)}" style="background:#0b1631;color:#fff;padding:12px 22px;border-radius:99px;text-decoration:none">${esc(cta)}</a></p>` : ''}<hr style="border:0;border-top:1px solid #eee"><p style="font-size:12px;color:#777">AR Trade International, Dhaka. <a href="${esc(prefs)}">Unsubscribe or change your preferences</a>.</p></div>`
-  });
+  const { html, text } = renderEmail({ ...content, subject, prefsUrl: siteUrl() + '/prefs/' + token, siteUrl: siteUrl() });
+  await sendMail({ to: email, subject, text, html });
   return true;
 }
+
+/** Products picked for a campaign, in the order chosen, with the fields the email card needs. */
+async function productsByIds(ids) {
+  const list = (Array.isArray(ids) ? ids : []).map(Number).filter(Number.isInteger).slice(0, 8);
+  if (!list.length) return [];
+  const [rows] = await pool.query('SELECT id, brand, name, old_price, price, img FROM products WHERE active = 1 AND id IN (?)', [list]);
+  return list.map(id => rows.find(r => r.id === id)).filter(Boolean).map(r => ({ id: r.id, name: r.name, price: r.price, old: r.old_price, img: r.img }));
+}
+/** Cleans what the campaign form sends before it is stored or rendered. */
+const cleanDesign = d => {
+  const t = (v, n) => String(v ?? '').trim().slice(0, n);
+  return {
+    kicker: t(d?.kicker, 80), headline: t(d?.headline, 120), hero: HEROES[d?.hero] ? d.hero : 'navy', cta: t(d?.cta, 40), ctaUrl: /^https?:\/\//i.test(d?.ctaUrl || '') ? t(d.ctaUrl, 400) : '',
+    products: (Array.isArray(d?.products) ? d.products : []).map(Number).filter(Number.isInteger).slice(0, 8)
+  };
+};
 
 async function sendDueCampaigns() {
   const [due] = await pool.query('SELECT * FROM mkt_campaigns WHERE status = "Scheduled" AND send_at <= NOW() ORDER BY send_at');
@@ -55,7 +66,8 @@ async function sendDueCampaigns() {
     const [claim] = await pool.query('UPDATE mkt_campaigns SET status = "Sent" WHERE id = ? AND status = "Scheduled"', [c.id]);
     if (!claim.affectedRows) continue;
     const [[t]] = c.template_id ? await pool.query('SELECT * FROM mkt_templates WHERE id = ?', [c.template_id]) : [[null]];
-    const content = { headline: t?.headline || c.subj_a, body: c.body || t?.body || '', cta: t?.cta, ctaUrl: siteUrl() + '/shop/all' };
+    const d = parseJson(c.design) || {};
+    const content = { preheader: t?.preheader, kicker: d.kicker, headline: d.headline || t?.headline || c.subj_a, body: c.body || t?.body || '', hero: d.hero, cta: d.cta || t?.cta, ctaUrl: d.ctaUrl || siteUrl() + '/shop/all', products: await productsByIds(d.products) };
     let sent = 0, i = 0;
     for (const r of await audience(c.audience)) {
       const subject = c.subj_b && i++ % 2 ? c.subj_b : c.subj_a; // A/B: every second recipient gets subject B
@@ -152,16 +164,35 @@ staff.get('/campaigns', guard('marketing.manage'), wrap(async (req, res) => {
 }));
 staff.post('/campaigns', guard('marketing.manage'), wrap(async (req, res) => {
   const { name, tpl, subjA, subjB, aud, when, body } = req.body;
+  const design = cleanDesign(req.body.design);
   if (!name || !subjA) throw fail(400, 'Campaign name and subject line A are required');
   const [[t]] = tpl ? await pool.query('SELECT * FROM mkt_templates WHERE id = ?', [tpl]) : [[null]];
   const tag = TAGS[tpl] || (t?.kind === 'Health tip' ? 'Health tip' : 'Offer');
   const at = when ? new Date(when) : new Date();
   const kind = ['offers', 'festivals', 'tips', 'all'].includes(aud) ? aud : 'offers';
   // a campaign is only "Sent" once the mail worker has really sent it; until then it stays Scheduled
-  const [r] = await pool.query('INSERT INTO mkt_campaigns (name,tag,template_id,subj_a,subj_b,body,audience,status,send_at,sent) VALUES (?,?,?,?,?,?,?,?,?,?)',
-    [name, tag, tpl || null, subjA, subjB || '', body || null, kind, 'Scheduled', at.toISOString().slice(0, 19).replace('T', ' '), 0]);
+  const [r] = await pool.query('INSERT INTO mkt_campaigns (name,tag,template_id,subj_a,subj_b,body,design,audience,status,send_at,sent) VALUES (?,?,?,?,?,?,?,?,?,?,?)',
+    [name, tag, tpl || null, subjA, subjB || '', body || null, JSON.stringify(design), kind, 'Scheduled', at.toISOString().slice(0, 19).replace('T', ' '), 0]);
   const [[c]] = await pool.query('SELECT * FROM mkt_campaigns WHERE id = ?', [r.insertId]);
   res.json(campOut(c));
+}));
+/** Product picker for the campaign designer. */
+staff.get('/products', guard('marketing.manage'), wrap(async (req, res) => {
+  const q = '%' + String(req.query.q || '').trim().replace(/[%_]/g, '') + '%';
+  const [rows] = await pool.query('SELECT id, brand, name, old_price, price, img FROM products WHERE active = 1 AND (name LIKE ? OR brand LIKE ?) ORDER BY featured DESC, popular DESC, id DESC LIMIT 30', [q, q]);
+  res.json(rows.map(r => ({ id: r.id, brand: r.brand, name: r.name, price: r.price, old: r.old_price, img: r.img })));
+}));
+/** Live preview of the email exactly as the template renders it (sample unsubscribe link, nothing is sent). */
+staff.post('/preview', guard('marketing.manage'), wrap(async (req, res) => {
+  const { subject, body, tpl } = req.body;
+  const [[t]] = tpl ? await pool.query('SELECT * FROM mkt_templates WHERE id = ?', [tpl]) : [[null]];
+  const d = cleanDesign(req.body.design);
+  const base = siteUrl() || req.protocol + '://' + req.get('host'); // preview only: real mail always uses SITE_URL
+  const { html } = renderEmail({
+    subject, preheader: t?.preheader, kicker: d.kicker, headline: d.headline || t?.headline || subject || 'Your headline', body: body || t?.body || '', hero: d.hero,
+    cta: d.cta || t?.cta, ctaUrl: d.ctaUrl || base + '/shop/all', products: await productsByIds(d.products), prefsUrl: base + '/prefs/preview', siteUrl: base
+  });
+  res.json({ html });
 }));
 staff.post('/campaigns/:id/send', guard('marketing.manage'), wrap(async (req, res) => {
   const [[c]] = await pool.query('SELECT * FROM mkt_campaigns WHERE id = ?', [req.params.id]);

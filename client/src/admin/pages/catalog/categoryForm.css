@@ -1,0 +1,32 @@
+/* Add / edit category dialog (compact: picture on the left, name and description on the right) */
+.a-modal.cf .hd { padding: 10px 16px; }
+.a-modal.cf .bd { padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; }
+.a-modal.cf .ft { padding: 10px 16px; }
+.cf-top { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 14px; align-items: start; }
+.cf-top.solo { grid-template-columns: minmax(0, 1fr); }
+.cf-pic-wrap { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+.cf-pic-wrap small { font-size: 11px; color: #8a8f9b; }
+.cf-pic { width: 92px; height: 92px; border-radius: 16px; border: 1.5px dashed #b9c6e0; background: #f6f9ff center / cover no-repeat; display: grid; place-items: center; cursor: pointer; color: #5b6784; transition: border-color .15s, background-color .15s, transform .15s; }
+.cf-pic:hover { border-color: #2f5fd0; background-color: #eef3fc; transform: translateY(-1px); }
+.cf-pic.has { border-style: solid; border-color: #dbe2f0; }
+.cf-pic span { display: flex; flex-direction: column; align-items: center; gap: 2px; font-weight: 700; }
+.cf-pic svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.cf-pic small { font-size: 11px; color: inherit; }
+.cf-rm { border: 0; background: none; color: #b3261e; font: 700 11.5px inherit; font-family: inherit; cursor: pointer; padding: 0; }
+.cf-fields { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.cf-f { position: relative; display: flex; flex-direction: column; gap: 5px; font-size: 10.5px; font-weight: 800; color: #5b6784; text-transform: uppercase; letter-spacing: .06em; }
+.cf-f em { font-style: normal; font-weight: 500; text-transform: none; letter-spacing: 0; color: #8a8f9b; font-size: 11px; margin-left: 4px; }
+.cf-in { position: relative; display: block; }
+.cf-in svg { position: absolute; left: 9px; top: 50%; width: 22px; height: 22px; margin-top: -11px; padding: 4px; box-sizing: border-box; border-radius: 7px; background: #eaf0fc; fill: none; stroke: #2a4ea3; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+.cf-in input { box-sizing: border-box; width: 100%; height: 40px; padding: 8px 12px 8px 38px; border: 1.5px solid #dbe2f0; border-radius: 12px; background: #fff; color: #0b1631; font-family: inherit; font-size: 13.5px; font-weight: 600; text-transform: none; letter-spacing: 0; box-shadow: 0 2px 6px -3px rgba(11, 22, 49, .18); transition: border-color .15s, box-shadow .15s; }
+.cf-in input::placeholder { color: #98a1b8; font-weight: 500; }
+.cf-in input:hover { border-color: #b3c2e2; }
+.cf-in input:focus { outline: 0; border-color: #2f5fd0; box-shadow: 0 0 0 4px rgba(47, 95, 208, .15); }
+.cf-count { position: absolute; right: 2px; top: 0; font-size: 10.5px; font-weight: 600; color: #98a1b8; text-transform: none; letter-spacing: 0; }
+.cf-vis { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 14px; background: #f6f9ff; border: 1px solid #e1e9f7; }
+.cf-vi { flex: none; width: 30px; height: 30px; border-radius: 10px; display: grid; place-items: center; background: #eaf0fc; color: #2a4ea3; }
+.cf-vi svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.cf-vis > div { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.35; }
+.cf-vis b { font-size: 13px; color: #0b1631; }
+.cf-vis small { font-size: 11.5px; color: #6b7388; }
+@media (max-width: 520px) { .cf-top { grid-template-columns: minmax(0, 1fr); } .cf-pic-wrap { flex-direction: row; justify-content: flex-start; } }

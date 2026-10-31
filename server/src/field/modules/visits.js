@@ -1,5 +1,7 @@
 // RM visit schedule and visit report.
 //   GET  /api/field/visits?date=YYYY-MM-DD[&staff_id=]  -> { date, today, visits, total, done, week:[{date,dn,dt,count,off}] }
+//        extra, all optional: ?from=&to= (a period of days instead of the one ?date=), ?q= (customer, area, purpose, contact), ?status=Planned|InProgress|Done,
+//        ?page=&size= -> the same JSON plus { rows (= visits of the page), total (all matching), page, size }; `total`/`done` then count every match, not only the page
 //   GET  /api/field/visits/calendar?month=YYYY-MM[&staff_id=]  -> { month, days: { 'YYYY-MM-DD': {n, done} } }  (dots on the calendar sheet)
 //   POST /api/field/visits              { customerId, date, time, purpose }
 //   GET  /api/field/visits/:id
@@ -11,6 +13,7 @@ import path from 'node:path';
 import { Router } from 'express';
 import { pool, guard, guardRole, wrap, fail, roleKey, coord } from '../common.js';
 import { PROOFS, saveImage } from '../sales_util.js';
+import { pageOf, addRange, addSearch, whereOf, wantsPage, day } from '../../listing.js';
 import { bdDate, bdToDate, utcSql, addDays, dateOk, timeOk, VISIT_SQL, visitOut, loadVisit } from '../crm_util.js';
 
 const router = Router();
@@ -37,7 +40,25 @@ function mine(req, v) { if (v.staff_id !== req.staff.id && !isBoss(req.staff)) t
 router.get('/', guard(), wrap(async (req, res) => {
   const date = dateOk(req.query.date) ? req.query.date : bdDate();
   const sid = whose(req);
-  const [rows] = await pool.query(VISIT_SQL + ' WHERE v.staff_id = ? AND v.visit_date = ? ORDER BY v.visit_time, v.id', [sid, date]);
+  const period = day(req.query.from) || day(req.query.to);
+  let rows, matched = null;
+  if (!period && !wantsPage(req) && !req.query.q && !req.query.status) {
+    [rows] = await pool.query(VISIT_SQL + ' WHERE v.staff_id = ? AND v.visit_date = ? ORDER BY v.visit_time, v.id', [sid, date]);
+  } else { // a period, a search or a page: filtered in the database (still only this person's visits)
+    const cond = ['v.staff_id = ?'], args = [sid];
+    if (period) addRange(cond, args, 'v.visit_date', req); else { cond.push('v.visit_date = ?'); args.push(date); }
+    const st = ['Planned', 'InProgress', 'Done'].find(x => x.toLowerCase() === String(req.query.status || '').toLowerCase());
+    if (st) { cond.push('v.status = ?'); args.push(st); }
+    addSearch(cond, args, ['c.name', 'c.area', 'c.contact_person', 'v.purpose'], req.query.q);
+    const from = 'FROM field_visits v JOIN field_customers c ON c.id = v.customer_id', w = whereOf(cond);
+    const order = period ? 'v.visit_date DESC, v.visit_time, v.id' : 'v.visit_time, v.id';
+    if (wantsPage(req)) {
+      const { size, page, offset } = pageOf(req);
+      const [[m]] = await pool.query(`SELECT COUNT(*) n, COALESCE(SUM(v.status = 'Done'), 0) done ${from} ${w}`, args);
+      [rows] = await pool.query(`${VISIT_SQL} ${w} ORDER BY ${order} LIMIT ? OFFSET ?`, [...args, size, offset]);
+      matched = { total: Number(m.n), done: Number(m.done), page, size };
+    } else [rows] = await pool.query(`${VISIT_SQL} ${w} ORDER BY ${order}`, args);
+  }
   // week strip: Saturday .. Friday around the chosen date
   const dow = new Date(date + 'T00:00:00Z').getUTCDay(); // 0 = Sun
   const start = addDays(date, -((dow + 1) % 7));
@@ -49,7 +70,8 @@ router.get('/', guard(), wrap(async (req, res) => {
     return { date: d, dn: DN[wd], dt: Number(d.slice(8)), count: byDay.get(d) || 0, off: wd === 5 };
   });
   const visits = rows.map(visitOut);
-  res.json({ date, today: bdDate(), visits, total: visits.length, done: visits.filter(v => v.status === 'Done').length, week });
+  res.json({ date, today: bdDate(), visits, total: matched ? matched.total : visits.length, done: matched ? matched.done : visits.filter(v => v.status === 'Done').length, week,
+    ...(matched ? { rows: visits, page: matched.page, size: matched.size } : {}) });
 }));
 
 router.get('/calendar', guard(), wrap(async (req, res) => {

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { fetchBlobUrl, fld } from './adminApi.js';
-import { Modal, hueOf } from './ui.jsx';
+import { Modal, Pager, hueOf } from './ui.jsx';
 import './field.css';
 
 // Small shared pieces for the web views of the field app (sales, accounts, reports).
@@ -112,14 +112,16 @@ export function usePaged(list, firstSize = 10) {
 /** A plain table on a CSS grid, 10 rows per page. rows = [{ key, cells: [node...], item }]; a row with full: true is the detail of the row before it and stays with it. */
 const nodeText = n => (n == null || n === false ? '' : typeof n === 'string' || typeof n === 'number' ? String(n) : Array.isArray(n) ? n.map(nodeText).join(' ') : nodeText(n.props?.children));
 
-export function Grid({ cols, head, rows, onRow, empty = 'Nothing here yet.', search = true }) {
+/** Table with a header row. By default it searches and pages its own rows in the browser. Pass `server` (a useTable result) when the rows are one page from the server:
+ *  the browser then does no searching or paging of its own and the table shows the server pager. */
+export function Grid({ cols, head, rows, onRow, empty = 'Nothing here yet.', search = true, server }) {
   const [q, setQ] = useState('');
   const groups = useMemo(() => { const g = []; for (const r of rows) { if (r.full && g.length) g[g.length - 1].push(r); else g.push([r]); } return g; }, [rows]);
   const found = useMemo(() => { const w = q.trim().toLowerCase(); return w ? groups.filter(g => nodeText(g[0].cells).toLowerCase().includes(w)) : groups; }, [groups, q]);
   const pg = usePaged(found);
-  const shown = pg.items.flat();
+  const shown = server ? groups.flat() : pg.items.flat();
   return (<>
-    {search && rows.length > 0 && (
+    {search && !server && rows.length > 0 && (
       <div className="fd-gs"><input className="a-input" type="search" placeholder="Search this table…" value={q} onChange={e => setQ(e.target.value)} aria-label="Search this table" />{q.trim() && <small>{found.length} of {groups.length} match</small>}</div>
     )}
     <div className="fd-tbl" role="table">
@@ -129,9 +131,9 @@ export function Grid({ cols, head, rows, onRow, empty = 'Nothing here yet.', sea
           {r.cells.map((c, j) => <span key={j}>{c}</span>)}
         </div>
       ))}
-      {!found.length && <div className="a-empty">{rows.length ? 'No row matches your search.' : empty}</div>}
+      {!found.length && <div className="a-empty">{rows.length ? 'No row matches your search.' : server && server.loading ? 'Loading…' : empty}</div>}
     </div>
-    {pg.bar}
+    {server ? <Pager t={server} /> : pg.bar}
   </>);
 }
 
@@ -154,7 +156,7 @@ export const Skeleton = ({ rows = 6 }) => (
 );
 
 /** PDF preview in a side panel: shows the document, with Download, Print and Open in a new tab. */
-export function PdfPreview({ url, title, filename, onClose }) {
+export function PdfPreview({ url, title, filename, onClose, actions }) {
   const [href, setHref] = useState('');
   const [err, setErr] = useState('');
   const frame = useRef(null);
@@ -170,16 +172,17 @@ export function PdfPreview({ url, title, filename, onClose }) {
       footer={<><button type="button" className="a-btn ghost" onClick={onClose}>Close</button>
         <a className={'a-btn ghost' + (href ? '' : ' off')} href={href || undefined} target="_blank" rel="noreferrer">Open in a new tab</a>
         <button type="button" className="a-btn ghost" disabled={!href} onClick={print}>Print</button>
+        {actions}
         <a className={'a-btn' + (href ? '' : ' off')} href={href || undefined} download={filename}>Download PDF</a></>}>
       {err && <div className="a-msg err">{err}</div>}
       {!href && !err && <Skeleton rows={10} />}
-      {href && <iframe ref={frame} title={title} src={href + '#zoom=page-fit&navpanes=0'} className="fd-pdf" />}
+      {href && <iframe ref={frame} title={title} src={href + '#zoom=page-width&navpanes=0'} className="fd-pdf" />}
     </Modal>
   );
 }
 /** The table / panel button for a document: the file icon and "PDF", in the red-tinted style. */
 export const PdfButton = ({ onClick, title = 'Preview as PDF', label = 'PDF' }) => (
-  <button type="button" className="a-mini fd-pdfbtn" title={title} aria-label={title} onClick={e => { e.stopPropagation(); onClick(); }}><PdfIcon /> <span>{label}</span></button>
+  <button type="button" className={'a-mini fd-pdfbtn' + (label ? '' : ' icon')} title={title} aria-label={title} onClick={e => { e.stopPropagation(); onClick(); }}><PdfIcon />{label && <span>{label}</span>}</button>
 );
 
 /** A grid of small label / value boxes, as shown in the details popups. items = [[label, value, wide?]]; cols 'ap-facts' (2 per line) or 'att-facts' (4 per line). */

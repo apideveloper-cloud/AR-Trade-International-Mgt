@@ -11,7 +11,7 @@ export function ServiceDetail() {
   const { slug } = useParams();
   const [pg, setPg] = useState(null);
   const [missing, setMissing] = useState(false);
-  useEffect(() => { setPg(null); setMissing(false); window.scrollTo(0, 0); api.get('/pages/' + slug).then(setPg).catch(() => setMissing(true)); }, [slug]);
+  useEffect(() => { setPg(null); setMissing(false); window.scrollTo(0, 0); api.get('/pages/' + slug).then(p => { setPg(p); document.title = p.metaTitle || p.title + ' | AR Trade International'; }).catch(() => setMissing(true)); return () => { document.title = 'AR Trade International'; }; }, [slug]);
   if (missing) return <NotFound />;
   if (!pg) return <div style={{ padding: 80, textAlign: 'center' }}><span className="spin" /></div>;
   return (

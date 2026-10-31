@@ -6,6 +6,7 @@
 import { Router } from 'express';
 import { pool, guard, wrap, fail, UTC, UTC_TS, isApprover } from '../common.js';
 import { period, workdaysElapsed, tsBetween, toSql, tkText, kfmt, group, pctDelta, numDelta, setting, seesAll, bdParts, bdDateStr, isFriday, CSV, MON, DAY, BD } from '../report_util.js';
+import { addSearch, day, pageOf, wantsPage, whereOf } from '../../listing.js';
 
 const router = Router();
 const CLOCKERS = ['Field Officer', 'RM', 'Purchase Officer'];
@@ -138,37 +139,74 @@ router.get('/summary', guard(), wrap(async (req, res) => {
   });
 }));
 
+// A custom date window (?from= and/or ?to=, whole Bangladesh days, both ends included), or null when neither is sent.
+const dayText = s => { const [y, m, d] = s.split('-').map(Number); return `${d} ${MON[m - 1].slice(0, 3)} ${y}`; };
+function customWindow(req) {
+  const a = day(req.query.from), b = day(req.query.to);
+  if (!a && !b) return null;
+  const start = a ? new Date(Date.parse(a + 'T00:00:00Z') - BD) : new Date(0);
+  const end = b ? new Date(Date.parse(b + 'T00:00:00Z') + DAY - BD) : new Date(Date.UTC(2100, 0, 1));
+  return { kind: 'custom', start, end, label: a && b ? (a === b ? dayText(a) : `${dayText(a)} – ${dayText(b)}`) : a ? `From ${dayText(a)}` : `Until ${dayText(b)}` };
+}
+
 // ---------- GET /expense ----------
+// The mobile app sends ?month= (and maybe category / status) and gets the whole list in `items`. The web console may also send
+// ?from= &to= (instead of the month), ?q=, and ?page= &size=; the answer then also has rows (= the page), total (= claims matching the
+// filters) and claimed (= the money the old `total` carried). The month figures (total, count, split, categories) never depend on q / category / status.
 router.get('/expense', guard(), wrap(async (req, res) => {
   const m = /^(\d{4})-(\d{2})$/.exec(String(req.query.month || '')) || /^(\d{4})-(\d{2})$/.exec(bdDateStr(new Date()).slice(0, 7));
   const y = +m[1], mo = +m[2] - 1;
-  const start = new Date(Date.UTC(y, mo, 1) - BD), end = new Date(Date.UTC(y, mo + 1, 1) - BD);
+  const custom = customWindow(req);
+  const start = custom ? custom.start : new Date(Date.UTC(y, mo, 1) - BD), end = custom ? custom.end : new Date(Date.UTC(y, mo + 1, 1) - BD);
   const [sf, sa] = scopeOf(req, 'e.staff_id');
   const r = tsBetween('e.created_at', start, end);
+  const [groups] = await pool.query(`SELECT e.status, e.category, COUNT(*) n, COALESCE(SUM(e.amount), 0) amount FROM field_expenses e WHERE ${r.sql}${sf} GROUP BY e.status, e.category`, [...r.args, ...sa]);
+  const total = sum(groups, g => g.amount), count = sum(groups, g => g.n);
+  const split = ['Approved', 'Pending', 'Rejected'].map(label => ({ label, amount: Math.round(sum(groups.filter(g => g.status === label), g => g.amount)), count: sum(groups.filter(g => g.status === label), g => g.n) }));
+  const cats = [...new Set(groups.map(g => g.category))].map(name => ({ name, amount: Math.round(sum(groups.filter(g => g.category === name), g => g.amount)), count: sum(groups.filter(g => g.category === name), g => g.n) })).sort((a, b) => b.amount - a.amount);
+
+  const cond = [r.sql + sf], args = [...r.args, ...sa];
+  const cat = String(req.query.category || ''), st = String(req.query.status || '').toLowerCase();
+  if (cat) { cond.push('e.category = ?'); args.push(cat); }
+  if (st) { cond.push('LOWER(e.status) = ?'); args.push(st); }
+  addSearch(cond, args, ['e.title', 'e.category', 's.name'], req.query.q);
+  const paged = wantsPage(req);
+  const pg = paged ? pageOf(req, { def: 25, max: 200 }) : null;
+  const from = `FROM field_expenses e JOIN staff s ON s.id = e.staff_id ${whereOf(cond)}`;
   const [rows] = await pool.query(
-    `SELECT e.id, e.title, e.category, e.amount, e.status, e.voucher IS NOT NULL AS has_voucher, ${UTC_TS('e.created_at')} AS at_utc, s.name FROM field_expenses e JOIN staff s ON s.id = e.staff_id WHERE ${r.sql}${sf} ORDER BY e.created_at DESC, e.id DESC`,
-    [...r.args, ...sa]);
-  const total = sum(rows, e => e.amount);
-  const split = ['Approved', 'Pending', 'Rejected'].map(label => ({ label, amount: Math.round(sum(rows.filter(e => e.status === label), e => e.amount)), count: rows.filter(e => e.status === label).length }));
-  const cats = [...new Set(rows.map(e => e.category))].map(name => ({ name, amount: Math.round(sum(rows.filter(e => e.category === name), e => e.amount)), count: rows.filter(e => e.category === name).length })).sort((a, b) => b.amount - a.amount);
-  const cat = String(req.query.category || ''), st = String(req.query.status || '');
-  const items = rows.filter(e => (!cat || e.category === cat) && (!st || e.status === st)).map(e => ({
+    `SELECT e.id, e.title, e.category, e.amount, e.status, e.voucher IS NOT NULL AS has_voucher, ${UTC_TS('e.created_at')} AS at_utc, s.name ${from} ORDER BY e.created_at DESC, e.id DESC${paged ? ' LIMIT ? OFFSET ?' : ''}`,
+    paged ? [...args, pg.size, pg.offset] : args);
+  const items = rows.map(e => ({
     id: e.id, date: e.at_utc, title: e.title, who: e.name, category: e.category, amount: Math.round(Number(e.amount)), status: e.status.toLowerCase(), voucher: !!e.has_voucher
   }));
-  res.json({ month: `${MON[mo]} ${y}`, key: `${y}-${String(mo + 1).padStart(2, '0')}`, total: Math.round(total), count: rows.length, split, categories: cats, items, scope: seesAll(req.staff) ? 'team' : 'me' });
+  const out = { month: custom ? custom.label : `${MON[mo]} ${y}`, key: custom ? '' : `${y}-${String(mo + 1).padStart(2, '0')}`, total: Math.round(total), count, split, categories: cats, items, scope: seesAll(req.staff) ? 'team' : 'me' };
+  if (!paged) return res.json(out);
+  const [[n]] = await pool.query(`SELECT COUNT(*) n ${from}`, args);
+  res.json({ ...out, claimed: out.total, rows: items, total: n.n });
 }));
 
 // ---------- GET /collection ----------
+// ?period=day|week|month as before, or ?from= &to= (custom days). The web console may add ?q= (receipt, customer, invoice, reference, staff), ?method=, ?status=
+// and ?page= &size=; the answer then also has rows (= the page), total (= receipts matching the filters) and collected (= the money the old `total` carried).
 router.get('/collection', guard(), wrap(async (req, res) => {
-  const win = period(kind(req.query.period || 'month'));
+  const win = customWindow(req) || period(kind(req.query.period || 'month'));
   const [sf, sa] = scopeOf(req, 'p.staff_id');
   const r = tsBetween('p.created_at', win.start, win.end);
+  const [byMethod] = await pool.query(`SELECT p.method, p.status = 'Bounced' AS bounced, COUNT(*) n, COALESCE(SUM(p.amount), 0) amount FROM field_payments p WHERE ${r.sql}${sf} GROUP BY p.method, bounced`, [...r.args, ...sa]);
+  const valid = byMethod.filter(g => !g.bounced);
+  const total = sum(valid, g => g.amount), count = sum(byMethod, g => g.n);
+  const methods = ['Cash', 'bKash', 'Cheque', 'Bank'].map(label => { const a = sum(valid.filter(g => g.method === label), g => g.amount); return { label, amount: Math.round(a), pct: total ? Math.round((a / total) * 100) : 0 }; });
+  const cond = [r.sql + sf], args = [...r.args, ...sa];
+  const method = String(req.query.method || ''), st = String(req.query.status || '');
+  if (method) { cond.push('p.method = ?'); args.push(method); }
+  if (st) { cond.push('p.status = ?'); args.push(st); }
+  addSearch(cond, args, ['p.id', 'c.name', 'p.invoice_refs', 'p.reference', 's.name'], req.query.q);
+  const paged = wantsPage(req);
+  const pg = paged ? pageOf(req, { def: 25, max: 200 }) : null;
+  const from = `FROM field_payments p LEFT JOIN field_customers c ON c.id = p.customer_id LEFT JOIN staff s ON s.id = p.staff_id ${whereOf(cond)}`;
   const [rows] = await pool.query(
-    `SELECT p.id, p.invoice_refs, p.method, p.amount, p.status, ${UTC_TS('p.created_at')} AS at_utc, c.name AS customer, s.name AS who FROM field_payments p LEFT JOIN field_customers c ON c.id = p.customer_id LEFT JOIN staff s ON s.id = p.staff_id WHERE ${r.sql}${sf} ORDER BY p.created_at DESC, p.id DESC`,
-    [...r.args, ...sa]);
-  const valid = rows.filter(p => p.status !== 'Bounced');
-  const total = sum(valid, p => p.amount);
-  const methods = ['Cash', 'bKash', 'Cheque', 'Bank'].map(label => { const a = sum(valid.filter(p => p.method === label), p => p.amount); return { label, amount: Math.round(a), pct: total ? Math.round((a / total) * 100) : 0 }; });
+    `SELECT p.id, p.invoice_refs, p.method, p.amount, p.status, ${UTC_TS('p.created_at')} AS at_utc, c.name AS customer, s.name AS who ${from} ORDER BY p.created_at DESC, p.id DESC${paged ? ' LIMIT ? OFFSET ?' : ''}`,
+    paged ? [...args, pg.size, pg.offset] : args);
 
   // outstanding dues by invoice age
   const own = seesAll(req.staff) ? '' : ' AND i.order_id IN (SELECT id FROM field_sales_orders WHERE staff_id = ?)';
@@ -177,11 +215,11 @@ router.get('/collection', guard(), wrap(async (req, res) => {
     seesAll(req.staff) ? [] : [req.staff.id]);
   const bucket = (lo, hi) => Math.round(sum(inv.filter(i => i.age >= lo && i.age <= hi), i => i.due));
   const aging = [{ label: '0–15 days', amount: bucket(-9999, 15) }, { label: '16–30 days', amount: bucket(16, 30) }, { label: '30+ days', amount: bucket(31, 99999) }];
-  res.json({
-    period: win.kind, label: win.label, total: Math.round(total), count: rows.length, methods,
-    dues: { total: Math.round(sum(inv, i => i.due)), aging },
-    items: rows.map(p => ({ id: p.id, date: p.at_utc, customer: p.customer || '—', invoices: p.invoice_refs, method: p.method, who: p.who || '', amount: Number(p.amount), status: p.status }))
-  });
+  const items = rows.map(p => ({ id: p.id, date: p.at_utc, customer: p.customer || '—', invoices: p.invoice_refs, method: p.method, who: p.who || '', amount: Number(p.amount), status: p.status }));
+  const out = { period: win.kind, label: win.label, total: Math.round(total), count, methods, dues: { total: Math.round(sum(inv, i => i.due)), aging }, items };
+  if (!paged) return res.json(out);
+  const [[n]] = await pool.query(`SELECT COUNT(*) n ${from}`, args);
+  res.json({ ...out, collected: out.total, rows: items, total: n.n });
 }));
 
 // ---------- GET /export ----------
@@ -254,9 +292,14 @@ function hav(a, b) {
 }
 
 router.get('/export', guard(), wrap(async (req, res) => {
-  const win = period(kind(req.query.period || 'month'));
+  const win = customWindow(req) || period(kind(req.query.period || 'month'));
   const data = await dataset(String(req.query.name || ''), win, req);
-  const out = { ...data, period: win.label, generated: new Date().toISOString() };
+  // optional (web console): ?q= keeps the rows that contain the text; ?page= &size= returns one page of them in `rows` plus `total` (rows after q)
+  const w = String(req.query.q || '').trim().toLowerCase().slice(0, 80);
+  if (w) data.rows = data.rows.filter(r => r.join(' ').toLowerCase().includes(w));
+  const total = data.rows.length;
+  if (wantsPage(req)) { const pg = pageOf(req, { def: 25, max: 200 }); data.rows = data.rows.slice(pg.offset, pg.offset + pg.size); }
+  const out = { ...data, period: win.label, generated: new Date().toISOString(), ...(wantsPage(req) ? { total } : {}) };
   if (req.query.format === 'csv') {
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${data.title.replace(/\W+/g, '_')}.csv"`);
