@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { productPath } from '../slug.js';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api, fmt } from '../api.js';
 import Fireworks from '../components/Fireworks.jsx';
@@ -32,9 +33,9 @@ export function Cart() {
           <div className="cart-lines">
             {t.lines.map(l => (
               <div className="cline" key={l.id}>
-                <Link to={'/product/' + l.id}><div className="im" style={{ backgroundImage: l.img ? `url('${l.img}')` : 'none' }} /></Link>
+                <Link to={productPath(l)}><div className="im" style={{ backgroundImage: l.img ? `url('${l.img}')` : 'none' }} /></Link>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 }}>
-                  <Link to={'/product/' + l.id} style={{ fontWeight: 600, fontSize: 15, lineHeight: 1.35 }}>{l.name}</Link>
+                  <Link to={productPath(l)} style={{ fontWeight: 600, fontSize: 15, lineHeight: 1.35 }}>{l.name}</Link>
                   <span style={{ fontSize: 13, color: '#5d6270' }}>{fmt(l.price)} each</span>
                   {l.short > 0 && <span style={{ fontSize: 12.5, color: 'oklch(0.5 0.15 60)', fontWeight: 700 }}>Only {l.avail} in stock — you can choose how to handle the rest at checkout</span>}
                   <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>

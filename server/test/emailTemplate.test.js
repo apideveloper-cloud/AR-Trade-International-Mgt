@@ -23,7 +23,7 @@ test('product cards show price, a discount badge only when there is a discount, 
   assert.match(html, /-20%/);
   assert.equal((html.match(/-\d+%/g) || []).length, 1);
   assert.match(html, /৳ 800/);
-  assert.match(html, /href="https:\/\/shop\.example\/product\/7"/);
+  assert.match(html, /href="https:\/\/shop\.example\/product\/cut-price-7"/);
   assert.match(html, /src="https:\/\/shop\.example\/api\/uploads\/a\.png"/); // relative pictures become absolute
 });
 

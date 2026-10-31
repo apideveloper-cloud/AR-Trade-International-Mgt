@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
+import { productIdOf, productPath } from '../slug.js';
 import { createPortal } from 'react-dom';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import ProductCard from '../components/ProductCard.jsx';
 import { api, fmt, offPct, waLink } from '../api.js';
 import Reviews, { Stars } from '../components/Reviews.jsx';
@@ -24,7 +25,9 @@ function specs(p) {
 }
 
 export default function Product() {
-  const { id } = useParams();
+  const { id: segment } = useParams();
+  const id = productIdOf(segment) || segment; // /product/hp-230a-toner-21554 and the old /product/21554 both open product 21554
+  const here = useLocation().pathname;
   const { find, products, cats, site, addToCart, wish, toggleWish, compare, toggleCompare, user, setLoginOpen } = useStore();
   const nav = useNavigate();
   const [qty, setQty] = useState(1);
@@ -42,6 +45,8 @@ export default function Product() {
   const p = find(id);
 
   useEffect(() => { setQty(1); setTab('spec'); setZoom(null); setView(0); setBox(false); }, [id]);
+  // an old or mistyped address (/product/21554) is replaced by the real one, so the address bar and shared links always show the keyword address
+  useEffect(() => { if (p && here !== productPath(p)) nav(productPath(p), { replace: true }); }, [p, here, nav]);
   // title + description + keywords for SPA navigation (crawlers get the same values server-side)
   useEffect(() => {
     if (!p) return undefined;
@@ -161,7 +166,7 @@ export default function Product() {
         <div className="pdp2-info">
           <div className="pd-top">
             <div className="pd-tags"><span className="pd-tag">{cat ? cat.t : 'Shop'}</span><span className="mono" style={{ fontSize: 11, letterSpacing: '.06em', textTransform: 'uppercase', color: '#8a8f9b' }}>SKU · {p.id}</span></div>
-            <div className="pd-nav"><Link to={'/product/' + prev.id} title="Previous product">‹</Link><Link to={'/product/' + next.id} title="Next product">›</Link></div>
+            <div className="pd-nav"><Link to={productPath(prev)} title="Previous product">‹</Link><Link to={productPath(next)} title="Next product">›</Link></div>
           </div>
           <h1>{p.name}</h1>
           <div className="pd-rate"><a href="#reviews" className="rate-link"><Stars value={rv ? rv.avg : 0} size={15} /><b>{rv && rv.count ? rv.avg.toFixed(1) : ''}</b><span>{rv && rv.count ? `(${rv.count} review${rv.count > 1 ? 's' : ''})` : 'No reviews yet'}</span></a><span>Genuine product · Official warranty</span><span className="chip2">✓ Cash on delivery</span></div>
@@ -224,7 +229,7 @@ export default function Product() {
               <div className="sec-hd" style={{ marginBottom: 12 }}><h2 style={{ fontWeight: 800, fontSize: 22, letterSpacing: '-.02em', margin: 0 }}>Offer products</h2><div className="rail-nav"><button type="button" aria-label="Scroll left" onClick={() => railRef.current?.scrollBy({ left: -360, behavior: 'smooth' })}>‹</button><button type="button" aria-label="Scroll right" onClick={() => railRef.current?.scrollBy({ left: 360, behavior: 'smooth' })}>›</button><Link to="/offers" className="ac-link">All offers →</Link></div></div>
               <div className="offer-rail" ref={railRef} onMouseEnter={() => { pausedRef.current = true; }} onMouseLeave={() => { pausedRef.current = false; }} onTouchStart={() => { pausedRef.current = true; }} onTouchEnd={() => setTimeout(() => { pausedRef.current = false; }, 4000)}>
                 {[...offers, ...offers].map((x, n) => (
-                  <Link key={x.id + '-' + n} aria-hidden={n >= offers.length || undefined} tabIndex={n >= offers.length ? -1 : undefined} to={'/product/' + x.id}>
+                  <Link key={x.id + '-' + n} aria-hidden={n >= offers.length || undefined} tabIndex={n >= offers.length ? -1 : undefined} to={productPath(x)}>
                     <span className="th" style={{ backgroundImage: x.img ? `url('${x.img}')` : 'none' }} />
                     <span className="nm clamp2">{x.name}</span>
                     <span><b>{fmt(x.price)}</b><s>{fmt(x.old)}</s></span>

@@ -85,7 +85,7 @@ export default function CategoryRails() {
   if (site.homeRails === false || !rows.length) return null;
   return (
     <section className="sec crails">
-      <div className="sec-hd"><div><span className="mono" style={{ fontSize: 12, letterSpacing: '.1em', color: '#6b7080' }}>PRODUCTS BY CATEGORY</span><h2 style={{ fontWeight: 800, fontSize: 36, letterSpacing: '-.025em', margin: '4px 0 0' }}>Browse every category</h2></div></div>
+      <div className="sec-hd"><div><span className="mono" style={{ fontSize: 12, letterSpacing: '.1em', color: '#6b7080' }}>PRODUCTS BY CATEGORY</span><h2 style={{ fontWeight: 800, fontSize: 28, letterSpacing: '-.02em', margin: '2px 0 0' }}>Browse every category</h2></div></div>
       {rows.map(r => <Rail key={r.cat.id} {...r} />)}
     </section>
   );

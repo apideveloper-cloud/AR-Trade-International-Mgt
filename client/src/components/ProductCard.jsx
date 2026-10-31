@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { productPath } from '../slug.js';
 import { Link } from 'react-router-dom';
 import { fmt, offPct, waLink } from '../api.js';
 import { useStore } from '../store.jsx';
@@ -29,7 +30,7 @@ export default function ProductCard({ p }) {
   const w = wish.includes(p.id), c = compare.includes(p.id);
   return (
     <article className="pcard">
-      <Link to={'/product/' + p.id} className="pc-img" ref={box}>
+      <Link to={productPath(p)} className="pc-img" ref={box}>
         {p.img ? (
           <>
             {!loaded && <div className="shimmer" style={{ position: 'absolute', inset: 0 }} />}
@@ -42,7 +43,7 @@ export default function ProductCard({ p }) {
       </Link>
       <div className="pc-body">
         <div className="pc-meta"><span className="brand-k">{p.brand}</span><span className="dot3" /><span className="sp">{p.spec}</span></div>
-        <Link to={'/product/' + p.id} className="clamp2 pc-name">{p.name}</Link>
+        <Link to={productPath(p)} className="clamp2 pc-name">{p.name}</Link>
       </div>
       <div className="pc-foot">
         <div className="pc-price">

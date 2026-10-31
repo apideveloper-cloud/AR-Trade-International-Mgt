@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { productPath } from '../slug.js';
 import { Link } from 'react-router-dom';
 import { api, fmt } from '../api.js';
 import { useStore } from '../store.jsx';
@@ -133,7 +134,7 @@ export default function Chat() {
             {m.items?.length > 0 && (
               <div className="cpcs">
                 {m.items.map(p => (
-                  <Link key={p.id} to={'/product/' + p.id} className="cpc" onClick={() => { setOpen(false); setSeen(agentN); }}>
+                  <Link key={p.id} to={productPath(p)} className="cpc" onClick={() => { setOpen(false); setSeen(agentN); }}>
                     <span className="im" style={{ backgroundImage: p.img ? `url('${p.img}')` : 'none' }} />
                     <span className="tx"><b>{p.name}</b><em className={p.price > 0 ? '' : 'rq'}>{p.price > 0 ? fmt(p.price) : 'Price on request'}</em><small>{p.stock > 0 ? 'In stock' : 'Out of stock'}</small></span>
                   </Link>

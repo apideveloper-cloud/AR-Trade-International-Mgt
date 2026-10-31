@@ -1,6 +1,7 @@
 // Branded marketing email: logo, hero banner, product grid with discount badges, call-to-action button, legal footer.
 // Table layout and inline styles only, because mail apps (Gmail, Outlook) ignore most modern CSS.
 import { esc } from './util.js';
+import { productPath } from './slug.js';
 const money = n => '৳ ' + Number(n || 0).toLocaleString('en-US');
 
 /** Hero colours the admin can pick; the first value is the solid fallback every mail app understands. */
@@ -14,7 +15,7 @@ const abs = (base, u) => (!u ? '' : /^https?:\/\//i.test(u) ? u : base + (u.star
 function card(p, base, w) {
   const off = p.old > p.price ? Math.round((p.old - p.price) / p.old * 100) : 0;
   const img = abs(base, p.img);
-  return `<td width="${w}" valign="top" style="padding:6px"><a href="${esc(base + '/product/' + p.id)}" style="text-decoration:none;color:#0b1631;display:block;border:1px solid #e6e9f0;border-radius:12px;overflow:hidden;background:#fff">
+  return `<td width="${w}" valign="top" style="padding:6px"><a href="${esc(base + productPath(p))}" style="text-decoration:none;color:#0b1631;display:block;border:1px solid #e6e9f0;border-radius:12px;overflow:hidden;background:#fff">
 <div style="background:#ffffff;text-align:center;height:200px;line-height:200px;font-size:0">${img ? `<img src="${esc(img)}" alt="${esc(p.name)}" style="vertical-align:middle;max-width:90%;max-height:190px;width:auto;height:auto">` : ''}</div>
 <div style="padding:10px 12px"><div style="font:600 13px/1.35 Arial,sans-serif;color:#0b1631;min-height:36px">${esc(p.name)}</div>
 <div style="padding-top:6px;font:800 16px Arial,sans-serif;color:#0b1631">${off ? `<span style="display:inline-block;background:#e0245e;color:#fff;font:800 11px Arial,sans-serif;padding:3px 6px;border-radius:4px;margin-right:6px">-${off}%</span>` : ''}${money(p.price)}${off ? ` <span style="font:400 12px Arial,sans-serif;color:#8a8f9b;text-decoration:line-through">${money(p.old)}</span>` : ''}</div></div></a></td>`;

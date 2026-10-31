@@ -11,7 +11,7 @@ import { digits, esc, fail, parseJson, wrap, checkPassword, secret, isLocalImg, 
 import { applyFlow, cancelOrder, FROM_STATUS } from './flow.js';
 import { buildInvoicePdf, invoiceNo } from './invoice.js';
 import { buildOverview, buildProductReport } from './overview.js';
-import { runBackup, status as backupStatus, fileOf as backupFile, deleteBackup, setDir as setBackupDir } from './backup.js';
+import { runBackup, status as backupStatus, fileOf as backupFile, deleteBackup, setDeleteCode, setDir as setBackupDir } from './backup.js';
 import { mailReady, mailSetupHint, sendMail } from './mailer.js';
 import { addRange, day } from './listing.js';
 import { can, permsOf, matrix, saveRole, DEFAULTS, MASTER, MASTER_ONLY, ROLE_DEFS, ROLE_NAMES, REGISTRABLE } from './permissions.js';
@@ -863,7 +863,9 @@ router.get('/backups/:id/download', guard(MASTER_ONLY), wrap(async (req, res) =>
   res.set('Cache-Control', 'no-store');
   res.download(f.full, f.name);
 }));
-router.delete('/backups/:id', guard(MASTER_ONLY), wrap(async (req, res) => { await deleteBackup(req.params.id); res.json({ ok: true }); }));
+router.put('/backups/delete-code', guard(MASTER_ONLY), wrap(async (req, res) => { await setDeleteCode(req.body?.code, req.body?.current); res.json(await backupStatus()); }));
+// POST (not DELETE) so the delete code travels in the body; the audit log hides it
+router.post('/backups/:id/delete', guard(MASTER_ONLY), wrap(async (req, res) => { await deleteBackup(req.params.id, req.body?.code); res.json({ ok: true }); }));
 
 router.get('/roles', guard(MASTER_ONLY), wrap(async (req, res) => { res.json(await matrix()); }));
 router.put('/roles/:name', guard(MASTER_ONLY), wrap(async (req, res) => {

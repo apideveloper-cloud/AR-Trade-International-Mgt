@@ -4,6 +4,7 @@
 //  - database: plain-Node dump (no mysqldump needed) of every table in one consistent snapshot, gzip-compressed (.sql.gz)
 //  - uploads : a gzip tar (.tar.gz) of server/uploads; an automatic run is skipped when no file changed since the last copy
 // Files live in server/backups/ (never served over the web) and every run is recorded in the backup_log table.
+import bcrypt from 'bcryptjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import zlib from 'node:zlib';
@@ -271,7 +272,7 @@ export async function status() {
     const next = base ? new Date(base + INTERVAL_H * 3600e3) : new Date();
     per[s] = { last: lastDone?.at || null, lastKind: lastDone?.kind || null, lastSize: lastDone?.size || 0, nextAuto: next < new Date() ? new Date() : next, copies: items.filter(i => i.scope === s && i.exists).length, bytes: items.filter(i => i.scope === s && i.exists).reduce((t, i) => t + i.size, 0), unchangedAt: s === 'files' && lastSkip.files ? new Date(lastSkip.files) : null };
   }
-  return { intervalHours: INTERVAL_H, keepDays: KEEP_DAYS, running, progress: prog ? { scope: prog.scope, kind: prog.kind, pct: prog.pct, phase: prog.phase, seconds: Math.round((Date.now() - prog.startedAt) / 1000) } : null, scopes: per, totalBytes: per.db.bytes + per.files.bytes, dir: curDir, defaultDir: DEFAULT_DIR, items };
+  return { deleteCodeSet: await hasDeleteCode(), intervalHours: INTERVAL_H, keepDays: KEEP_DAYS, running, progress: prog ? { scope: prog.scope, kind: prog.kind, pct: prog.pct, phase: prog.phase, seconds: Math.round((Date.now() - prog.startedAt) / 1000) } : null, scopes: per, totalBytes: per.db.bytes + per.files.bytes, dir: curDir, defaultDir: DEFAULT_DIR, items };
 }
 
 export async function fileOf(id) {
@@ -282,7 +283,34 @@ export async function fileOf(id) {
   return { full, name: r.file };
 }
 
-export async function deleteBackup(id) {
+// ---------- the delete code ----------
+// Deleting a backup cannot be undone, so it needs a code the Master Admin chose (kept only as a bcrypt hash in backup_config).
+// Five wrong tries in ten minutes lock deleting for ten minutes.
+const WRONG = { n: 0, since: 0, until: 0 };
+async function storedCodeHash() {
+  const [[r]] = await pool.query("SELECT v FROM backup_config WHERE k = 'delete_code'").then(x => (x[0].length ? x : [[null]]));
+  return r?.v || '';
+}
+export const hasDeleteCode = async () => !!(await storedCodeHash());
+async function checkDeleteCode(code) {
+  const hash = await storedCodeHash();
+  if (!hash) throw fail(409, 'Set a delete code first (Backups > Delete code). Without one nothing can be deleted.');
+  if (Date.now() < WRONG.until) throw fail(429, `Too many wrong codes. Try again in ${Math.ceil((WRONG.until - Date.now()) / 60000)} minutes.`);
+  if (await bcrypt.compare(String(code || ''), hash)) { WRONG.n = 0; return; }
+  if (Date.now() - WRONG.since > 600000) { WRONG.n = 0; WRONG.since = Date.now(); }
+  if (++WRONG.n >= 5) { WRONG.until = Date.now() + 600000; WRONG.n = 0; throw fail(429, 'Too many wrong codes. Deleting is locked for 10 minutes.'); }
+  throw fail(403, 'That delete code is not right.');
+}
+/** Sets or changes the delete code. Changing an existing code needs the current one. */
+export async function setDeleteCode(code, current) {
+  const next = String(code || '');
+  if (next.length < 6 || next.length > 60) throw fail(400, 'The delete code must be 6 to 60 characters.');
+  if (await hasDeleteCode()) await checkDeleteCode(current);
+  await pool.query("INSERT INTO backup_config (k, v) VALUES ('delete_code', ?) ON DUPLICATE KEY UPDATE v = VALUES(v)", [await bcrypt.hash(next, 10)]);
+}
+
+export async function deleteBackup(id, code) {
+  await checkDeleteCode(code);
   const [[r]] = await pool.query('SELECT file, dir, status FROM backup_log WHERE id = ?', [id]);
   if (!r) throw fail(404, 'Backup not found');
   if (r.status === 'Running') throw fail(409, 'This backup is still running');

@@ -13,7 +13,7 @@ const PREFIX = /^\/api\/(admin|inv|quotes|mkt|hub|field)(\/|$)/;
 const MUTATING = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 const SKIP = [/^\/api\/field\/track\b/, /^\/api\/quotes\/shared\//, /\/read(-all)?$/, /^\/api\/admin\/audit\b/, /^\/api\/mkt\/preview$/]; // GPS pings, "mark notification read" and email previews change nothing; reading the log is not logged
 const OPENED = /(\.pdf|\/pdf|\/download|\/cv)$/; // documents are logged when they are opened or downloaded
-const SECRET_KEY = /pass|token|secret|api_?key|otp|signature|pin\b|authorization|hash/i;
+const SECRET_KEY = /pass|token|secret|api_?key|otp|signature|pin\b|authorization|hash|(^|_)code$|^current$/i;
 
 export async function ensureAudit() {
   await pool.query(`CREATE TABLE IF NOT EXISTS audit_log (
@@ -38,7 +38,7 @@ const NOUN = {
 };
 const VERB = {
   status: 'Changed status', comments: 'Added comment', decision: 'Decided', send: 'Sent', email: 'Emailed', password: 'Set password', 'reset-link': 'Created reset link', 'make-master': 'Made Master Admin',
-  share: 'Shared link', scan: 'Scanned terms', dir: 'Changed folder', confirm: 'Confirmed', submit: 'Submitted', reopen: 'Reopened', cancel: 'Cancelled', approve: 'Approved', deposit: 'Recorded deposit', flow: 'Moved stage', rider: 'Assigned rider',
+  share: 'Shared link', scan: 'Scanned terms', 'delete-code': 'Changed delete code', delete: 'Deleted', dir: 'Changed folder', confirm: 'Confirmed', submit: 'Submitted', reopen: 'Reopened', cancel: 'Cancelled', approve: 'Approved', deposit: 'Recorded deposit', flow: 'Moved stage', rider: 'Assigned rider',
   courier: 'Assigned courier', deliver: 'Delivered', fail: 'Marked failed', adjust: 'Adjusted', convert: 'Converted', start: 'Started', done: 'Completed', checkin: 'Checked in', reset: 'Reset',
   details: 'Updated details', login: 'Signed in', register: 'Requested access', verify: 'Verified', quotes: 'Added quote', messages: 'Posted message', photo: 'Updated photo', profile: 'Updated profile', specs: 'Updated specs'
 };
@@ -166,8 +166,10 @@ router.get('/', guard('audit.view'), wrap(async (req, res) => {
   const [[{ n }]] = await pool.query(`SELECT COUNT(*) n FROM audit_log ${where}`, args);
   const [rows] = await pool.query(`SELECT id, at, staff_id, staff_name, staff_role, module, action, entity, entity_id, method, status, ok, error, summary, ip FROM audit_log ${where} ORDER BY id DESC LIMIT ${size} OFFSET ${(page - 1) * size}`, args);
   const [[s]] = await pool.query(`SELECT COALESCE(SUM(DATE(at) = CURDATE()), 0) today, COALESCE(SUM(DATE(at) = CURDATE() AND ok = 0), 0) failed,
-    COUNT(DISTINCT CASE WHEN DATE(at) = CURDATE() THEN staff_id END) staff_today, COALESCE(SUM(at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)), 0) week FROM audit_log`);
-  const [staff] = await pool.query("SELECT DISTINCT staff_id id, staff_name name FROM audit_log WHERE staff_id IS NOT NULL ORDER BY staff_name");
+    COUNT(DISTINCT CASE WHEN DATE(at) = CURDATE() THEN staff_id END) staff_today, COALESCE(SUM(at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)), 0) week FROM audit_log WHERE at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)`); // today and failed-today lie inside the week, so only the last 7 days are read (idx_at)
+  // one row per staff member who appears in the log: the distinct ids come from idx_staff, the name is the latest one used (no scan of the whole log)
+  const [staff] = await pool.query(`SELECT x.staff_id id, COALESCE((SELECT a.staff_name FROM audit_log a WHERE a.staff_id = x.staff_id ORDER BY a.at DESC, a.id DESC LIMIT 1), '') name
+    FROM (SELECT DISTINCT staff_id FROM audit_log WHERE staff_id IS NOT NULL) x ORDER BY name`);
   const [modules] = await pool.query('SELECT DISTINCT module FROM audit_log ORDER BY module');
   res.json({
     total: Number(n), keepDays: RETENTION_DAYS,

@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { pool } from './db.js';
 import { parseJson, wrap } from './util.js';
+import { productIdOf, productPath } from './slug.js';
 
 const NAME = 'AR Trade International';
 const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -12,6 +13,9 @@ const clip = (s, n) => (s.length <= n ? s : s.slice(0, n).replace(/\s+\S*$/, '')
 const baseUrl = req => (process.env.SITE_URL || `${req.get('x-forwarded-proto') || req.protocol}://${req.get('host')}`).replace(/\/$/, '');
 const abs = (base, u) => (!u ? '' : /^https?:\/\//.test(u) ? u : base + u);
 
+/** Public content pages: their address is forced to lower case and no trailing slash. Tokens (reset, prefs) and the apps are not touched. */
+const PUBLIC_PAGE = /^\/(shop|product|blog|services|about|contact|faq|offers|careers|policy)(\/|$)/i;
+const search = req => { const q = req.originalUrl.indexOf('?'); return q < 0 ? '' : req.originalUrl.slice(q); };
 const PRIVATE = /^\/(cart|checkout|success|account|login|track|wishlist|compare|reset|prefs|admin|hub|email|field)(\/|$)/;
 const STATIC = {
   '/': ['AR Trade International — Printers, Toner, Copiers & Office Equipment in Dhaka', 'Buy genuine printer toner, ink cartridges, copiers, printers and computer accessories online in Bangladesh. Printer servicing and fast delivery in Dhaka from AR Trade International.'],
@@ -61,14 +65,14 @@ export function mountSeo(app, dist) {
   app.get('/sitemap.xml', wrap(async (req, res) => {
     const base = baseUrl(req);
     const [cats] = await pool.query('SELECT id FROM categories WHERE hidden = 0');
-    const [prods] = await pool.query('SELECT id, img FROM products WHERE active = 1 ORDER BY id DESC');
+    const [prods] = await pool.query('SELECT id, name, img FROM products WHERE active = 1 ORDER BY id DESC');
     const [posts] = await pool.query('SELECT slug, DATE_FORMAT(COALESCE(updated_at, published), "%Y-%m-%d") d FROM blog_posts WHERE status = "Published" AND noindex = 0');
     const [pages] = await pool.query('SELECT slug FROM site_pages WHERE status = "Published" AND grp = "servicing" AND noindex = 0');
     const u = (loc, pri, extra = '') => `<url><loc>${esc(base + loc)}</loc><priority>${pri}</priority>${extra}</url>`;
     const out = [
       ...Object.keys(STATIC).map(p => u(p, p === '/' ? '1.0' : '0.8')),
       ...cats.map(c => u('/shop/' + c.id, '0.8')),
-      ...prods.map(p => u('/product/' + p.id, '0.7', p.img ? `<image:image><image:loc>${esc(abs(base, p.img))}</image:loc></image:image>` : '')),
+      ...prods.map(p => u(productPath(p), '0.7', p.img ? `<image:image><image:loc>${esc(abs(base, p.img))}</image:loc></image:image>` : '')),
       ...posts.map(p => u('/blog/' + p.slug, '0.6', `<lastmod>${p.d}</lastmod>`)),
       ...pages.map(p => u('/services/' + p.slug, '0.7'))
     ];
@@ -87,15 +91,22 @@ export function mountSeo(app, dist) {
       priceRange: '৳', areaServed: 'BD'
     };
 
+    // one address per page: lower case, no trailing slash (a second spelling would be a duplicate page for search engines)
+    const shown = (() => { try { return decodeURIComponent(p); } catch { return p; } })();
+    if (PUBLIC_PAGE.test(shown) && shown !== shown.toLowerCase()) return res.redirect(301, encodeURI(shown.toLowerCase()) + search(req));
+    if (PUBLIC_PAGE.test(req.path) && req.path.length > 1 && req.path.endsWith('/')) return res.redirect(301, p + search(req));
+
     let r;
-    if ((r = p.match(/^\/product\/(\d+)$/))) {
-      const [[x]] = await pool.query('SELECT * FROM products WHERE id = ? AND active = 1', [r[1]]);
+    if ((r = p.match(/^\/product\/([^/]+)$/))) {
+      const [[x]] = productIdOf(r[1]) ? await pool.query('SELECT * FROM products WHERE id = ? AND active = 1', [productIdOf(r[1])]) : [[null]];
+      // the old numeric address (/product/21554), a changed name or a mistyped slug all lead to the one real address
+      if (x && productPath(x) !== p) return res.redirect(301, encodeURI(productPath(x)) + search(req));
       if (!x) { status = 404; m = { path: p, title: 'Product not found | ' + NAME, desc: 'This product is no longer available.', noindex: true }; } else {
         const [gal] = await pool.query('SELECT path FROM product_images WHERE product_id = ? ORDER BY position LIMIT 6', [x.id]);
         const [[rv]] = await pool.query('SELECT COUNT(*) n, AVG(rating) a FROM reviews WHERE product_id = ? AND status = "Approved"', [x.id]);
         const [[cat]] = (await pool.query('SELECT title FROM categories WHERE id = ?', [x.category_id]));
         const imgs = (gal.length ? gal.map(g => g.path) : [x.img]).filter(Boolean).map(i => abs(base, i));
-        const url = `${base}/product/${x.id}`;
+        const url = base + productPath(x);
         const prod = {
           '@context': 'https://schema.org', '@type': 'Product', name: x.name, image: imgs, sku: x.sku || String(x.id), mpn: x.part || undefined, category: cat?.title,
           description: clip(plain(x.short_desc) || plain(x.description) || x.meta_desc || x.name, 500), brand: x.brand ? { '@type': 'Brand', name: x.brand } : undefined, url

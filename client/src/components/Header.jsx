@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { productPath } from '../slug.js';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { fmt } from '../api.js';
 import { MEGA, MENUS } from '../data.js';
@@ -143,7 +144,7 @@ export default function Header() {
                   </div>
                   <div className="mega-picks">
                     {cur.picks.map(p => (
-                      <Link key={p.id} to={'/product/' + p.id} onClick={() => setMenu(null)}>
+                      <Link key={p.id} to={productPath(p)} onClick={() => setMenu(null)}>
                         <span className="im"><img src={p.img} alt="" /></span>
                         <span className="n clamp2">{p.name}</span><b>{p.price ? fmt(p.price) : 'Ask price'}</b>
                       </Link>

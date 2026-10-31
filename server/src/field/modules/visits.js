@@ -14,6 +14,7 @@ import { Router } from 'express';
 import { pool, guard, guardRole, wrap, fail, roleKey, coord } from '../common.js';
 import { PROOFS, saveImage } from '../sales_util.js';
 import { pageOf, addRange, addSearch, whereOf, wantsPage, day } from '../../listing.js';
+import { monthBounds } from '../../util.js';
 import { bdDate, bdToDate, utcSql, addDays, dateOk, timeOk, VISIT_SQL, visitOut, loadVisit } from '../crm_util.js';
 
 const router = Router();
@@ -78,7 +79,7 @@ router.get('/calendar', guard(), wrap(async (req, res) => {
   const m = /^(\d{4})-(\d{2})$/.test(String(req.query.month || '')) ? req.query.month : bdDate().slice(0, 7);
   const sid = whose(req);
   const [rows] = await pool.query(
-    "SELECT DATE_FORMAT(visit_date,'%Y-%m-%d') d, COUNT(*) n, SUM(status = 'Done') done FROM field_visits WHERE staff_id = ? AND DATE_FORMAT(visit_date,'%Y-%m') = ? GROUP BY visit_date", [sid, m]);
+    "SELECT DATE_FORMAT(visit_date,'%Y-%m-%d') d, COUNT(*) n, SUM(status = 'Done') done FROM field_visits WHERE staff_id = ? AND visit_date >= ? AND visit_date < ? GROUP BY visit_date", [sid, ...monthBounds(m)]);
   res.json({ month: m, days: Object.fromEntries(rows.map(r => [r.d, { n: Number(r.n), done: Number(r.done) || 0 }])) });
 }));
 

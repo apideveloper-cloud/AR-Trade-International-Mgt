@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { adm, downloadFile } from '../adminApi.js';
-import { Summary, alertBox, confirmBox } from '../ui.jsx';
+import { Modal, Summary, alertBox, confirmBox } from '../ui.jsx';
 import { Chip, Grid, Notice, fDateTime } from '../fieldKit.jsx';
 import '../field.css';
 
@@ -36,9 +36,20 @@ export function Backups() {
     setDirBusy(false);
   };
   const get = async b => { try { await downloadFile(`/backups/${b.id}/download`, b.file); } catch (e) { alertBox(e.message); } };
-  const del = async b => {
-    if (!(await confirmBox(`Delete the ${LABEL[b.scope].toLowerCase()} backup from ${fDateTime(b.at)}? It cannot be recovered afterwards.`, { danger: true, confirmLabel: 'Delete backup' }))) return;
-    try { await adm.del('/backups/' + b.id); await load(); } catch (e) { alertBox(e.message); }
+  // deleting needs the delete code (set once by the Master Admin); changing the code needs the old one
+  const [ask, setAsk] = useState(null); // { kind: 'delete', b } | { kind: 'set' }
+  const [codes, setCodes] = useState({ code: '', next: '', again: '', err: '', busy: false });
+  const open = a => { setCodes({ code: '', next: '', again: '', err: '', busy: false }); setAsk(a); };
+  const del = b => (d.deleteCodeSet ? open({ kind: 'delete', b }) : open({ kind: 'set', then: b }));
+  const submitCode = async e => {
+    e.preventDefault();
+    if (ask.kind === 'set' && codes.next !== codes.again) { setCodes(c => ({ ...c, err: 'The two new codes are not the same.' })); return; }
+    setCodes(c => ({ ...c, busy: true, err: '' }));
+    try {
+      if (ask.kind === 'delete') { await adm.post(`/backups/${ask.b.id}/delete`, { code: codes.code }); setAsk(null); await load(); return; }
+      const r = await adm.put('/backups/delete-code', { code: codes.next, current: codes.code }); setD(r);
+      const then = ask.then; setAsk(then ? { kind: 'delete', b: then } : null); if (then) setCodes({ code: '', next: '', again: '', err: '', busy: false });
+    } catch (x) { setCodes(c => ({ ...c, busy: false, err: x.message })); }
   };
 
   if (err && !d) return <Notice err={err} onRetry={load} />;
@@ -96,6 +107,11 @@ export function Backups() {
         )}
         <small className="fd-sub">Use a full path, e.g. {'D:\\Backups\\AR'} (Windows) or /var/backups/artrade (Linux). The folder is created if missing and the server must be able to write to it. It cannot be inside the uploads folder.</small>
       </section>
+      <section className="a-card bk-dir">
+        <div className="card-hd"><div><h3>Delete code</h3><small className="fd-sub">Needed to delete any backup · Master Admin only</small></div></div>
+        <div className="bk-dirrow"><code>{d.deleteCodeSet ? '••••••••  (set)' : 'Not set yet: backups cannot be deleted'}</code><button type="button" className="a-mini" onClick={() => open({ kind: 'set' })}>{d.deleteCodeSet ? 'Change code' : 'Set code'}</button></div>
+        <small className="fd-sub">Choose 6 to 60 characters. Five wrong tries lock deleting for 10 minutes. Keep the code safe: it is stored only as a hash and cannot be shown again.</small>
+      </section>
       <section className="a-card">
         <div className="card-hd"><div><h3>Backup history</h3><small className="fd-sub">Newest first · download a copy to keep it off the server</small></div>
           <div className="bk-acts">{[['all', 'All'], ['db', 'Database'], ['files', 'Uploads']].map(([k, l]) => <button key={k} type="button" className={'a-mini' + (tab === k ? ' on' : '')} onClick={() => setTab(k)}>{l}</button>)}</div>
@@ -124,6 +140,23 @@ tar -xzf server/backups/&lt;ar-uploads-file&gt;.tar.gz -C server/uploads
 systemctl start artrade-api</pre>
         <p className="fd-sub">Backups sit in <b>{d.dir}</b> next to the website's own files. For safety against a disk failure, download one regularly and keep it somewhere else.</p>
       </section>
+      {ask && (
+        <Modal narrow kicker="Backups" title={ask.kind === 'delete' ? 'Delete this backup' : d.deleteCodeSet ? 'Change the delete code' : 'Set the delete code'} onClose={() => setAsk(null)} onSubmit={submitCode}
+          footer={<><button type="button" className="a-btn ghost" onClick={() => setAsk(null)}>Cancel</button><button className={'a-btn ' + (ask.kind === 'delete' ? 'danger' : 'grad')} disabled={codes.busy}>{codes.busy ? 'Please wait…' : ask.kind === 'delete' ? 'Delete backup' : 'Save code'}</button></>}>
+          <div className="iv-form">
+            {codes.err && <div className="a-msg err">{codes.err}</div>}
+            {ask.kind === 'delete' ? <>
+              <small className="fd-sub">Delete the <b>{LABEL[ask.b.scope].toLowerCase()}</b> backup from <b>{fDateTime(ask.b.at)}</b>? It cannot be recovered afterwards. Enter the delete code to confirm.</small>
+              <label className="a-lbl">Delete code<input className="a-input" type="password" autoFocus autoComplete="off" value={codes.code} onChange={e => setCodes(c => ({ ...c, code: e.target.value }))} /></label>
+            </> : <>
+              {ask.then && <small className="fd-sub">No delete code is set yet. Choose one now, then the backup is deleted with it.</small>}
+              {d.deleteCodeSet && <label className="a-lbl">Current code<input className="a-input" type="password" autoComplete="off" value={codes.code} onChange={e => setCodes(c => ({ ...c, code: e.target.value }))} /></label>}
+              <label className="a-lbl">New code <small>6 to 60 characters</small><input className="a-input" type="password" autoFocus={!d.deleteCodeSet} autoComplete="new-password" minLength={6} maxLength={60} value={codes.next} onChange={e => setCodes(c => ({ ...c, next: e.target.value }))} /></label>
+              <label className="a-lbl">New code again<input className="a-input" type="password" autoComplete="new-password" value={codes.again} onChange={e => setCodes(c => ({ ...c, again: e.target.value }))} /></label>
+            </>}
+          </div>
+        </Modal>
+      )}
     </>
   );
 }

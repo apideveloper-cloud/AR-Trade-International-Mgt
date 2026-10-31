@@ -5,7 +5,7 @@
 import { Router } from 'express';
 import { pool } from './db.js';
 import { guard } from './admin.js';
-import { D, fail, int, iso, nextSeq, text, today, tx, wrap } from './util.js';
+import { D, fail, int, iso, monthBounds, nextSeq, text, today, tx, wrap } from './util.js';
 import { addAmount, addRange, addSearch, pageOf, whereOf, wantsPage } from './listing.js';
 
 const router = Router();
@@ -485,12 +485,12 @@ router.delete('/payments/:id', guard(MANAGE), wrap(async (req, res) => {
 
 // ---------- overview numbers ----------
 router.get('/summary', guard(VIEW), wrap(async (req, res) => {
-  const month = today().slice(0, 7);
+  const [from, to] = monthBounds(today().slice(0, 7));
   const [[a]] = await pool.query(`SELECT COALESCE(SUM(${BAL}), 0) payable, COUNT(*) vendors, COALESCE(SUM(${BAL} > 0), 0) owed_n FROM field_vendors v WHERE v.active = 1`);
-  const [[b]] = await pool.query(`SELECT COALESCE(SUM(total), 0) t, COUNT(*) n FROM stock_receipts WHERE ${BILLED} AND DATE_FORMAT(received_on, '%Y-%m') = ?`, [month]);
-  const [[c]] = await pool.query("SELECT COALESCE(SUM(amount), 0) t FROM vendor_payments WHERE DATE_FORMAT(paid_on, '%Y-%m') = ?", [month]);
-  const [[d]] = await pool.query("SELECT COALESCE(SUM(qty * unit_cost), 0) t, COALESCE(SUM(qty), 0) q FROM stock_damages WHERE DATE_FORMAT(damaged_on, '%Y-%m') = ?", [month]);
-  const [[e]] = await pool.query("SELECT COALESCE(SUM(total), 0) t FROM vendor_returns WHERE DATE_FORMAT(returned_on, '%Y-%m') = ?", [month]);
+  const [[b]] = await pool.query(`SELECT COALESCE(SUM(total), 0) t, COUNT(*) n FROM stock_receipts WHERE ${BILLED} AND received_on >= ? AND received_on < ?`, [from, to]);
+  const [[c]] = await pool.query("SELECT COALESCE(SUM(amount), 0) t FROM vendor_payments WHERE paid_on >= ? AND paid_on < ?", [from, to]);
+  const [[d]] = await pool.query("SELECT COALESCE(SUM(qty * unit_cost), 0) t, COALESCE(SUM(qty), 0) q FROM stock_damages WHERE damaged_on >= ? AND damaged_on < ?", [from, to]);
+  const [[e]] = await pool.query("SELECT COALESCE(SUM(total), 0) t FROM vendor_returns WHERE returned_on >= ? AND returned_on < ?", [from, to]);
   const [[pn]] = await pool.query("SELECT COUNT(*) n FROM stock_receipts WHERE status = 'Pending'");
   const [[sn]] = await pool.query("SELECT COUNT(*) n FROM stock_receipts WHERE status = 'Approved'");
   res.json({ pendingApproval: Number(pn.n), awaitingStock: Number(sn.n), payable: Number(a.payable), vendors: Number(a.vendors), owedCount: Number(a.owed_n), purchased: Number(b.t), purchases: Number(b.n), paid: Number(c.t), damageLoss: Number(d.t), damagePcs: Number(d.q), returned: Number(e.t) });

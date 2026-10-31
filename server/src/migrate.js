@@ -4,6 +4,7 @@ import { ensureBackupTable } from './backup.js';
 import { ensureInventory } from './inventory.js';
 import { ensureQuotes } from './quotation.js';
 import { ensureAudit } from './audit.js';
+import { ensureIndexes } from './indexes.js';
 
 const STAFF_COLS = [['nid', 'VARCHAR(20)'], ['present_address', 'VARCHAR(300)'], ['contact_address', 'VARCHAR(300)'], ['ref_name', 'VARCHAR(120)'], ['ref_phone', 'VARCHAR(20)']];
 
@@ -59,4 +60,6 @@ export async function ensureSchema() {
       if (!have.has(c)) { await pool.query(`ALTER TABLE messages ADD COLUMN ${c} ${def}`); console.log('Added messages.' + c); }
     }
   }
+  // indexes for the tables above (idempotent: only what is missing is created, and only the changed tables are re-analysed)
+  await ensureIndexes(pool, m => console.log(m.trim()));
 }

@@ -1,4 +1,5 @@
 import CategoryRails from '../components/CategoryRails.jsx';
+import { productPath } from '../slug.js';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import ProductCard, { BuyAction } from '../components/ProductCard.jsx';
@@ -244,10 +245,10 @@ function Fresh() {
           <div className="spot">
             <span className="glow" />
             <div className="top"><span className="tag">NEW ARRIVAL · {spot.brand}</span>{off > 0 && <span className="save">Save {off}%</span>}</div>
-            <Link to={'/product/' + spot.id} className="pic">{spot.img && <img src={spot.img} alt={spot.name} />}</Link>
+            <Link to={productPath(spot)} className="pic">{spot.img && <img src={spot.img} alt={spot.name} />}</Link>
             <div className="info">
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0, maxWidth: 420 }}>
-                <Link to={'/product/' + spot.id} className="nm">{spot.name}</Link>
+                <Link to={productPath(spot)} className="nm">{spot.name}</Link>
                 <span style={{ fontSize: 13, color: '#5d6270' }}>{spot.spec}</span>
                 <div className="pr"><b>{spot.price ? fmt(spot.price) : 'On request'}</b>{off > 0 && <s>{fmt(spot.old)}</s>}</div>
               </div>
@@ -260,10 +261,10 @@ function Fresh() {
               return (
                 <div className="mini-p" key={q.id}>
                   <div className="row">
-                    <Link to={'/product/' + q.id} className="th">{q.img && <img src={q.img} alt="" />}{o > 0 && <em>−{o}%</em>}</Link>
+                    <Link to={productPath(q)} className="th">{q.img && <img src={q.img} alt="" />}{o > 0 && <em>−{o}%</em>}</Link>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
                       <span className="brand-k">{q.brand}</span>
-                      <Link to={'/product/' + q.id} className="nm clamp2">{q.name}</Link>
+                      <Link to={productPath(q)} className="nm clamp2">{q.name}</Link>
                     </div>
                   </div>
                   <div className="foot">
@@ -387,8 +388,8 @@ export default function Home() {
           {deal && (
             <div className="deal">
               <div className="row1"><span className="k">Deal of the week</span>{off > 0 && <span className="off">−{off}%</span>}</div>
-              <Link to={'/product/' + deal.id} className="pic"><img src={deal.img} alt={deal.name} /></Link>
-              <Link to={'/product/' + deal.id}><span className="nm clamp2">{deal.name}</span></Link>
+              <Link to={productPath(deal)} className="pic"><img src={deal.img} alt={deal.name} /></Link>
+              <Link to={productPath(deal)}><span className="nm clamp2">{deal.name}</span></Link>
               <div className="foot">
                 <span className="pr"><b>{fmt(deal.price)}</b><s>{fmt(deal.old)}</s></span>
                 <button className="btn" onClick={() => addToCart(deal)}>+ Add to cart</button>

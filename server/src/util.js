@@ -92,6 +92,13 @@ export const iso = (s, fallback) => {
   const d = new Date(v + 'T00:00:00Z');
   return !isNaN(d) && d.toISOString().slice(0, 10) === v ? v : fallback;
 };
+/** ['2026-10-01', '2026-11-01'] for '2026-10': filter a date column with `col >= ? AND col < ?` so an index can be used (wrapping the column in DATE_FORMAT() or YEAR() cannot). */
+export const monthBounds = ym => {
+  const [y, m] = String(ym).split('-').map(Number);
+  const next = m === 12 ? [y + 1, 1] : [y, m + 1];
+  const f = (a, b) => `${a}-${String(b).padStart(2, '0')}-01`;
+  return [f(y, m), f(...next)];
+};
 /** Today in Dhaka (UTC+6) as YYYY-MM-DD. */
 export const today = () => new Date(Date.now() + 6 * 3600e3).toISOString().slice(0, 10);
 /** A whole, non-negative number between 0 and `max` (anything else becomes 0). */

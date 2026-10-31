@@ -45,20 +45,53 @@ export const INDEXES = [
   // accounts
   ['user_reminders', 'idx_next', 'active, next_at'],
   ['staff', 'idx_role_status', 'role, status'],
-  ['categories', 'idx_sort', 'hidden, sort_order']
+  ['categories', 'idx_sort', 'hidden, sort_order'],
+  // who generated the order (Customer / Call center / Admin / Seller) is a filter on the Orders page
+  ['orders', 'idx_source_created', 'source, created_at'],
+  // purchasing: list by stage and date, the vendor balance (status and total are read straight from the index), the month summary, the next invoice number
+  ['stock_receipts', 'idx_status_date', 'status, received_on'],
+  ['stock_receipts', 'idx_date', 'received_on'],
+  ['stock_receipts', 'idx_vendor_status', 'vendor_id, status, total'],
+  ['stock_receipts', 'idx_invoice', 'invoice_no'],
+  ['stock_moves', 'idx_product_kind', 'product_id, kind, id'], // the "last buying price" lookup
+  ['stock_damages', 'idx_product', 'product_id'],
+  ['stock_damages', 'idx_vendor', 'vendor_id'],
+  ['vendor_returns', 'idx_date', 'returned_on'],
+  ['vendor_payments', 'idx_paid', 'paid_on'],
+  ['field_vendors', 'idx_active_name', 'active, name'],
+  // quotations: list by status / customer type and date, open a shared link by its token
+  ['quotations', 'idx_status_date', 'status, quote_date'],
+  ['quotations', 'idx_ctype_date', 'cust_type, quote_date'],
+  ['quotations', 'idx_token', 'share_token']
 ];
 
-export async function ensureIndexes(pool, log = () => {}) {
+/** Indexes that are only the first columns of another index. MySQL uses the longer one for the same lookups, so the short one only costs space and slows writes. [table, index to drop, index that covers it] */
+export const REDUNDANT = [
+  ['orders', 'idx_user', 'idx_user_created'],
+  ['field_expenses', 'idx_staff', 'idx_client_ref'],
+  ['field_payments', 'idx_staff', 'idx_client_ref'],
+  ['field_sales_orders', 'idx_staff', 'idx_client_ref'],
+  ['quotations', 'idx_status', 'idx_status_date']
+];
+
+/** Creates the missing indexes, drops the redundant ones (only when the covering index exists) and refreshes the statistics of the tables that changed (all of them with `analyzeAll`). */
+export async function ensureIndexes(pool, log = () => {}, { analyzeAll = false } = {}) {
   const [have] = await pool.query('SELECT TABLE_NAME t, INDEX_NAME i FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE()');
   const [tabs] = await pool.query('SELECT TABLE_NAME t FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE()');
   const exists = new Set(have.map(r => r.t + '.' + r.i));
   const tables = new Set(tabs.map(r => r.t));
   let made = 0;
+  const touched = new Set();
   for (const [t, name, cols] of INDEXES) {
     if (!tables.has(t) || exists.has(t + '.' + name)) continue;
-    try { await pool.query(`ALTER TABLE \`${t}\` ADD INDEX \`${name}\` (${cols})`); made++; log(`  + ${t}.${name} (${cols})`); }
+    try { await pool.query(`ALTER TABLE \`${t}\` ADD INDEX \`${name}\` (${cols})`); made++; touched.add(t); exists.add(t + '.' + name); log(`  + ${t}.${name} (${cols})`); }
     catch (e) { log(`  ! ${t}.${name}: ${e.message}`); }
   }
-  for (const t of tables) await pool.query(`ANALYZE TABLE \`${t}\``);
+  for (const [t, drop, keep] of REDUNDANT) {
+    if (!exists.has(t + '.' + drop) || !exists.has(t + '.' + keep)) continue;
+    try { await pool.query(`ALTER TABLE \`${t}\` DROP INDEX \`${drop}\``); touched.add(t); log(`  - ${t}.${drop} (covered by ${keep})`); }
+    catch (e) { log(`  ! ${t}.${drop}: ${e.message}`); }
+  }
+  for (const t of analyzeAll ? tables : touched) await pool.query(`ANALYZE TABLE \`${t}\``);
   return made;
 }

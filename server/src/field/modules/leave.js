@@ -37,7 +37,7 @@ const out = r => ({
 async function balances(staffId) {
   const year = todayBD().slice(0, 4);
   const [rows] = await pool.query(
-    "SELECT type, SUM(days) used FROM field_leave_requests WHERE staff_id = ? AND status = 'Approved' AND YEAR(from_date) = ? GROUP BY type", [staffId, year]);
+    "SELECT type, SUM(days) used FROM field_leave_requests WHERE staff_id = ? AND status = 'Approved' AND from_date >= ? AND from_date < ? GROUP BY type", [staffId, `${year}-01-01`, `${Number(year) + 1}-01-01`]);
   const used = Object.fromEntries(rows.map(r => [r.type, Number(r.used)]));
   return Object.entries(ENTITLEMENT).map(([type, total]) => ({ type, total, used: used[type] || 0, left: Math.max(0, total - (used[type] || 0)) }));
 }

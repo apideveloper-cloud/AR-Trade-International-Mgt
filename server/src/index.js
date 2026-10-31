@@ -71,6 +71,8 @@ app.use('/api/uploads', express.static(path.resolve(here, '../uploads'), { maxAg
 const AREAS = ['inside', 'suburb', 'outside'];
 const PARTIAL = ['split', 'together', 'drop'];
 
+/** The columns productOut() reads. The catalogue list and best sellers select just these instead of SELECT *, so the long description, gallery and SEO text are never read for 2,000 products. */
+const LIST_COLS = 'id, category_id, brand, name, old_price, price, img, stock, popular, is_new, featured, tech, color, yield_info, part, compat, spec, extra';
 const productOut = r => ({
   id: r.id, cat: r.category_id, brand: r.brand, name: r.name, old: r.old_price, price: r.price, img: r.img, stock: r.stock,
   popular: !!r.popular, isNew: !!r.is_new, featured: !!r.featured, tech: r.tech, color: r.color, yield: r.yield_info,
@@ -106,7 +108,7 @@ async function getSettings() {
 // best sellers: ranked by units on non-cancelled orders; products with no sales yet fall back to the "popular"/"featured" flags
 app.get('/api/bestsellers', wrap(async (req, res) => {
   const limit = Math.min(12, Math.max(1, parseInt(req.query.limit, 10) || 6));
-  const [rows] = await pool.query(`SELECT p.*, COALESCE(s.q, 0) AS sold FROM products p
+  const [rows] = await pool.query(`SELECT ${LIST_COLS.split(', ').map(c => 'p.' + c).join(', ')}, COALESCE(s.q, 0) AS sold FROM products p
     LEFT JOIN (SELECT i.product_id, SUM(i.qty) q FROM order_items i JOIN orders o ON o.id = i.order_id WHERE o.status <> 'Cancelled' GROUP BY i.product_id) s ON s.product_id = p.id
     WHERE p.active = 1 ORDER BY sold DESC, p.popular DESC, p.featured DESC, p.id DESC LIMIT ?`, [limit]);
   res.json({ products: rows.map(r => ({ ...productOut(r), sold: Number(r.sold) })) });
@@ -138,7 +140,7 @@ app.get('/api/pages/:slug', wrap(async (req, res) => {
 app.get('/api/bootstrap', wrap(async (req, res) => {
   res.setHeader('Cache-Control', 'public, max-age=30');
   const [cats] = await pool.query('SELECT id, title AS t, description AS d, img FROM categories WHERE hidden = 0 ORDER BY sort_order');
-  const [prods] = await pool.query('SELECT * FROM products WHERE active = 1 ORDER BY id DESC');
+  const [prods] = await pool.query(`SELECT ${LIST_COLS} FROM products WHERE active = 1 ORDER BY id DESC`);
   const s = await getSettings();
   res.json({ cats, products: prods.map(productOut), site: s.site, content: s.content });
 }));

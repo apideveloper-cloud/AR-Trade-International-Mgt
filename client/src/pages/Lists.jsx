@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { productPath } from '../slug.js';
 import ProductCard from '../components/ProductCard.jsx';
 import { fmt } from '../api.js';
 import { useStore } from '../store.jsx';
@@ -44,8 +45,8 @@ export function Compare() {
             {items.map(p => (
               <div className="col" key={p.id}>
                 <button onClick={() => toggleCompare(p.id)} title="Remove" style={{ position: 'absolute', top: 10, right: 10, width: 28, height: 28, borderRadius: '50%', border: '1px solid #e1e5ec', background: '#fff', color: '#5d6270' }}>×</button>
-                <Link to={'/product/' + p.id} style={{ position: 'relative', height: 150, borderRadius: 14, background: '#f4f7fc', display: 'grid', placeItems: 'center' }}>{p.img && <img src={p.img} alt="" style={{ maxHeight: '96%', maxWidth: '96%', objectFit: 'contain', mixBlendMode: 'multiply' }} />}</Link>
-                <Link to={'/product/' + p.id} style={{ color: '#0b1631', fontWeight: 700, fontSize: 14, lineHeight: 1.3 }}>{p.name}</Link>
+                <Link to={productPath(p)} style={{ position: 'relative', height: 150, borderRadius: 14, background: '#f4f7fc', display: 'grid', placeItems: 'center' }}>{p.img && <img src={p.img} alt="" style={{ maxHeight: '96%', maxWidth: '96%', objectFit: 'contain', mixBlendMode: 'multiply' }} />}</Link>
+                <Link to={productPath(p)} style={{ color: '#0b1631', fontWeight: 700, fontSize: 14, lineHeight: 1.3 }}>{p.name}</Link>
                 <span style={{ fontFamily: 'var(--disp)', fontWeight: 800, fontSize: 22, color: '#0b1631' }}>{p.price ? fmt(p.price) : 'Ask price'}</span>
                 <button className="btn" onClick={() => addToCart(p)}>+ Add to cart</button>
               </div>

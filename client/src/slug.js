@@ -1,0 +1,21 @@
+// Product web addresses: /product/hp-230a-cmyk-toner-cartridge-full-set-21554 (an identical copy of server/src/slug.js, which builds the sitemap, canonical links and redirects: keep the two the same).
+// Keywords from the name, lower case, hyphens, filler words and symbols dropped, short, with the product id at the end.
+const STOP = new Set(['a', 'an', 'the', 'and', 'or', 'for', 'of', 'with', 'in', 'on', 'at', 'to', 'by', 'from', 'is', 'are', 'as', 'its', 'this', 'that']);
+const MAX = 60; // characters of keywords, cut at a whole word
+
+export function productSlug(name) {
+  const words = String(name || '').toLowerCase().replace(/&/g, ' ').split(/[^a-z0-9]+/).filter(w => w && !STOP.has(w));
+  let out = '';
+  for (const w of words) {
+    if (out && out.length + 1 + w.length > MAX) break;
+    out = out ? out + '-' + w : w.slice(0, MAX);
+  }
+  return out;
+}
+/** '/product/hp-230a-cmyk-toner-cartridge-full-set-21554' (or '/product/21554' for a name with no Latin letters or digits). */
+export const productPath = p => {
+  const s = productSlug(p?.name);
+  return '/product/' + (s ? s + '-' : '') + p?.id;
+};
+/** The product id at the end of the address segment: '...-21554' or '21554' -> '21554'. */
+export const productIdOf = seg => (String(seg ?? '').match(/(\d+)$/) || [])[1] || '';

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { productPath } from '../slug.js';
 import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom';
 import ProductCard, { BuyAction } from '../components/ProductCard.jsx';
 import { fmt, offPct } from '../api.js';
@@ -18,10 +19,10 @@ function ListRow({ p }) {
   const off = offPct(p);
   return (
     <article className="lrow">
-      <Link to={'/product/' + p.id} className="im">{p.img && <img src={p.img} alt={p.name} loading="lazy" />}{off > 0 && <span className="b-off">−{off}%</span>}</Link>
+      <Link to={productPath(p)} className="im">{p.img && <img src={p.img} alt={p.name} loading="lazy" />}{off > 0 && <span className="b-off">−{off}%</span>}</Link>
       <div className="mid">
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}><span className="bk">{p.brand}</span>{p.isNew && <span className="b-new">New</span>}</div>
-        <Link to={'/product/' + p.id}><h3>{p.name}</h3></Link>
+        <Link to={productPath(p)}><h3>{p.name}</h3></Link>
         <span style={{ fontSize: 13, color: '#6b7080' }}>{p.spec}</span>
         <div className="tick"><span>✓ Genuine product</span><span>✓ Cash on delivery</span><span>✓ Dhaka next-day</span></div>
       </div>

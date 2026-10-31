@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { productPath } from '../slug.js';
 import Social from './Social.jsx';
 import { popupAllowed, popupClose, popupOpen } from '../popupBus.js';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
@@ -70,9 +71,9 @@ export function CartDrawer() {
           )}
           {cartLines.map(({ p, qty }) => (
             <div className="dline" key={p.id}>
-              <Link to={'/product/' + p.id} onClick={close} className="th">{p.img && <img src={p.img} alt="" />}</Link>
+              <Link to={productPath(p)} onClick={close} className="th">{p.img && <img src={p.img} alt="" />}</Link>
               <div className="mid">
-                <Link to={'/product/' + p.id} onClick={close} className="nm clamp2">{p.name}</Link>
+                <Link to={productPath(p)} onClick={close} className="nm clamp2">{p.name}</Link>
                 <div className="row2">
                   <div className="q"><button onClick={() => setQty(p.id, qty - 1)}>−</button><span>{qty}</span><button onClick={() => setQty(p.id, qty + 1)}>+</button></div>
                   <b>{fmt(p.price * qty)}</b>
@@ -220,7 +221,7 @@ export function PromoPopup() {
           </div>
           <div className="promo-items">
             {src.slice(0, 3).map(({ p, off }) => (
-              <Link key={p.id} to={'/product/' + p.id} onClick={close}><em>−{off}%</em><div style={{ backgroundImage: `url('${p.img}')` }} /><b>{fmt(p.price)}</b></Link>
+              <Link key={p.id} to={productPath(p)} onClick={close}><em>−{off}%</em><div style={{ backgroundImage: `url('${p.img}')` }} /><b>{fmt(p.price)}</b></Link>
             ))}
           </div>
           <div className="promo-coupon">

@@ -178,7 +178,7 @@ async function main() {
   await migrate();
   await seedEmailCenter();
   await seedBlog();
-  await ensureIndexes(pool);
+  await ensureIndexes(pool, () => {}, { analyzeAll: true });
   // demo Content writer account (only created if missing; never on the live server)
   if (!PROD) await pool.query('INSERT IGNORE INTO staff (name,email,phone,password_hash,role,status) VALUES (?,?,?,?,?,"Active")',
     ['Content Writer', 'writer@artradeinternational.com', '01700000003', await bcrypt.hash('writer123', 10), 'Content writer']);

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { productPath } from '../slug.js';
 import { Link } from 'react-router-dom';
 import { api, fmt, offPct } from '../api.js';
 import { useStore } from '../store.jsx';
@@ -23,8 +24,8 @@ export default function BestSellers({ exclude, limit = 6 }) {
           return (
             <li key={p.id} style={{ animationDelay: n * 0.06 + 's' }}>
               <span className={'rk r' + (n + 1)}>{n < 3 ? MEDAL[n] : n + 1}</span>
-              <Link to={'/product/' + p.id} className="th" style={p.img ? { backgroundImage: `url('${p.img}')` } : undefined} aria-label={p.name} />
-              <Link to={'/product/' + p.id} className="nm">
+              <Link to={productPath(p)} className="th" style={p.img ? { backgroundImage: `url('${p.img}')` } : undefined} aria-label={p.name} />
+              <Link to={productPath(p)} className="nm">
                 <b>{p.name}</b>
                 <small>{p.brand}{p.tech ? ' · ' + p.tech : ''}</small>
                 {p.sold > 0 && <span className="sold"><i style={{ width: Math.max(8, (p.sold / top) * 100) + '%' }} /><em>{p.sold} sold</em></span>}
@@ -32,7 +33,7 @@ export default function BestSellers({ exclude, limit = 6 }) {
               <span className="pr">
                 {p.price ? <><b>{fmt(p.price)}</b>{off > 0 && <s>{fmt(p.old)}</s>}</> : <b>On request</b>}
               </span>
-              {can ? <button onClick={() => addToCart(p, 1)}>+ Add</button> : <Link to={'/product/' + p.id} className="ask">{p.price ? 'Notify' : 'Ask price'}</Link>}
+              {can ? <button onClick={() => addToCart(p, 1)}>+ Add</button> : <Link to={productPath(p)} className="ask">{p.price ? 'Notify' : 'Ask price'}</Link>}
             </li>
           );
         })}
