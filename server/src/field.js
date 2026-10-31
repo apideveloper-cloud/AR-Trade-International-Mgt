@@ -6,7 +6,7 @@ import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { pool } from './db.js';
-import { digits, fail, wrap, checkPassword, secret } from './util.js';
+import { digits, fail, iso, wrap, checkPassword, secret } from './util.js';
 import { guard } from './admin.js';
 import { can } from './permissions.js';
 import { pathToFileURL } from 'node:url';
@@ -102,7 +102,7 @@ router.get('/attendance', guard(), wrap(async (req, res) => {
 // office view (approvers): everyone's attendance for one day in Bangladesh time, plus how many days each person clocked in this month
 router.get('/attendance/report', guard('field.approve'), wrap(async (req, res) => {
   const today = todayBD();
-  const date = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.date || '')) && !isNaN(Date.parse(req.query.date + 'T00:00:00Z')) ? String(req.query.date) : today;
+  const date = iso(req.query.date, today);
   const dayStart = new Date(Date.parse(date + 'T00:00:00Z') - 6 * 3600e3); // 00:00 in Bangladesh is 18:00 UTC the evening before
   const dayEnd = new Date(dayStart.getTime() + 864e5);
   const monthStart = new Date(Date.parse(date.slice(0, 8) + '01T00:00:00Z') - 6 * 3600e3);

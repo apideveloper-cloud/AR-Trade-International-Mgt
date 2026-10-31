@@ -7,13 +7,14 @@
 // Approved leave shows up as 'leave' days in GET /api/field/week.
 import { Router } from 'express';
 import { pool, fail, wrap, guard, guardRole, roleKey, notify, staffIdsByRole, UTC_TS, todayBD } from '../common.js';
+import { iso } from '../../util.js';
 
 const router = Router();
 const TYPES = ['Casual', 'Sick', 'Annual', 'Unpaid'];
 const ENTITLEMENT = { Casual: 10, Sick: 14, Annual: 20 }; // days per year
 const DAY = 864e5;
 
-const isoDate = s => /^\d{4}-\d{2}-\d{2}$/.test(String(s || '')) && !isNaN(Date.parse(s + 'T00:00:00Z')) ? String(s) : null;
+const isoDate = s => iso(s, null);
 /** Days between two YYYY-MM-DD dates (inclusive), Fridays (weekly off) not counted. */
 function countDays(from, to) {
   let n = 0;

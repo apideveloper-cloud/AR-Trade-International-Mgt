@@ -6,12 +6,13 @@ import { Router } from 'express';
 import { pool } from './db.js';
 import { guard } from './admin.js';
 import { fail, wrap } from './util.js';
+import { day } from './listing.js';
 
 export const RETENTION_DAYS = Number(process.env.AUDIT_KEEP_DAYS || 365);
-const PREFIX = /^\/api\/(admin|inv|mkt|hub|field)(\/|$)/;
+const PREFIX = /^\/api\/(admin|inv|quotes|mkt|hub|field)(\/|$)/;
 const MUTATING = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
-const SKIP = [/^\/api\/field\/track\b/, /\/read(-all)?$/, /^\/api\/admin\/audit\b/, /^\/api\/mkt\/preview$/]; // GPS pings, "mark notification read" and email previews change nothing; reading the log is not logged
-const OPENED = /(\.pdf|\/download|\/cv)$/; // documents are logged when they are opened or downloaded
+const SKIP = [/^\/api\/field\/track\b/, /^\/api\/quotes\/shared\//, /\/read(-all)?$/, /^\/api\/admin\/audit\b/, /^\/api\/mkt\/preview$/]; // GPS pings, "mark notification read" and email previews change nothing; reading the log is not logged
+const OPENED = /(\.pdf|\/pdf|\/download|\/cv)$/; // documents are logged when they are opened or downloaded
 const SECRET_KEY = /pass|token|secret|api_?key|otp|signature|pin\b|authorization|hash/i;
 
 export async function ensureAudit() {
@@ -31,13 +32,13 @@ const NOUN = {
   orders: 'Order', products: 'Product', categories: 'Category', customers: 'Customer', 'password-resets': 'Password reset', services: 'Service request', blog: 'Blog article', 'upload-image': 'Image',
   pages: 'Site page', content: 'Site content', reviews: 'Review', messages: 'Message', subscribers: 'Subscriber', consents: 'Consent', jobs: 'Job', applications: 'Application',
   staff: 'Staff account', roles: 'Role', settings: 'Settings', backups: 'Backup', login: 'Sign-in', register: 'Access request',
-  vendors: 'Vendor', receipts: 'Purchase', damages: 'Damage record', returns: 'Vendor return', payments: 'Vendor payment', stock: 'Stock',
+  quotes: 'Quotation', vendors: 'Vendor', receipts: 'Purchase', damages: 'Damage record', returns: 'Vendor return', payments: 'Vendor payment', stock: 'Stock',
   campaigns: 'Campaign', automations: 'Automation', audience: 'Subscriber', setup: 'Email setup', templates: 'Template',
   riders: 'Rider', expenses: 'Expense', attendance: 'Attendance', purchase: 'Purchase order', leave: 'Leave', visits: 'Visit', customersf: 'Customer'
 };
 const VERB = {
   status: 'Changed status', comments: 'Added comment', decision: 'Decided', send: 'Sent', email: 'Emailed', password: 'Set password', 'reset-link': 'Created reset link', 'make-master': 'Made Master Admin',
-  dir: 'Changed folder', confirm: 'Confirmed', submit: 'Submitted', reopen: 'Reopened', cancel: 'Cancelled', approve: 'Approved', deposit: 'Recorded deposit', flow: 'Moved stage', rider: 'Assigned rider',
+  share: 'Shared link', scan: 'Scanned terms', dir: 'Changed folder', confirm: 'Confirmed', submit: 'Submitted', reopen: 'Reopened', cancel: 'Cancelled', approve: 'Approved', deposit: 'Recorded deposit', flow: 'Moved stage', rider: 'Assigned rider',
   courier: 'Assigned courier', deliver: 'Delivered', fail: 'Marked failed', adjust: 'Adjusted', convert: 'Converted', start: 'Started', done: 'Completed', checkin: 'Checked in', reset: 'Reset',
   details: 'Updated details', login: 'Signed in', register: 'Requested access', verify: 'Verified', quotes: 'Added quote', messages: 'Posted message', photo: 'Updated photo', profile: 'Updated profile', specs: 'Updated specs'
 };
@@ -45,6 +46,7 @@ const human = s => String(s || '').replace(/[-_]+/g, ' ').replace(/^./, c => c.t
 
 function module_(root, first) {
   if (root === 'inv') return 'Purchasing & stock';
+  if (root === 'quotes') return 'Quotations';
   if (root === 'mkt') return 'Email Center';
   if (root === 'hub') return 'Delivery Hub';
   if (root === 'field') return 'Field app';
@@ -61,16 +63,17 @@ function module_(root, first) {
 /** { module, action, entity, entityId } for a request, from its route pattern (/api/admin/orders/:id/status) and params. */
 function describe(method, pattern, params, payload, query) {
   const segs = pattern.replace(/^\/api\//, '').split('/').filter(Boolean);
-  const root = segs[0], rest = segs.slice(1);
+  // the quotation API has no resource name in its path (/api/quotes/:id/email), so give it one like the other modules have
+  const root = segs[0], rest = root === 'quotes' ? ['quotes', ...segs.slice(1)] : segs.slice(1);
   const resource = rest.find(x => !x.startsWith(':')) || root;
   const named = rest.filter(x => !x.startsWith(':'));
   const last = named[named.length - 1];
   const viewing = method === 'GET';
-  let action = viewing ? 'Opened' : VERB[last] && named.length > 1 || (VERB[last] && ['login', 'register', 'reset', 'dir', 'adjust', 'send'].includes(last)) ? VERB[last] : method === 'POST' ? 'Created' : method === 'DELETE' ? 'Deleted' : 'Updated';
+  let action = viewing ? 'Opened' : VERB[last] && named.length > 1 || (VERB[last] && ['login', 'register', 'reset', 'dir', 'adjust', 'send', 'scan'].includes(last)) ? VERB[last] : method === 'POST' ? 'Created' : method === 'DELETE' ? 'Deleted' : 'Updated';
   if (viewing && /invoice\.pdf$/.test(pattern)) action = 'Opened invoice';
   else if (viewing && /\/download$/.test(pattern)) action = 'Downloaded';
   else if (viewing && /\/cv$/.test(pattern)) action = 'Downloaded CV';
-  else if (viewing && /\.pdf$/.test(pattern)) action = 'Opened document';
+  else if (viewing && /(\.pdf|\/pdf)$/.test(pattern)) action = 'Opened document';
   if (method === 'PUT' && last === 'details') action = 'Updated details';
   const idKey = Object.keys(params || {}).find(k => ['id', 'email', 'key', 'name', 'orderId'].includes(k));
   const fromBody = payload && typeof payload === 'object' ? (payload.id ?? payload.order?.id) : undefined;
@@ -146,7 +149,6 @@ export function startAuditPrune() {
 
 // ---------- reading the log ----------
 const router = Router();
-const day = v => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) && !isNaN(Date.parse(v + 'T00:00:00Z')) ? String(v) : null);
 
 router.get('/', guard('audit.view'), wrap(async (req, res) => {
   const size = Math.min(5000, Math.max(1, parseInt(req.query.size, 10) || 25));

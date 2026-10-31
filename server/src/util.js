@@ -79,3 +79,27 @@ export async function nextSeq(name, table, prefix, base) {
   const [r] = await pool.query('UPDATE counters SET v = LAST_INSERT_ID(v + 1) WHERE name = ?', [name]);
   return prefix + r.insertId;
 }
+
+// ---------- small helpers the purchasing, quotation and mail code all need (one copy, here) ----------
+/** HTML-escapes text for the body or a double- or single-quoted attribute of an e-mail. */
+export const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+/** SQL for a DATE / DATETIME column as YYYY-MM-DD (so it never shifts with the server time zone). */
+export const D = c => `DATE_FORMAT(${c}, '%Y-%m-%d')`;
+/** A real calendar date as YYYY-MM-DD, or `fallback`. "2026-02-31" is rejected, not rolled over to March. */
+export const iso = (s, fallback) => {
+  const v = String(s || '');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return fallback;
+  const d = new Date(v + 'T00:00:00Z');
+  return !isNaN(d) && d.toISOString().slice(0, 10) === v ? v : fallback;
+};
+/** Today in Dhaka (UTC+6) as YYYY-MM-DD. */
+export const today = () => new Date(Date.now() + 6 * 3600e3).toISOString().slice(0, 10);
+/** A whole, non-negative number between 0 and `max` (anything else becomes 0). */
+export const int = (v, max = 100000000) => Math.min(max, Math.max(0, Math.round(Number(v) || 0)));
+/** Trimmed text, cut to `n` characters. */
+export const text = (v, n) => String(v ?? '').trim().slice(0, n);
+/** Runs `fn(conn)` inside one transaction: commits when it finishes, rolls everything back when it throws. */
+export async function tx(fn) {
+  const conn = await pool.getConnection();
+  try { await conn.beginTransaction(); const r = await fn(conn); await conn.commit(); return r; } catch (e) { await conn.rollback(); throw e; } finally { conn.release(); }
+}

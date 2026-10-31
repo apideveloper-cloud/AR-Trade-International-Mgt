@@ -5,7 +5,7 @@
 import { Router } from 'express';
 import { pool } from './db.js';
 import { guard } from './admin.js';
-import { fail, nextSeq, wrap } from './util.js';
+import { D, fail, int, iso, nextSeq, text, today, tx, wrap } from './util.js';
 import { addAmount, addRange, addSearch, pageOf, whereOf, wantsPage } from './listing.js';
 
 const router = Router();
@@ -14,11 +14,6 @@ const VIEW = 'inventory.view', MANAGE = 'inventory.manage', APPROVE = 'inventory
 const BILLED = "status IN ('Approved','Stocked')";
 const METHODS = ['Cash', 'Bank transfer', 'bKash', 'Nagad', 'Cheque'];
 const LOW = 5; // same "low stock" line the Products page uses
-const D = c => `DATE_FORMAT(${c}, '%Y-%m-%d')`;
-const iso = (s, fallback) => (/^\d{4}-\d{2}-\d{2}$/.test(String(s || '')) && !isNaN(Date.parse(s + 'T00:00:00Z')) ? String(s) : fallback);
-const today = () => new Date(Date.now() + 6 * 3600e3).toISOString().slice(0, 10);
-const int = (v, max = 100000000) => Math.min(max, Math.max(0, Math.round(Number(v) || 0)));
-const text = (v, n) => String(v ?? '').trim().slice(0, n);
 
 /** Next vendor profile ID: VEN-YY-00001. The number restarts at 00001 every year (YY = the year the vendor was added). */
 async function nextVendorCode(yy) {
@@ -75,12 +70,6 @@ export async function ensureInventory() {
   await q(`CREATE TABLE IF NOT EXISTS vendor_returns (id VARCHAR(20) PRIMARY KEY, vendor_id INT NOT NULL, receipt_id VARCHAR(20) NULL, returned_on DATE NOT NULL, reason VARCHAR(300) NOT NULL DEFAULT '', total INT NOT NULL DEFAULT 0, staff_name VARCHAR(120) NOT NULL DEFAULT '', created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, KEY idx_vendor (vendor_id, returned_on))`);
   await q(`CREATE TABLE IF NOT EXISTS vendor_return_items (id INT AUTO_INCREMENT PRIMARY KEY, return_id VARCHAR(20) NOT NULL, product_id INT NOT NULL, name VARCHAR(255) NOT NULL, qty INT NOT NULL, unit_cost INT NOT NULL DEFAULT 0, KEY idx_return (return_id))`);
   await q(`CREATE TABLE IF NOT EXISTS vendor_payments (id VARCHAR(20) PRIMARY KEY, vendor_id INT NOT NULL, receipt_id VARCHAR(20) NULL, amount INT NOT NULL, method VARCHAR(20) NOT NULL DEFAULT 'Cash', reference VARCHAR(80) NOT NULL DEFAULT '', paid_on DATE NOT NULL, note VARCHAR(300) NOT NULL DEFAULT '', staff_name VARCHAR(120) NOT NULL DEFAULT '', created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, KEY idx_vendor (vendor_id, paid_on), KEY idx_receipt (receipt_id))`);
-}
-
-/** Runs fn inside a transaction on one connection. */
-async function tx(fn) {
-  const conn = await pool.getConnection();
-  try { await conn.beginTransaction(); const r = await fn(conn); await conn.commit(); return r; } catch (e) { await conn.rollback(); throw e; } finally { conn.release(); }
 }
 
 /** Changes one product's stock by delta (never below zero) and records the movement. */
@@ -277,7 +266,7 @@ router.get('/receipts/:id', guard(VIEW), wrap(async (req, res) => {
 /** Approved purchase orders that have not been received yet, so stock can be received against them. */
 router.get('/open-orders', guard(VIEW), wrap(async (req, res) => {
   const [rows] = await pool.query(`SELECT p.id, p.vendor_id, v.name vendor, p.grand_total, ${D('p.deliver_by')} deliver_by FROM field_purchase_orders p JOIN field_vendors v ON v.id = p.vendor_id
-    WHERE p.status = 'Approved' AND NOT EXISTS (SELECT 1 FROM stock_receipts r WHERE r.po_id = p.id) ORDER BY p.created_at DESC LIMIT 60`).catch(() => [[]]);
+    WHERE p.status = 'Approved' AND NOT EXISTS (SELECT 1 FROM stock_receipts r WHERE r.po_id = p.id AND r.status <> 'Rejected') ORDER BY p.created_at DESC LIMIT 60`).catch(() => [[]]);
   res.json({ items: rows.map(p => ({ id: p.id, vendorId: p.vendor_id, vendor: p.vendor, total: p.grand_total, deliverBy: p.deliver_by })) });
 }));
 router.get('/open-orders/:id', guard(VIEW), wrap(async (req, res) => {
@@ -291,7 +280,7 @@ router.post('/receipts', guard(MANAGE), wrap(async (req, res) => {
     const lines = await cleanLines(conn, b.lines);
     const poId = text(b.poId, 20) || null;
     if (poId) {
-      const [[dup]] = await conn.query('SELECT id FROM stock_receipts WHERE po_id = ? LIMIT 1', [poId]);
+      const [[dup]] = await conn.query("SELECT id FROM stock_receipts WHERE po_id = ? AND status <> 'Rejected' LIMIT 1", [poId]);
       if (dup) throw fail(409, `${poId} was already received as ${dup.id}`);
     }
     const id = await nextSeq('stock_grn', 'stock_receipts', 'GRN-', 1000);
@@ -432,6 +421,10 @@ router.post('/returns', guard(MANAGE), wrap(async (req, res) => {
     const v = await vendorOf(conn, b.vendorId);
     const lines = await cleanLines(conn, b.lines);
     const receiptId = text(b.receiptId, 20) || null;
+    if (receiptId) {
+      const [[rc]] = await conn.query('SELECT vendor_id FROM stock_receipts WHERE id = ?', [receiptId]);
+      if (!rc || rc.vendor_id !== v.id) throw fail(400, 'That purchase does not belong to this vendor');
+    }
     const id = await nextSeq('stock_vrt', 'vendor_returns', 'VRT-', 1000);
     const total = sum(lines);
     await conn.query('INSERT INTO vendor_returns (id, vendor_id, receipt_id, returned_on, reason, total, staff_name) VALUES (?,?,?,?,?,?,?)', [id, v.id, receiptId, iso(b.date, today()), reason, total, by]);
@@ -485,7 +478,8 @@ router.post('/payments', guard(MANAGE), wrap(async (req, res) => {
   res.json(out);
 }));
 router.delete('/payments/:id', guard(MANAGE), wrap(async (req, res) => {
-  await pool.query('DELETE FROM vendor_payments WHERE id = ? AND created_at > DATE_SUB(NOW(), INTERVAL 1 DAY)', [req.params.id]);
+  const [r] = await pool.query('DELETE FROM vendor_payments WHERE id = ? AND created_at > DATE_SUB(NOW(), INTERVAL 1 DAY)', [req.params.id]);
+  if (!r.affectedRows) throw fail(409, 'This payment cannot be removed: it does not exist, or it was recorded more than 24 hours ago.');
   res.json({ ok: true });
 }));
 

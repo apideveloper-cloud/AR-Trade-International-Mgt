@@ -7,7 +7,7 @@ import sanitizeHtml from 'sanitize-html';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { pool } from './db.js';
-import { digits, fail, parseJson, wrap, checkPassword, secret, isLocalImg, localImg } from './util.js';
+import { digits, esc, fail, parseJson, wrap, checkPassword, secret, isLocalImg, localImg } from './util.js';
 import { applyFlow, cancelOrder, FROM_STATUS } from './flow.js';
 import { buildInvoicePdf, invoiceNo } from './invoice.js';
 import { buildOverview, buildProductReport } from './overview.js';
@@ -148,7 +148,6 @@ router.get('/orders', guard('orders.view'), wrap(async (req, res) => {
   const w = v => String(v || '').trim().slice(0, 80);
   if (w(req.query.customer)) { const c = like(w(req.query.customer)); cond.push('(customer_name LIKE ? OR customer_phone LIKE ? OR customer_email LIKE ? OR company LIKE ?)'); params.push(c, c, c, c); }
   if (w(req.query.product)) { cond.push('EXISTS (SELECT 1 FROM order_items oi WHERE oi.order_id = orders.id AND oi.name LIKE ?)'); params.push(like(w(req.query.product))); }
-  const day = v => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) && !isNaN(Date.parse(v + 'T00:00:00Z')) ? String(v) : null);
   if (day(req.query.from)) { cond.push('created_at >= ?'); params.push(day(req.query.from) + ' 00:00:00'); }
   if (day(req.query.to)) { cond.push('created_at < DATE_ADD(?, INTERVAL 1 DAY)'); params.push(day(req.query.to)); }
   const money = v => (v !== undefined && v !== '' && Number.isFinite(Number(v)) ? Math.max(0, Math.round(Number(v))) : null);
@@ -246,7 +245,6 @@ router.post('/orders/:id/invoice/email', guard('orders.status'), wrap(async (req
   const site = await siteInfo();
   const inv = invoiceNo(o.id);
   const money = n => '৳ ' + Math.round(Number(n) || 0).toLocaleString('en-US');
-  const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const note = String(req.body.message || '').trim().slice(0, 1000);
   const paid = o.payStatus === 'Paid';
   const pdf = await buildInvoicePdf(o, site);

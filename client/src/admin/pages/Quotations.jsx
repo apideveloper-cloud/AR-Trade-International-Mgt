@@ -5,14 +5,13 @@ import { Drawer, Modal, Summary, Toolbar, alertBox, confirmBox } from '../ui.jsx
 import { ListFilter } from '../ListFilter.jsx';
 import { IconBtn } from '../IconBtn.jsx';
 import { Chip, Fact, Grid, Notice, PdfButton, PdfPreview, Skeleton, fDate, taka, todayBd, useDebounced } from '../fieldKit.jsx';
-import { ProductPick } from './inventory/shared.jsx';
+import { ProductPick, num } from './inventory/shared.jsx';
 import '../field.css';
 import './inventory/inventory.css';
 import './quotations.css';
 
 const TONE = { Draft: 'off', Sent: 'blue', Accepted: 'ok', Rejected: 'bad' };
 const STATUSES = ['Draft', 'Sent', 'Accepted', 'Rejected'];
-const num = v => Math.max(0, Math.round(Number(v) || 0));
 const Status = ({ s }) => <Chip tone={TONE[s] || 'off'}>{s}</Chip>;
 const CUSTOMER_KINDS = [['Existing', 'Existing customer'], ['Upcoming', 'Upcoming customer'], ['New', 'New customer']];
 const blank = (staff, defaults) => ({

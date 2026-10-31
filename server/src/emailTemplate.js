@@ -1,6 +1,6 @@
 // Branded marketing email: logo, hero banner, product grid with discount badges, call-to-action button, legal footer.
 // Table layout and inline styles only, because mail apps (Gmail, Outlook) ignore most modern CSS.
-const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+import { esc } from './util.js';
 const money = n => '৳ ' + Number(n || 0).toLocaleString('en-US');
 
 /** Hero colours the admin can pick; the first value is the solid fallback every mail app understands. */

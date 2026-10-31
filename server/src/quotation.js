@@ -10,7 +10,7 @@ import sharp from 'sharp';
 import PDFDocument from 'pdfkit';
 import { pool } from './db.js';
 import { guard } from './admin.js';
-import { fail, nextSeq, wrap } from './util.js';
+import { D, esc, fail, int, iso, nextSeq, text, today, tx, wrap } from './util.js';
 import { mailReady, mailSetupHint, sendMail } from './mailer.js';
 import { addAmount, addRange, addSearch, pageOf, whereOf } from './listing.js';
 import { FONT_FILES, H, LINE, M, MUTED, NAVY, BLUE, INK, RIGHT, SOFT, W, LOGO, money, put, qrPng, wrap as wrapText } from './invoice.js';
@@ -20,11 +20,6 @@ const VIEW = 'quotes.view', MANAGE = 'quotes.manage';
 const STATUSES = ['Draft', 'Sent', 'Accepted', 'Rejected'];
 // Existing: already a customer in the field app. Upcoming: a prospect there. New: typed in by hand.
 const CUSTOMER_TYPES = ['Existing', 'Upcoming', 'New'];
-const D = c => `DATE_FORMAT(${c}, '%Y-%m-%d')`;
-const iso = (s, fallback) => (/^\d{4}-\d{2}-\d{2}$/.test(String(s || '')) && !isNaN(Date.parse(s + 'T00:00:00Z')) ? String(s) : fallback);
-const today = () => new Date(Date.now() + 6 * 3600e3).toISOString().slice(0, 10);
-const int = (v, max = 100000000) => Math.min(max, Math.max(0, Math.round(Number(v) || 0)));
-const text = (v, n) => String(v ?? '').trim().slice(0, n);
 const DEFAULT_INTRO = 'We are very proud to have had a conversation with you about your requirement. We believe that it will be an exactable quotation for your company. We hope that we will get a good result on this part. For any queries please mail or call us.';
 const DEFAULT_NOTES = ['Excluding Govt. all Vat & Tax.', 'Payments Terms Cash on Delivery.', 'Quotation valid only for 3 days.', 'In 7 days we will deliver the order to purchase.', 'Quotation is valid based on availability in Bangladesh Market.'].join('\n');
 
@@ -93,11 +88,6 @@ async function saveLines(conn, id, lines) {
   await conn.query('DELETE FROM quotation_items WHERE quote_id = ?', [id]);
   for (const [i, l] of lines.entries()) await conn.query('INSERT INTO quotation_items (quote_id, sl, product_id, description, qty, unit, warranty, unit_price) VALUES (?,?,?,?,?,?,?,?)', [id, i + 1, l.productId, l.description, l.qty, l.unit, l.warranty, l.unitPrice]);
 }
-async function tx(fn) {
-  const conn = await pool.getConnection();
-  try { await conn.beginTransaction(); const r = await fn(conn); await conn.commit(); return r; } catch (e) { await conn.rollback(); throw e; } finally { conn.release(); }
-}
-
 router.get('/', guard(VIEW), wrap(async (req, res) => {
   const cond = [], args = [];
   addSearch(cond, args, ['q.id', 'q.to_name', 'q.subject', 'q.attend', 'q.mobile'], req.query.q);
@@ -192,8 +182,11 @@ router.put('/:id', guard(MANAGE), wrap(async (req, res) => {
 router.post('/:id/status', guard(MANAGE), wrap(async (req, res) => {
   const status = req.body?.status;
   if (!STATUSES.includes(status)) throw fail(400, 'Unknown status');
-  const [r] = await pool.query('UPDATE quotations SET status = ? WHERE id = ?', [status, req.params.id]);
-  if (!r.affectedRows) throw fail(404, 'Quotation not found');
+  const [r] = await pool.query("UPDATE quotations SET status = ? WHERE id = ? AND status <> 'Accepted'", [status, req.params.id]);
+  if (!r.affectedRows) {
+    const [[q]] = await pool.query('SELECT status FROM quotations WHERE id = ?', [req.params.id]);
+    throw q ? fail(409, 'An accepted quotation is locked. Make a copy instead.') : fail(404, 'Quotation not found');
+  }
   res.json({ ok: true, status });
 }));
 router.delete('/:id', guard(MANAGE), wrap(async (req, res) => {
@@ -382,7 +375,6 @@ router.post('/:id/email', guard(MANAGE), wrap(async (req, res) => {
   const bcc = addressList(req.body?.bcc, 'BCC').filter(a => a !== to && !cc.includes(a));
   if (!mailReady('quote')) throw fail(409, 'Email sending is not set up yet. ' + mailSetupHint('quote'));
   const site = await siteInfo();
-  const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const money = n => '\u09f3 ' + Math.round(Number(n) || 0).toLocaleString('en-US');
   const note = String(req.body?.message || '').trim().slice(0, 1000);
   const pdf = await buildQuotePdf(q, site);

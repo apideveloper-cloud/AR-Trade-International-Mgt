@@ -1,8 +1,10 @@
 // Shared helpers for server-side lists: page and size, a date period and a text search, so every list filters in the database
 // and sends only one page. All of it is optional: a request without these parameters behaves as it did before.
 
-/** A valid YYYY-MM-DD, or null. */
-export const day = v => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) && !isNaN(Date.parse(v + 'T00:00:00Z')) ? String(v) : null);
+import { iso } from './util.js';
+
+/** A real calendar date as YYYY-MM-DD, or null ("2026-02-31" is not a date). */
+export const day = v => iso(v, null);
 
 /** Page number, page size and the SQL offset from ?page= and ?size= (size is kept between 1 and max). */
 export function pageOf(req, { def = 25, max = 200 } = {}) {

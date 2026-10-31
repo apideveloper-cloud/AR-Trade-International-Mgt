@@ -54,7 +54,7 @@ export function saveImage(dataUrl, prefix, { png = false, maxMb = 2.5 } = {}) {
 
 export const removeFile = f => { if (f) fs.rm(path.join(PROOFS, f), { force: true }, () => {}); };
 
-const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+import { esc } from '../util.js';
 
 /**
  * Mails the customer's e-mail address on file (confirmation / receipt). Returns true ONLY when a message was really handed to

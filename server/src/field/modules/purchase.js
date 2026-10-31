@@ -15,6 +15,7 @@
 import { Router } from 'express';
 import { pool, fail, wrap, guardRole, roleKey, nextSeq, notify, staffIdsByRole, clientRefOf } from '../common.js';
 import { addRange, addSearch, pageOf, whereOf, wantsPage } from '../../listing.js';
+import { iso } from '../../util.js';
 
 const router = Router();
 
@@ -28,7 +29,7 @@ const buyerRoles = ['purchase', 'manager', 'accountant'];
 
 const D = c => `DATE_FORMAT(${c}, '%Y-%m-%d')`;
 const T = c => `DATE_FORMAT(${c}, '%Y-%m-%dT%H:%i:%sZ')`;
-const isoDate = s => /^\d{4}-\d{2}-\d{2}$/.test(String(s || '')) && !isNaN(Date.parse(s + 'T00:00:00Z')) ? String(s) : null;
+const isoDate = s => iso(s, null);
 const seesAll = staff => roleKey(staff.role) !== 'purchase';
 export const numberId = (prefix, n) => prefix + String(n).replace(prefix, '').padStart(4, '0');
 

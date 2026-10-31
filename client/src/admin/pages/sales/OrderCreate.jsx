@@ -3,16 +3,11 @@ import { useEffect, useState } from 'react';
 import { adm, fmtMoney } from '../../adminApi.js';
 import { Modal } from '../../ui.jsx';
 import { IconBtn } from '../../IconBtn.jsx';
+import { useDebounced } from '../../fieldKit.jsx';
 import { AREA, PAYMENTS } from './constants.js';
 import { SOURCES, sourceFor } from './sources.js';
 import '../inventory/inventory.css';
 import './orderCreate.css';
-
-function useDebounced(v, ms) {
-  const [x, setX] = useState(v);
-  useEffect(() => { const t = setTimeout(() => setX(v), ms); return () => clearTimeout(t); }, [v, ms]);
-  return x;
-}
 
 /** Search the catalogue and hand the chosen product back. */
 function Pick({ onPick }) {

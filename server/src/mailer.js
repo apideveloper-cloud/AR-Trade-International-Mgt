@@ -1,6 +1,6 @@
 import nodemailer from 'nodemailer';
 
-const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+import { esc } from './util.js';
 
 /** Public https URL of the shop (SITE_URL in .env); links inside emails are built from it, never from request headers. */
 export const siteUrl = () => String(process.env.SITE_URL || '').replace(/\/$/, '');
