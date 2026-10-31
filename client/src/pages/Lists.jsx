@@ -15,7 +15,7 @@ export function Wishlist() {
   const { wish, find } = useStore();
   const items = wish.map(find).filter(Boolean);
   return (
-    <section style={{ maxWidth: 1600, margin: '0 auto', padding: '32px 28px 60px' }}>
+    <section style={{ maxWidth: 1600, margin: '0 auto', padding: '28px 28px 40px' }}>
       {head('My wishlist', 'Products you saved for later.')}
       {!items.length && <div className="empty2" style={{ display: 'block' }}>Your wishlist is empty. Tap ♡ on a product to save it.</div>}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(230px,1fr))', gap: 14 }}>{items.map(p => <ProductCard key={p.id} p={p} />)}</div>
@@ -31,7 +31,7 @@ export function Compare() {
   const keys = ['Price', 'Old price', 'Category', 'Stock', ...new Set(sp.flatMap(o => Object.keys(o)))];
   const val = (k, p, j) => (k === 'Price' ? (p.price ? fmt(p.price) : 'Ask') : k === 'Old price' ? (p.old ? fmt(p.old) : '—') : k === 'Category' ? (cats.find(c => c.id === p.cat)?.t || '—') : k === 'Stock' ? (p.stock > 0 ? `In stock (${p.stock})` : 'Out of stock') : sp[j][k] || '—');
   return (
-    <section style={{ maxWidth: 1600, margin: '0 auto', padding: '32px 28px 60px' }}>
+    <section style={{ maxWidth: 1600, margin: '0 auto', padding: '28px 28px 40px' }}>
       {head('Compare products', 'Side-by-side specs for up to 3 products.')}
       {!items.length ? (
         <div className="empty2">Nothing to compare yet. Tap ⇄ on any product card to add it.<Link to="/shop/all" className="btn">Browse products</Link></div>

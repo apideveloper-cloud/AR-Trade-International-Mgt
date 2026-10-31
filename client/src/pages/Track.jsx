@@ -23,7 +23,7 @@ export default function Track() {
 
   const submit = e => { e.preventDefault(); const f = Object.fromEntries(new FormData(e.target).entries()); setQ({ id: f.id.trim(), phone: f.phone.trim() }); };
   return (
-    <section style={{ maxWidth: 1080, margin: '0 auto', padding: '32px 28px 60px' }}>
+    <section style={{ maxWidth: 1080, margin: '0 auto', padding: '28px 28px 40px' }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 22 }}><h1 style={{ fontWeight: 800, fontSize: 'clamp(28px,3.4vw,42px)', letterSpacing: '-.025em', margin: 0, color: '#0b1631' }}>Track your order</h1><span style={{ color: '#5d6270', fontSize: 15 }}>Enter your order ID and mobile number.</span></div>
       <form className="track-form" onSubmit={submit} style={{ marginBottom: 18 }}>
         <input name="id" required placeholder="Order ID (e.g. AR-10481)" defaultValue={sp.get('id') || ''} />

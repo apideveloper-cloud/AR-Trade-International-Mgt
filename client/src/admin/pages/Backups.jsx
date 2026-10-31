@@ -40,7 +40,11 @@ export function Backups() {
   const [ask, setAsk] = useState(null); // { kind: 'delete', b } | { kind: 'set' }
   const [codes, setCodes] = useState({ code: '', next: '', again: '', err: '', busy: false });
   const open = a => { setCodes({ code: '', next: '', again: '', err: '', busy: false }); setAsk(a); };
-  const del = b => (d.deleteCodeSet ? open({ kind: 'delete', b }) : open({ kind: 'set', then: b }));
+  const del = async b => {
+    if (d.deleteCodeSet) return open({ kind: 'delete', b }); // a delete code is set: it must be typed
+    if (!(await confirmBox(`Delete the ${LABEL[b.scope].toLowerCase()} backup from ${fDateTime(b.at)}? It cannot be recovered afterwards.`, { danger: true, confirmLabel: 'Yes', cancelLabel: 'No' }))) return;
+    try { await adm.post(`/backups/${b.id}/delete`, {}); await load(); } catch (e) { alertBox(e.message); }
+  };
   const submitCode = async e => {
     e.preventDefault();
     if (ask.kind === 'set' && codes.next !== codes.again) { setCodes(c => ({ ...c, err: 'The two new codes are not the same.' })); return; }
@@ -108,8 +112,8 @@ export function Backups() {
         <small className="fd-sub">Use a full path, e.g. {'D:\\Backups\\AR'} (Windows) or /var/backups/artrade (Linux). The folder is created if missing and the server must be able to write to it. It cannot be inside the uploads folder.</small>
       </section>
       <section className="a-card bk-dir">
-        <div className="card-hd"><div><h3>Delete code</h3><small className="fd-sub">Needed to delete any backup · Master Admin only</small></div></div>
-        <div className="bk-dirrow"><code>{d.deleteCodeSet ? '••••••••  (set)' : 'Not set yet: backups cannot be deleted'}</code><button type="button" className="a-mini" onClick={() => open({ kind: 'set' })}>{d.deleteCodeSet ? 'Change code' : 'Set code'}</button></div>
+        <div className="card-hd"><div><h3>Delete code <small>(optional)</small></h3><small className="fd-sub">When set, it is needed to delete any backup · Master Admin only</small></div></div>
+        <div className="bk-dirrow"><code>{d.deleteCodeSet ? '••••••••  (set)' : 'Not set: deleting asks Yes / No only'}</code><button type="button" className="a-mini" onClick={() => open({ kind: 'set' })}>{d.deleteCodeSet ? 'Change code' : 'Set code'}</button></div>
         <small className="fd-sub">Choose 6 to 60 characters. Five wrong tries lock deleting for 10 minutes. Keep the code safe: it is stored only as a hash and cannot be shown again.</small>
       </section>
       <section className="a-card">

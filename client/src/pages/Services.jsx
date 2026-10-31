@@ -37,7 +37,7 @@ export default function Services() {
     try { const r = await api.post('/services', { ...d, mkt: !!d.mkt }); setSentId(r.id); } catch (er) { setErr(er.message); }
   };
   return (
-    <section style={{ maxWidth: 1600, margin: '0 auto', padding: '28px 28px 72px', display: 'flex', flexDirection: 'column', gap: 28 }}>
+    <section style={{ maxWidth: 1600, margin: '0 auto', padding: '24px 28px 40px', display: 'flex', flexDirection: 'column', gap: 28 }}>
       <div className="dark-hero">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <span className="k">Printer · Photocopier · Computer</span>

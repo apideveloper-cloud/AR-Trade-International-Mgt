@@ -108,7 +108,7 @@ export default function Shop() {
   const skels = boot ? Array.from({ length: Math.min(PG, items.length || 8) }, (_, i) => i) : loading ? Array.from({ length: Math.min(PG, items.length - limit) }, (_, i) => i) : [];
 
   return (
-    <section className="page" style={{ padding: '28px 28px 72px' }}>
+    <section className="page" style={{ padding: '24px 28px 40px' }}>
       <div className="crumbs"><Link to="/">Home</Link><span>/</span><span>{title}</span></div>
       <div className="shop-top">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}><h1 className="h1">{title}</h1><span style={{ color: '#5d6270', fontSize: 14 }}>{items.length} products</span></div>

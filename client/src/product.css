@@ -3,7 +3,7 @@
 @keyframes pdFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
 @keyframes pdPulse { 0%, 100% { box-shadow: 0 0 0 0 oklch(0.65 0.17 150 / .5); } 50% { box-shadow: 0 0 0 7px oklch(0.65 0.17 150 / 0); } }
 
-.pdp2 { max-width: 1600px; margin: 0 auto; padding: 24px 28px 72px; animation: rise .4s ease both; }
+.pdp2 { max-width: 1600px; margin: 0 auto; padding: 24px 28px 40px; animation: rise .4s ease both; }
 .pdp2-grid { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 36px; align-items: start; }
 .pdp2-gal { position: sticky; top: 130px; display: flex; flex-direction: column; gap: 14px; }
 

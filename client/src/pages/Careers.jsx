@@ -38,7 +38,7 @@ export function Careers() {
   const t = q.trim().toLowerCase();
   const jobs = open.filter(j => (dept === 'All' || j.dept === dept) && (type === 'All' || j.type === type) && (!t || `${j.title} ${j.dept} ${j.loc}`.toLowerCase().includes(t)));
   return (
-    <section style={{ maxWidth: 1320, margin: '0 auto', padding: '24px 28px 60px', display: 'flex', flexDirection: 'column', gap: 22 }}>
+    <section style={{ maxWidth: 1320, margin: '0 auto', padding: '24px 28px 40px', display: 'flex', flexDirection: 'column', gap: 22 }}>
       <div className="job-hero">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 620 }}>
           <span className="mono" style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: '.16em', color: 'oklch(0.82 0.1 225)' }}>CAREERS AT AR TRADE</span>
@@ -100,7 +100,7 @@ export function Job() {
   const check = { color: 'oklch(0.55 0.15 245)', fontWeight: 800 };
 
   return (
-    <section style={{ maxWidth: 1320, margin: '0 auto', padding: '20px 28px 60px', display: 'flex', flexDirection: 'column', gap: 18 }}>
+    <section style={{ maxWidth: 1320, margin: '0 auto', padding: '20px 28px 40px', display: 'flex', flexDirection: 'column', gap: 18 }}>
       <Link to="/careers" style={{ fontSize: 13.5, fontWeight: 800, color: 'oklch(0.45 0.15 250)', alignSelf: 'flex-start' }}>← All open roles</Link>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 20, alignItems: 'flex-start' }}>
         <article style={{ flex: '999 1 520px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>

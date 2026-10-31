@@ -284,7 +284,7 @@ export async function fileOf(id) {
 }
 
 // ---------- the delete code ----------
-// Deleting a backup cannot be undone, so it needs a code the Master Admin chose (kept only as a bcrypt hash in backup_config).
+// Deleting a backup cannot be undone. Once the Master Admin sets a delete code (kept only as a bcrypt hash in backup_config) every delete needs it; until then the console asks a plain Yes / No.
 // Five wrong tries in ten minutes lock deleting for ten minutes.
 const WRONG = { n: 0, since: 0, until: 0 };
 async function storedCodeHash() {
@@ -294,7 +294,7 @@ async function storedCodeHash() {
 export const hasDeleteCode = async () => !!(await storedCodeHash());
 async function checkDeleteCode(code) {
   const hash = await storedCodeHash();
-  if (!hash) throw fail(409, 'Set a delete code first (Backups > Delete code). Without one nothing can be deleted.');
+  if (!hash) return; // no delete code set: the Yes / No question in the console is the only safeguard
   if (Date.now() < WRONG.until) throw fail(429, `Too many wrong codes. Try again in ${Math.ceil((WRONG.until - Date.now()) / 60000)} minutes.`);
   if (await bcrypt.compare(String(code || ''), hash)) { WRONG.n = 0; return; }
   if (Date.now() - WRONG.since > 600000) { WRONG.n = 0; WRONG.since = Date.now(); }

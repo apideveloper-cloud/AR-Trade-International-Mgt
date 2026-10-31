@@ -6,7 +6,7 @@ import { DEFAULT_ABOUT, DEFAULT_FOOTER, withDefaults } from '../data.js';
 import { useStore } from '../store.jsx';
 import { CodeArt } from './ErrorPages.jsx';
 
-const wrap = { maxWidth: 1600, margin: '0 auto', padding: '28px 28px 72px', display: 'flex', flexDirection: 'column', gap: 28 };
+const wrap = { maxWidth: 1600, margin: '0 auto', padding: '24px 28px 40px', display: 'flex', flexDirection: 'column', gap: 28 };
 
 export function NotFound() {
   const { cats } = useStore();
@@ -142,7 +142,7 @@ export function Offers() {
 export function Faq() {
   const { content, tk } = useStore();
   return (
-    <section style={{ maxWidth: 860, margin: '0 auto', padding: '32px 28px 60px' }}>
+    <section style={{ maxWidth: 860, margin: '0 auto', padding: '28px 28px 40px' }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 22 }}><h1 style={{ fontWeight: 800, fontSize: 'clamp(28px,3.4vw,42px)', letterSpacing: '-.025em', margin: 0, color: '#0b1631' }}>Frequently asked questions</h1><span style={{ color: '#5d6270', fontSize: 15 }}>Ordering, delivery, payment and warranty.</span></div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {content.faqs.map(f => <details className="faq" key={f.q}><summary>{tk(f.q)}</summary><p>{tk(f.a)}</p></details>)}

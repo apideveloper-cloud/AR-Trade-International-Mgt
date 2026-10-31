@@ -24,7 +24,7 @@ export function Cart() {
   const [coupon, setCoupon] = useState('');
   const t = totals({ area: user?.area || 'inside', coupon });
   return (
-    <section className="page" style={{ padding: '28px 28px 72px' }}>
+    <section className="page" style={{ padding: '24px 28px 40px' }}>
       <h1 className="h1" style={{ marginBottom: 24 }}>Your cart</h1>
       {!cartLines.length ? (
         <div className="empty"><span style={{ fontFamily: 'var(--disp)', fontWeight: 700, fontSize: 24 }}>Your cart is empty</span><Link to="/shop/all" className="btn btn-dark btn-pill" style={{ padding: '13px 22px' }}>Start shopping</Link></div>
@@ -117,7 +117,7 @@ export function Checkout() {
   const zones = [['inside', 'Inside Dhaka', (site.insideFee ? fmt(site.insideFee) : 'Free') + ' · same / next day'], ['suburb', 'Dhaka suburbs', fmt(site.suburbFee) + ' · Savar, Gazipur, Narayanganj'], ['outside', 'Outside Dhaka', fmt(site.outsideFee) + ' · courier, 2–4 days']];
 
   return (
-    <section className="page co" style={{ padding: '28px 28px 72px' }}>
+    <section className="page co" style={{ padding: '24px 28px 40px' }}>
       <div className="crumbs"><Link to="/cart">Cart</Link><span>/</span><span>Checkout</span></div>
       <div className="co-top"><h1 className="h1">Secure checkout</h1><div className="co-steps"><span className="done">Cart</span><span className="cur">Details</span><span>Confirmation</span></div></div>
       <form ref={form} onSubmit={submit} className="cart-body">
