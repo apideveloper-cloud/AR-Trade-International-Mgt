@@ -1,4 +1,5 @@
 import CategoryRails from '../components/CategoryRails.jsx';
+import ClientLogos from '../components/ClientLogos.jsx';
 import { productPath } from '../slug.js';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -422,6 +423,7 @@ export default function Home() {
       {sec.fresh && <Fresh />}
       {sec.services && <Services />}
       {sec.brands && <Brands />}
+      {sec.clients !== false && <section className="sec" style={{ paddingTop: 36 }}><ClientLogos variant="marquee" eyebrow="TRUSTED BY" title="Our corporate clients" /></section>}
       {sec.alert && <PriceAlert />}
     </div>
   );

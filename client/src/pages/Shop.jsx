@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { productPath } from '../slug.js';
+import { matchProducts } from '../search.js';
 import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom';
 import ProductCard, { BuyAction } from '../components/ProductCard.jsx';
 import { fmt, offPct } from '../api.js';
@@ -62,8 +63,8 @@ export default function Shop() {
   }, [cat, search]);
 
   const base = useMemo(() => {
-    const t = q.toLowerCase();
-    return products.filter(p => (cat === 'all' || p.cat === cat) && (!onlyNew || p.isNew) && (!t || `${p.name} ${p.brand} ${p.part} ${p.compat}`.toLowerCase().includes(t)));
+    const hit = q.trim() ? new Set(matchProducts(products, q).map(p => p.id)) : null; // the same matching as the header live search
+    return products.filter(p => (cat === 'all' || p.cat === cat) && (!onlyNew || p.isNew) && (!hit || hit.has(p.id)));
   }, [products, cat, q, onlyNew]);
   const brandsHere = useMemo(() => [...new Set(base.map(p => p.brand))], [base]);
   const afterBrand = useMemo(() => base.filter(p => (f.brand === 'all' || p.brand === f.brand) && (!f.inStock || p.stock > 0)), [base, f.brand, f.inStock]);

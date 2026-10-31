@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import ClientLogos from '../components/ClientLogos.jsx';
+import { useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import ProductCard from '../components/ProductCard.jsx';
 import { api, offPct } from '../api.js';
@@ -40,10 +41,7 @@ export function NotFound() {
 
 export function About() {
   const { content } = useStore();
-  const [clientPg, setClientPg] = useState(null);
-  useEffect(() => { api.get('/pages/our-clients').then(setClientPg).catch(() => {}); }, []);
   const ab = withDefaults(DEFAULT_ABOUT, content.about);
-  const logos = clientPg && clientPg.images.length ? clientPg.images : content.clients.filter(Boolean);
   return (
     <section style={{ ...wrap, gap: 56 }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%,420px),1fr))', gap: 40, alignItems: 'end' }}>
@@ -68,12 +66,7 @@ export function About() {
           {content.whys.map((w, i) => <div className="why" key={w.t}><small>{String(i + 1).padStart(2, '0')}</small><b style={{ fontSize: 18 }}>{w.t}</b><span style={{ fontSize: 14, lineHeight: 1.55, color: '#5d6270' }}>{w.d}</span></div>)}
         </div>
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-        <h2 style={{ fontWeight: 800, fontSize: 36, letterSpacing: '-.025em', margin: 0 }}>Corporate clients</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(150px,1fr))', gap: 10 }}>
-          {logos.map(c => <div className="client" key={c}><div style={{ backgroundImage: `url('${c}')` }} /></div>)}
-        </div>
-      </div>
+      <ClientLogos />
     </section>
   );
 }

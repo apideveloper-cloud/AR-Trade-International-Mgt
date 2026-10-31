@@ -1,3 +1,4 @@
+import LiveSearch from './LiveSearch.jsx';
 import { useEffect, useRef, useState } from 'react';
 import { productPath } from '../slug.js';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
@@ -66,11 +67,7 @@ export default function Header() {
       <header className="hdr">
         <div className="hdr-top">
           <Brand size={68} className="logo" />
-          <form className="search" onSubmit={submit}>
-            <i />
-            <input ref={searchRef} value={q} onChange={e => setQ(e.target.value)} placeholder={content.words[0]} aria-label="Search" />
-            <button type="submit">Search</button>
-          </form>
+          <LiveSearch q={q} setQ={setQ} onSubmit={submit} inputRef={searchRef} placeholder={content.words[0]} />
           <div className="hd-right">
             <a href="tel:+8801977554401" className="chip hide-md">
               <span className="ic">☏</span>
