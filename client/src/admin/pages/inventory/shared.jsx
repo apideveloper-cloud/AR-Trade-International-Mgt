@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { invApi } from '../../adminApi.js';
 import { Modal } from '../../ui.jsx';
 import { IconBtn } from '../../IconBtn.jsx';
+import { Editor } from '../Catalog.jsx';
 import { Notice, fDate, taka, todayBd, useDebounced } from '../../fieldKit.jsx';
 
 // Small pieces shared by the Purchasing & stock pages: the data hook, product picker, line editor and the vendor payment form.
@@ -45,22 +46,37 @@ export function ProdThumb({ src, name, size = 38 }) {
   return <span className="pt none" style={{ width: size, height: size }} aria-hidden="true">{String(name || '?').trim().charAt(0).toUpperCase()}</span>;
 }
 
-/** Search box that lists products; picking one calls onPick(product). With `selected` it shows that product (and a clear button) instead. */
-export function ProductPick({ onPick, selected, onClear, placeholder = 'Search product to add…' }) {
+/** A product that is bought for the first time is created with the same product form as the Products page; price and stock are set by the purchase. */
+function NewProduct({ name, onClose, onCreated }) {
+  const cats = useInv('/categories');
+  if (!cats.data) return null;
+  return <Editor purchase product={null} cats={cats.data.items} onClose={onClose} onSaved={onCreated} initial={{ name }} />;
+}
+
+/** Search box that lists products; picking one calls onPick(product). With `selected` it shows that product (and a clear button) instead.
+ *  allowNew: when nothing matches, offer to create the product (used on purchases only). */
+export function ProductPick({ onPick, selected, onClear, placeholder = 'Search product to add…', allowNew = false }) {
   const [q, setQ] = useState('');
+  const [creating, setCreating] = useState(false);
   const dq = useDebounced(q, 250); const box = useRef(null);
   const r = useInv(!selected && dq.trim().length >= 2 ? '/products?q=' + encodeURIComponent(dq.trim()) : null);
   if (selected) return <div className="iv-sel" title={selected.name}><b>{selected.name}</b><small>in stock {selected.stock}</small><button type="button" onClick={() => { onClear?.(); setTimeout(() => box.current?.focus(), 0); }} aria-label="Choose another product">✕</button></div>;
+  const none = !r.loading && !(r.data?.items || []).length;
   return (
     <div className="iv-pick">
-      <input ref={box} className="a-input" value={q} onChange={e => setQ(e.target.value)} placeholder={placeholder} aria-label="Search products" />
+      <div className="iv-pickrow">
+        <input ref={box} className="a-input" value={q} onChange={e => setQ(e.target.value)} placeholder={placeholder} aria-label="Search products" />
+        {allowNew && <button type="button" className="a-btn iv-newbtn" onClick={() => setCreating(true)}>+ New product</button>}
+      </div>
       {q.trim().length >= 2 && (
         <div className="iv-res">
-          {r.loading && !r.data ? <small>Searching…</small> : !(r.data?.items || []).length ? <small>No product found.</small> : r.data.items.map(p => (
+          {r.loading && !r.data ? <small>Searching…</small> : none ? <small>No product found.</small> : r.data.items.map(p => (
             <button key={p.id} type="button" onClick={() => { onPick(p); setQ(''); }}><span>{p.name}</span><em>stock {p.stock}</em></button>
           ))}
+          {allowNew && !r.loading && <button type="button" className="iv-new" onClick={() => setCreating(true)}>+ New product “{q.trim()}”</button>}
         </div>
       )}
+      {creating && <NewProduct name={q.trim()} onClose={() => setCreating(false)} onCreated={p => { setCreating(false); onPick(p); setQ(''); }} />}
     </div>
   );
 }
@@ -69,7 +85,7 @@ export function ProductPick({ onPick, selected, onClear, placeholder = 'Search p
 export const lineTotal = l => Math.max(0, num(l.qty) * num(l.unitCost) - num(l.discount));
 /** Products with quantity and price. An entry row (product, qty, price, discount, Add) adds to the list below it.
  *  costLabel: what the price column means. maxStock: cap the quantity at stock on hand. withDiscount: a discount (৳, for the whole line) per product. */
-export function Lines({ lines, setLines, costLabel = 'Buying price', maxStock, withDiscount = false }) {
+export function Lines({ lines, setLines, costLabel = 'Buying price', maxStock, withDiscount = false, newProduct = false }) {
   const set = (i, k, v) => setLines(l => l.map((x, j) => (j === i ? { ...x, [k]: v } : x)));
   const [pick, setPick] = useState(null);
   const [e, setE] = useState({ qty: 1, cost: '', disc: '' });
@@ -90,7 +106,7 @@ export function Lines({ lines, setLines, costLabel = 'Buying price', maxStock, w
     <section className="iv-lines">
       <header className="iv-lhd"><b>Products</b><span>{lines.length ? `${lines.length} product${lines.length === 1 ? '' : 's'} · ${units} unit${units === 1 ? '' : 's'}` : 'Add one or more'}</span></header>
       <div className={'iv-entry ' + cols}>
-        <ProductPick selected={pick} onClear={() => setPick(null)} onPick={choose} placeholder={lines.length ? 'Search and add another product…' : 'Search a product to add…'} />
+        <ProductPick allowNew={newProduct} selected={pick} onClear={() => setPick(null)} onPick={choose} placeholder={lines.length ? 'Search and add another product…' : 'Search a product to add…'} />
         <input className="a-input" type="number" min="1" max={maxStock && pick ? pick.stock : undefined} value={e.qty} onChange={ev => setE(x => ({ ...x, qty: ev.target.value }))} onKeyDown={onKey} placeholder="Qty" aria-label="Quantity" />
         <input className="a-input" type="number" min="0" value={e.cost} onChange={ev => setE(x => ({ ...x, cost: ev.target.value }))} onKeyDown={onKey} placeholder={costLabel} aria-label={costLabel} />
         {withDiscount && <input className="a-input" type="number" min="0" value={e.disc} onChange={ev => setE(x => ({ ...x, disc: ev.target.value }))} onKeyDown={onKey} placeholder="Discount ৳" aria-label="Discount in taka" />}

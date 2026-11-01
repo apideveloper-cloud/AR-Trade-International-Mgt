@@ -35,9 +35,17 @@ export default function Header() {
   const [q, setQ] = useState('');
   const [menu, setMenu] = useState(null);
   const [megaG, setMegaG] = useState(0);
+  const [mob, setMob] = useState(false);
   const searchRef = useRef(null);
   useTypewriter(content.words, searchRef);
-  useEffect(() => setMenu(null), [loc.pathname]);
+  useEffect(() => { setMenu(null); setMob(false); }, [loc.pathname]);
+  useEffect(() => {
+    if (!mob) return undefined;
+    const o = document.body.style.overflow; document.body.style.overflow = 'hidden';
+    const k = e => { if (e.key === 'Escape') setMob(false); };
+    window.addEventListener('keydown', k);
+    return () => { document.body.style.overflow = o; window.removeEventListener('keydown', k); };
+  }, [mob]);
   useEffect(() => { if (loc.pathname === '/shop/all' || loc.pathname.startsWith('/shop')) setQ(new URLSearchParams(loc.search).get('q') || ''); }, [loc.pathname, loc.search]);
 
   const submit = e => { e.preventDefault(); nav('/shop/all?q=' + encodeURIComponent(q.trim())); };
@@ -88,6 +96,7 @@ export default function Header() {
         </div>
         <div className="nav" onMouseLeave={() => setMenu(null)}>
           <nav className="nav-in">
+            <button type="button" className="nav-burger" onClick={() => setMob(true)} aria-label="Open menu" aria-expanded={mob}><span className="burger"><span /><span /><span /></span>Menu</button>
             <div className="nav-l">
               <button className="nav-all hide-md" onClick={() => setMenu(m => (m === 'all' ? null : 'all'))} onMouseEnter={() => setMenu('all')}>
                 <span className="burger"><span /><span /><span /></span>All categories
@@ -161,6 +170,33 @@ export default function Header() {
           )}
         </div>
       </header>
+      {mob && (
+        <div className="m-scrim" onClick={() => setMob(false)}>
+          <aside className="m-drawer" role="dialog" aria-label="Menu" onClick={e => e.stopPropagation()}>
+            <div className="m-hd"><b>Menu</b><button type="button" onClick={() => setMob(false)} aria-label="Close menu">✕</button></div>
+            <nav className="m-list">
+              <Link to="/" onClick={() => setMob(false)}>Home</Link>
+              {menus.map(m => (
+                <details key={m.t}>
+                  <summary>{m.t}<span>▼</span></summary>
+                  <div>
+                    {(m.items || []).map(it => it.href
+                      ? <a key={it.t} href={it.href} target="_blank" rel="noreferrer" onClick={() => setMob(false)}>{it.t}</a>
+                      : <Link key={it.t} to={it.to} onClick={() => setMob(false)}>{it.t}</Link>)}
+                  </div>
+                </details>
+              ))}
+              <details>
+                <summary>All categories<span>▼</span></summary>
+                <div>{groups.map(g => <Link key={g.t} to={sh(g.c)} onClick={() => setMob(false)}>{g.t} ({g.n})</Link>)}</div>
+              </details>
+              <Link to="/offers" className="m-hot" onClick={() => setMob(false)}>Buy Product! <b>OFFER</b></Link>
+              <Link to="/contact" onClick={() => setMob(false)}>Contact Us</Link>
+              <a href="tel:+8801977554401" className="m-call">☏ {site.phone}</a>
+            </nav>
+          </aside>
+        </div>
+      )}
       <button className="fab-cart" onClick={() => setCartOpen(o => !o)} title="Cart">
         <span className="ic">⌂<b>{cartCount}</b></span><small>Cart</small><span>{fmt(cartSubtotal)}</span>
       </button>

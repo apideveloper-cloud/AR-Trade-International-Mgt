@@ -71,7 +71,7 @@ function ReceiveForm({ vendors, onVendorAdded, onClose, onSaved }) {
                 </div>
               )}
             </section>
-            <Lines lines={lines} setLines={setLines} withDiscount />
+            <Lines lines={lines} setLines={setLines} withDiscount newProduct />
           </div>
           <aside className="pu-side">
             <div className="pu-sum">

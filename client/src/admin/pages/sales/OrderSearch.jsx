@@ -48,9 +48,10 @@ export function OrderSearch({ t }) {
       </div>
       {open && (
         <div className="os-box">
-          <div className="os-grid">
-            <div className="c4">{text_('customer', 'Customer', user, { placeholder: 'Name, phone, email or company' })}</div>
-            <div className="c3">{text_('product', 'Product', box, { placeholder: 'Product name' })}</div>
+          <div className="os-grid os-orders">
+            <div className="cfull">{text_('customer', 'Customer', user, { placeholder: 'Name, phone, email or company' })}</div>
+            <div className="cfirst">{text_('product', 'Product', box, { placeholder: 'Product name' })}</div>
+            <i className="os-br" aria-hidden="true" />
             <label className="os-f c2">Status<span className="os-in os-sel">{stIc}<select value={p.status || ''} onChange={e => t.set({ status: e.target.value })}><option value="">All statuses</option>{STATUSES.map(s => <option key={s}>{s}</option>)}</select></span></label>
             <label className="os-f c3">Payment<span className="os-in os-sel">{payIc}<select value={p.pay || ''} onChange={e => t.set({ pay: e.target.value })}><option value="">All payments</option>{PAYMENTS.map(m => <option key={m}>{m}</option>)}</select></span></label>
             <label className="os-f c3">Date from<span className="os-in os-dt">{calIc}<input type="date" value={p.from || ''} max={p.to || undefined} onChange={e => t.set({ from: e.target.value })} /></span></label>

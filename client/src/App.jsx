@@ -1,8 +1,6 @@
-import Reset from './pages/Reset.jsx';
-import { Blog, BlogPost } from './pages/Blog.jsx';
 import { lazy, Suspense, useEffect } from 'react';
-import { PageLoader } from './components/PageLoader.jsx';
 import { Route, Routes, useLocation } from 'react-router-dom';
+import { PageLoader } from './components/PageLoader.jsx';
 import { useStore } from './store.jsx';
 import Header from './components/Header.jsx';
 import Footer from './components/Footer.jsx';
@@ -10,15 +8,31 @@ import Chat from './components/Chat.jsx';
 import { ForbiddenPage, LoadFailedPage, MaintenancePage, OfflinePage, ServerErrorPage } from './pages/ErrorPages.jsx';
 import { CartDrawer, CompareBar, LoginModal, NewsletterPopup, OptInMail, PromoPopup, Toast } from './components/Overlays.jsx';
 import Home from './pages/Home.jsx';
-import Shop from './pages/Shop.jsx';
-import Product from './pages/Product.jsx';
-import { Cart, Checkout, Success } from './pages/Cart.jsx';
-import Account from './pages/Account.jsx';
-import { Compare, Wishlist } from './pages/Lists.jsx';
-import Track from './pages/Track.jsx';
-import Services, { ServiceDetail } from './pages/Services.jsx';
-import { Careers, Job } from './pages/Careers.jsx';
-import { About, Contact, Faq, NotFound, Offers, Policy } from './pages/Info.jsx';
+import { NotFound } from './pages/Info.jsx';
+
+/** Pages other than the Home page load on demand, so the first visit downloads only what it needs. */
+const page = (load, name = 'default') => lazy(() => load().then(m => ({ default: m[name] })));
+const Reset = page(() => import('./pages/Reset.jsx'));
+const Blog = page(() => import('./pages/Blog.jsx'), 'Blog');
+const BlogPost = page(() => import('./pages/Blog.jsx'), 'BlogPost');
+const Shop = page(() => import('./pages/Shop.jsx'));
+const Product = page(() => import('./pages/Product.jsx'));
+const Cart = page(() => import('./pages/Cart.jsx'), 'Cart');
+const Checkout = page(() => import('./pages/Cart.jsx'), 'Checkout');
+const Success = page(() => import('./pages/Cart.jsx'), 'Success');
+const Account = page(() => import('./pages/Account.jsx'));
+const Wishlist = page(() => import('./pages/Lists.jsx'), 'Wishlist');
+const Compare = page(() => import('./pages/Lists.jsx'), 'Compare');
+const Track = page(() => import('./pages/Track.jsx'));
+const Services = page(() => import('./pages/Services.jsx'));
+const ServiceDetail = page(() => import('./pages/Services.jsx'), 'ServiceDetail');
+const Careers = page(() => import('./pages/Careers.jsx'), 'Careers');
+const Job = page(() => import('./pages/Careers.jsx'), 'Job');
+const Offers = page(() => import('./pages/Info.jsx'), 'Offers');
+const About = page(() => import('./pages/Info.jsx'), 'About');
+const Contact = page(() => import('./pages/Info.jsx'), 'Contact');
+const Faq = page(() => import('./pages/Info.jsx'), 'Faq');
+const Policy = page(() => import('./pages/Info.jsx'), 'Policy');
 
 const AdminApp = lazy(() => import('./admin/AdminApp.jsx'));
 const HubApp = lazy(() => import('./hub/HubApp.jsx'));
@@ -45,6 +59,7 @@ export default function App() {
     <div className="site">
       <Header />
       <main style={{ flex: 1, width: '100%' }}>
+        <Suspense fallback={<PageLoader inline label="Loading…" />}>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Home />} />
@@ -72,6 +87,7 @@ export default function App() {
           <Route path="/policy/:key" element={<Policy />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
+        </Suspense>
       </main>
       <Footer />
     </div>

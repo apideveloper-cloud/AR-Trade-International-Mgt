@@ -340,3 +340,6 @@
 .pd-bar .a-btn.sm { padding: 6px 14px; font-size: 12.5px; }
 .a-drawer:has(.pd-top) > .bd { flex: 1; }
 .a-drawer:has(.pd-top) .pd-bar { margin-top: auto; }
+
+.iv-res button.iv-new { justify-content: flex-start; font-weight: 800; color: oklch(0.45 0.15 252); background: #f4f8ff; position: sticky; bottom: 0; }
+.iv-pickrow { display: flex; gap: 8px; align-items: stretch; } .iv-pickrow .a-input { flex: 1; min-width: 0; } .iv-newbtn { white-space: nowrap; }

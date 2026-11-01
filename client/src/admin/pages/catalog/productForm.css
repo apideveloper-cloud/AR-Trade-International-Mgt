@@ -1,0 +1,35 @@
+/* Product editor: wide side panel, image column on the left, fields grouped into cards on the right */
+.a-modal.slide:has(.pf) { width: min(1180px, 100vw); }
+.pf { display: grid; grid-template-columns: 290px minmax(0, 1fr); gap: 18px; align-items: start; }
+.pf-media { position: sticky; top: 0; display: flex; flex-direction: column; gap: 12px; }
+.pf-hero { position: relative; aspect-ratio: 1; border-radius: 18px; border: 1px solid #e3e7ef; display: grid; place-items: center; overflow: hidden; background: radial-gradient(120% 90% at 50% 20%, #fff 0%, #f1f4fa 60%, #e6ebf4 100%); }
+.pf-hero > div { width: 86%; height: 86%; background: center / contain no-repeat; }
+.pf-hero > span { color: #8a8f9b; font-weight: 700; }
+.pf-hero em { position: absolute; top: 12px; left: 12px; font-style: normal; background: var(--pink); color: #fff; font-size: 12px; font-weight: 800; padding: 5px 10px; border-radius: 999px; }
+.pf-up { display: flex; align-items: center; justify-content: center; height: 42px; border: 1px dashed #b9c4da; border-radius: 11px; background: #fff; font-weight: 800; color: oklch(0.45 0.15 252); cursor: pointer; }
+.pf-up:hover { background: #f1f6ff; }
+.pf-thumbs { display: grid; grid-template-columns: repeat(auto-fill, minmax(62px, 1fr)); gap: 10px; padding: 4px 6px 8px 0; }
+.pf-thumbs > div { position: relative; aspect-ratio: 1; border-radius: 10px; border: 2px solid #e3e7ef; background: #fff center / contain no-repeat; }
+.pf-thumbs > div.on { border-color: oklch(0.52 0.16 252); }
+.pf-thumbs .x { position: absolute; top: -7px; right: -7px; width: 20px; height: 20px; border-radius: 50%; border: 0; background: #16181d; color: #fff; font-size: 11px; cursor: pointer; }
+.pf-thumbs .mk { position: absolute; bottom: -7px; left: 50%; transform: translateX(-50%); border: 0; border-radius: 8px; background: oklch(0.52 0.16 252); color: #fff; font-size: 9px; padding: 2px 6px; cursor: pointer; }
+.pf-id { font-size: 11px; color: #6b7080; } .pf-hint { font-size: 12px; color: #6b7080; }
+.pf-main { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.pf-card { background: #fff; border: 1px solid #e3e8f2; border-radius: 16px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.pf-card h4 { margin: 0; display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13.5px; font-weight: 800; color: #16181d; }
+.pf-card h4 small, .pf-card .a-lbl small { font-weight: 500; color: #8a8f9b; font-size: 11.5px; }
+.pf-card h4 small { margin-right: auto; }
+.pf-g { display: grid; gap: 12px; }
+.pf-g3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.pf-g .pf-w3 { grid-column: 1 / -1; }
+.pf-card textarea.a-input { resize: vertical; line-height: 1.45; }
+.pf-desc { font-family: var(--mono); font-size: 12.5px; }
+.pf-two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start; }
+.pf-seo .a-lbl { gap: 4px; }
+@media (max-width: 1100px) { .pf-two { grid-template-columns: 1fr; } }
+@media (max-width: 860px) { .pf { grid-template-columns: 1fr; } .pf-media { position: static; max-width: 320px; } }
+@media (max-width: 560px) { .pf-g3 { grid-template-columns: 1fr 1fr; } }
+/* the purchase pages squash textareas (.iv-form textarea); keep the product form's boxes at their natural height */
+.pf .pf-card textarea.a-input { resize: vertical; min-height: 62px; }
+.pf .pf-card textarea.pf-desc { min-height: 190px; }
+.pf .pf-card .pf-specs { min-height: 150px; }

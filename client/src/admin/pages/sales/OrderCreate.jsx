@@ -32,16 +32,46 @@ function Pick({ onPick }) {
   );
 }
 
+const CUSTOMER_KINDS = [['Existing', 'Existing customer'], ['Upcoming', 'Upcoming customer'], ['New', 'New customer']];
+
+/** Search the field app's customers (Existing or Upcoming) and hand the chosen one back. */
+function CustomerPick({ type, selected, onPick, onClear, bad }) {
+  const [q, setQ] = useState(''); const dq = useDebounced(q.trim(), 250);
+  const [items, setItems] = useState(null); const [openList, setOpenList] = useState(false);
+  useEffect(() => {
+    if (selected) return undefined;
+    let stale = false;
+    adm.get(`/order-customers?type=${type}&q=${encodeURIComponent(dq)}`).then(r => { if (!stale) setItems(r.items); }).catch(() => { if (!stale) setItems([]); });
+    return () => { stale = true; };
+  }, [type, dq, selected]);
+  if (selected) return <div className="iv-sel" title={selected}><b>{selected}</b><small>{type}</small><button type="button" onClick={onClear} aria-label="Choose another customer">✕</button></div>;
+  return (
+    <div className="iv-pick">
+      <input className={'a-input' + (bad ? ' bad' : '')} value={q} onChange={e => { setQ(e.target.value); setOpenList(true); }} onFocus={() => setOpenList(true)} onBlur={() => setTimeout(() => setOpenList(false), 150)} placeholder={`Search ${type.toLowerCase()} customers by name, phone or area…`} aria-label="Search customers" />
+      {openList && (
+        <div className="iv-res">
+          {items === null ? <small>Searching…</small> : !items.length ? <small>{q.trim() ? 'No customer found.' : `No ${type.toLowerCase()} customers yet.`} Use "New customer" to type one in.</small> : items.map(c => (
+            <button key={c.id} type="button" onMouseDown={e => e.preventDefault()} onClick={() => { onPick(c); setQ(''); setOpenList(false); }}><span>{c.name}{c.contact ? ' · ' + c.contact : ''}</span><em>{c.phone}</em></button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function OrderCreate({ staff, onClose, onCreated }) {
+  const [kind, setKind] = useState('Existing'); const [picked, setPicked] = useState(false); const [custErr, setCustErr] = useState('');
   const [f, setF] = useState({ name: '', phone: '', email: '', address: '', area: 'inside', payment: 'Cash on delivery', note: '', source: sourceFor(staff.role) });
   const [lines, setLines] = useState([]);
   const [err, setErr] = useState(''); const [busy, setBusy] = useState(false);
   const set = k => e => setF(v => ({ ...v, [k]: e.target.value }));
+  const need = kind === 'New' || picked; // for Existing / Upcoming the "choose a customer" message comes first
   const sub = lines.reduce((t, l) => t + l.price * l.qty, 0);
   const setQty = (id, qty) => setLines(ls => ls.map(l => (l.id === id ? { ...l, qty: Math.max(1, Math.min(999, parseInt(qty, 10) || 1)) } : l)));
   const add = p => setLines(ls => (ls.some(l => l.id === p.id) ? ls.map(l => (l.id === p.id ? { ...l, qty: l.qty + 1 } : l)) : [...ls, { id: p.id, name: p.name, price: p.price, stock: p.stock, qty: 1 }]));
   const submit = async e => {
     e.preventDefault(); setErr('');
+    if (kind !== 'New' && !picked) { setCustErr(`Choose ${kind === 'Upcoming' ? 'an upcoming' : 'an existing'} customer from the list, or switch to "New customer" to type one in.`); return; }
     if (!lines.length) { setErr('Add at least one product.'); return; }
     setBusy(true);
     try {
@@ -56,13 +86,24 @@ export function OrderCreate({ staff, onClose, onCreated }) {
         <div className="oc-main">
           {err && <div className="a-msg err">{err}</div>}
           <section className="pu-card">
-            <header className="iv-lhd"><b>Customer</b><span>Delivery details</span></header>
+            <header className="iv-lhd"><b>Customer</b>
+              <div className="iv-seg" role="radiogroup" aria-label="Customer type">
+                {CUSTOMER_KINDS.map(([k, label]) => <button key={k} type="button" role="radio" aria-checked={kind === k} className={kind === k ? 'on' : ''} onClick={() => { if (kind === k) return; setCustErr(''); setPicked(false); setKind(k); setF(v => ({ ...v, name: '', phone: '', email: '', address: '' })); }}>{label}</button>)}
+              </div>
+            </header>
             <div className="oc-grid">
-              <label className="a-lbl">Name<input className="a-input" required value={f.name} onChange={set('name')} /></label>
-              <label className="a-lbl">Mobile<input className="a-input" required value={f.phone} onChange={set('phone')} placeholder="01XXXXXXXXX" /></label>
-              <label className="a-lbl">Email <small>(optional)</small><input className="a-input" type="email" value={f.email} onChange={set('email')} /></label>
+              {kind !== 'New' && (
+                <div className="a-lbl oc-w2">{kind === 'Upcoming' ? 'Upcoming customer' : 'Existing customer'}
+                  <CustomerPick type={kind} bad={!!custErr} selected={picked ? f.name : ''} onClear={() => { setPicked(false); setF(v => ({ ...v, name: '', phone: '', email: '', address: '' })); }}
+                    onPick={c => { setCustErr(''); setPicked(true); setF(v => ({ ...v, name: c.name, phone: c.phone || v.phone, email: c.email || v.email, address: c.address || v.address })); }} />
+                  {custErr && <small className="qt-err" role="alert">{custErr}</small>}
+                </div>
+              )}
+              <label className="a-lbl">Name<input className="a-input" required={need} value={f.name} onChange={set('name')} /></label>
+              <label className="a-lbl">Mobile<input className="a-input" required={need} value={f.phone} onChange={set('phone')} placeholder="01XXXXXXXXX" /></label>
+              <label className="a-lbl"><span>Email <small>(optional)</small></span><input className="a-input" type="email" value={f.email} onChange={set('email')} /></label>
               <label className="a-lbl">Delivery area<select className="a-input" value={f.area} onChange={set('area')}>{Object.entries(AREA).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></label>
-              <label className="a-lbl oc-w2">Delivery address<textarea className="a-input" required rows={2} maxLength={500} value={f.address} onChange={set('address')} /></label>
+              <label className="a-lbl oc-span2">Delivery address<textarea className="a-input" required={need} rows={2} maxLength={500} value={f.address} onChange={set('address')} /></label>
             </div>
           </section>
           <section className="iv-lines">
@@ -94,7 +135,7 @@ export function OrderCreate({ staff, onClose, onCreated }) {
               </div>
             </div>
             <label className="a-lbl">Payment<select className="a-input" value={f.payment} onChange={set('payment')}>{PAYMENTS.map(p => <option key={p}>{p}</option>)}</select></label>
-            <label className="a-lbl">Note <small>(optional)</small><textarea className="a-input" rows={3} maxLength={500} value={f.note} onChange={set('note')} placeholder="Delivery time, gate pass, special request…" /></label>
+            <label className="a-lbl"><span>Note <small>(optional)</small></span><textarea className="a-input" rows={3} maxLength={500} value={f.note} onChange={set('note')} placeholder="Delivery time, gate pass, special request…" /></label>
           </section>
         </aside>
       </div>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { adm, can, fmtMoney, slNo, useTable } from '../adminApi.js';
+import { adm, can, fmtMoney, invApi, slNo, useTable } from '../adminApi.js';
 import { CategoryForm } from './catalog/CategoryForm.jsx';
+import './catalog/productForm.css';
 import { ListFilter } from '../ListFilter.jsx';
 import { IconBtn } from '../IconBtn.jsx';
 import { Empty, Modal, Pager, Summary, Switch, Toolbar, ViewToggle, alertBox, confirmBox, useView } from '../ui.jsx';
@@ -8,8 +9,9 @@ import { Empty, Modal, Pager, Summary, Switch, Toolbar, ViewToggle, alertBox, co
 const BLANK = { name: '', brand: '', cat: '', price: '', old: '', stock: 10, img: '', part: '', tech: '', color: '', yield: '', compat: '', spec: '', description: '', gallery: [], metaTitle: '', metaDesc: '', metaKeywords: '' };
 const readFile = f => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(f); });
 
-function Editor({ product, cats, onClose, onSaved }) {
-  const [f, setF] = useState({ ...BLANK, cat: cats[0]?.id || '', ...product });
+/** The product form. `purchase`: used from a purchase entry to create a product (saved through the purchasing API; price and stock come from the purchase, so they are not shown). */
+export function Editor({ product, cats, onClose, onSaved, purchase = false, initial }) {
+  const [f, setF] = useState({ ...BLANK, cat: cats[0]?.id || '', ...initial, ...product });
   const [specText, setSpecText] = useState('');
   useEffect(() => { if (product) adm.get(`/products/${product.id}/full`).then(r => setSpecText((r.specs || []).map(s => `${s.name}: ${s.value}`).join('\n'))).catch(() => {}); }, [product]);
   const [err, setErr] = useState('');
@@ -21,6 +23,10 @@ function Editor({ product, cats, onClose, onSaved }) {
   const submit = async e => {
     e.preventDefault(); setErr(''); setBusy(true);
     try {
+      if (purchase) {
+        const specs = specText.split('\n').map(l => { const i = l.indexOf(':'); return i > 0 ? { name: l.slice(0, i), value: l.slice(i + 1) } : null; }).filter(Boolean);
+        onSaved(await invApi.post('/products', { ...f, specs })); return;
+      }
       const saved = isNew ? await adm.post('/products', f) : await adm.put('/products/' + product.id, f);
       if (isNew && (f.metaTitle || f.metaDesc || f.metaKeywords)) await adm.put('/products/' + saved.id, { metaTitle: f.metaTitle, metaDesc: f.metaDesc, metaKeywords: f.metaKeywords });
       const specs = specText.split('\n').map(l => { const i = l.indexOf(':'); return i > 0 ? { name: l.slice(0, i), value: l.slice(i + 1) } : null; }).filter(Boolean);
@@ -49,53 +55,73 @@ function Editor({ product, cats, onClose, onSaved }) {
   return (
     <Modal side kicker={isNew ? 'New product' : 'Edit product'} title={isNew ? 'Add a product' : f.name} onClose={onClose} onSubmit={submit}
       footer={<><button type="button" className="a-btn ghost" onClick={onClose}>Cancel</button><button className="a-btn grad" disabled={busy}>{busy ? 'Saving…' : isNew ? 'Add product' : 'Save changes'}</button></>}>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 20, alignItems: 'flex-start' }}>
-        <div style={{ flex: '1 1 240px', maxWidth: 300, display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={{ position: 'relative', aspectRatio: 1, borderRadius: 18, background: 'radial-gradient(120% 90% at 50% 20%,#fff 0%,#f1f4fa 60%,#e6ebf4 100%)', border: '1px solid #e3e7ef', display: 'grid', placeItems: 'center', overflow: 'hidden' }}>
-            {f.img ? <div style={{ width: '84%', height: '84%', backgroundImage: `url('${f.img}')`, backgroundSize: 'contain', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }} /> : <span style={{ color: '#8a8f9b', fontWeight: 700 }}>No image yet</span>}
-            {off > 0 && <span style={{ position: 'absolute', top: 12, left: 12, background: 'var(--pink)', color: '#fff', fontSize: 12, fontWeight: 800, padding: '5px 10px', borderRadius: 999 }}>−{off}%</span>}
+      <div className={'pf' + (purchase ? ' pf-buy' : '')}>
+        <aside className="pf-media">
+          <div className="pf-hero">
+            {f.img ? <div style={{ backgroundImage: `url('${f.img}')` }} /> : <span>No image yet</span>}
+            {off > 0 && <em>−{off}%</em>}
           </div>
-          <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 42, border: '1px dashed #b9c4da', borderRadius: 11, background: '#fff', fontWeight: 800, color: 'oklch(0.45 0.15 252)', cursor: 'pointer' }}>⤒ Upload image(s)<input type="file" accept="image/png,image/jpeg,image/gif,image/webp" multiple hidden onChange={upload} /></label>
+          <label className="pf-up">⤒ Upload image(s)<input type="file" accept="image/png,image/jpeg,image/gif,image/webp" multiple hidden onChange={upload} /></label>
           {(f.gallery || []).length > 0 && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            <div className="pf-thumbs">
               {f.gallery.map(u => (
-                <div key={u} style={{ position: 'relative', width: 62, height: 62, borderRadius: 10, border: '2px solid ' + (u === f.img ? 'oklch(0.52 0.16 252)' : '#e3e7ef'), background: `#fff url('${u}') center/contain no-repeat` }}>
-                  <button type="button" title="Remove" onClick={() => removeImg(u)} style={{ position: 'absolute', top: -7, right: -7, width: 20, height: 20, borderRadius: '50%', border: 0, background: '#16181d', color: '#fff', fontSize: 11, cursor: 'pointer' }}>✕</button>
-                  {u !== f.img && <button type="button" title="Use as main image" onClick={() => makeMain(u)} style={{ position: 'absolute', bottom: -7, left: '50%', transform: 'translateX(-50%)', border: 0, borderRadius: 8, background: 'oklch(0.52 0.16 252)', color: '#fff', fontSize: 9, padding: '2px 5px', cursor: 'pointer' }}>main</button>}
+                <div key={u} className={u === f.img ? 'on' : ''} style={{ backgroundImage: `url('${u}')` }}>
+                  <button type="button" className="x" title="Remove" onClick={() => removeImg(u)}>✕</button>
+                  {u !== f.img && <button type="button" className="mk" title="Use as main image" onClick={() => makeMain(u)}>main</button>}
                 </div>
               ))}
             </div>
           )}
-          {!isNew && <span className="mono" style={{ fontSize: 11, color: '#6b7080' }}>ID · #{product.id} · <a href={'/product/' + product.id} target="_blank" rel="noreferrer">View on store ↗</a></span>}
-        </div>
-        <div style={{ flex: '2 1 360px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {!isNew && <span className="pf-id mono">ID · #{product.id} · <a href={'/product/' + product.id} target="_blank" rel="noreferrer">View on store ↗</a></span>}
+          <span className="pf-hint">{purchase ? 'Price and stock come from the purchase. The product stays hidden from the shop until its first purchase is stocked in.' : 'Set price to 0 to show “Ask price” on the store.'}</span>
+        </aside>
+        <div className="pf-main">
           {err && <div className="a-msg err">{err}</div>}
-          <label className="a-lbl">Product name<input className="a-input" required value={f.name} onChange={on('name')} /></label>
-          <div className="a-fields">
-            <label className="a-lbl">Brand<input className="a-input" required value={f.brand} onChange={on('brand')} /></label>
-            <label className="a-lbl">Category<select className="a-input" value={f.cat} onChange={on('cat')}>{cats.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}</select></label>
-            <label className="a-lbl">Price (৳)<input className="a-input" type="number" min="0" value={f.price} onChange={on('price')} /></label>
-            <label className="a-lbl">Regular price (৳)<input className="a-input" type="number" min="0" value={f.old} onChange={on('old')} /></label>
-            <label className="a-lbl">Stock<input className="a-input" type="number" min="0" value={f.stock} onChange={on('stock')} /></label>
-            <label className="a-lbl">Part no.<input className="a-input" value={f.part} onChange={on('part')} /></label>
-            <label className="a-lbl">Technology<input className="a-input" value={f.tech} onChange={on('tech')} /></label>
-            <label className="a-lbl">Colour<input className="a-input" value={f.color} onChange={on('color')} /></label>
-            <label className="a-lbl">Page yield / size<input className="a-input" value={f.yield} onChange={on('yield')} /></label>
-          </div>
-          <label className="a-lbl">Short spec line<input className="a-input" value={f.spec} onChange={on('spec')} placeholder="e.g. 33 ppm · Wi-Fi · Duplex" /></label>
-          <label className="a-lbl">Compatible printers<textarea className="a-input" rows={2} value={f.compat || ''} onChange={on('compat')} /></label>
-          <label className="a-lbl">Description <small style={{ fontWeight: 500, color: '#8a8f9b' }}>basic HTML allowed · shown on the product page</small><textarea className="a-input" rows={6} value={f.description || ''} onChange={on('description')} placeholder="<p>…</p>" /></label>
-          <div style={{ border: '1px solid #e3e8f2', borderRadius: 14, padding: 14, display: 'flex', flexDirection: 'column', gap: 10, background: '#f9fbff' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
-              <b style={{ fontSize: 13.5 }}>SEO · how this product appears on Google</b>
-              <button type="button" className="a-btn" onClick={() => setF(s => ({ ...s, metaTitle: s.name + ' Price in Bangladesh | AR Trade', metaDesc: `${s.name}. Buy online in Dhaka, Bangladesh. Genuine, fast delivery.`, metaKeywords: [s.name, s.brand && `${s.brand} ${s.part || ''}`.trim(), s.part, `${s.name} price in Bangladesh`, 'AR Trade International'].filter(Boolean).join(', ') }))}>Auto-fill</button>
+          <section className="pf-card">
+            <h4>Basics</h4>
+            <div className="pf-g pf-g3">
+              <label className="a-lbl pf-w3">Product name<input className="a-input" required value={f.name} onChange={on('name')} /></label>
+              <label className="a-lbl">Brand<input className="a-input" required value={f.brand} onChange={on('brand')} /></label>
+              <label className="a-lbl">Category<select className="a-input" value={f.cat} onChange={on('cat')}>{cats.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}</select></label>
+              <label className="a-lbl">Part no.<input className="a-input" value={f.part} onChange={on('part')} /></label>
             </div>
-            <label className="a-lbl">SEO title <small style={{ fontWeight: 500, color: (f.metaTitle || '').length > 60 ? '#b3261e' : '#8a8f9b' }}>{(f.metaTitle || '').length}/60 recommended</small><input className="a-input" maxLength={160} value={f.metaTitle || ''} onChange={on('metaTitle')} placeholder="Product name + Price in Bangladesh | AR Trade" /></label>
-            <label className="a-lbl">Meta description <small style={{ fontWeight: 500, color: (f.metaDesc || '').length > 160 ? '#b3261e' : '#8a8f9b' }}>{(f.metaDesc || '').length}/160 recommended</small><textarea className="a-input" rows={2} maxLength={320} value={f.metaDesc || ''} onChange={on('metaDesc')} /></label>
-            <label className="a-lbl">SEO keywords <small style={{ fontWeight: 500, color: '#8a8f9b' }}>comma separated, most important first</small><textarea className="a-input" rows={2} maxLength={500} value={f.metaKeywords || ''} onChange={on('metaKeywords')} placeholder="hp 79a toner, hp cf279a, toner price in bangladesh" /></label>
+          </section>
+          {!purchase && <section className="pf-card">
+            <h4>Price &amp; stock</h4>
+            <div className="pf-g pf-g3">
+              <label className="a-lbl">Price (৳)<input className="a-input" type="number" min="0" value={f.price} onChange={on('price')} /></label>
+              <label className="a-lbl">Regular price (৳)<input className="a-input" type="number" min="0" value={f.old} onChange={on('old')} /></label>
+              <label className="a-lbl">Stock (from purchases)<input className="a-input" type="number" value={f.stock} readOnly disabled title="Stock changes through purchases, returns and stock counts" /></label>
+            </div>
+          </section>}
+          <section className="pf-card">
+            <h4>Details</h4>
+            <div className="pf-g pf-g3">
+              <label className="a-lbl">Technology<input className="a-input" value={f.tech} onChange={on('tech')} /></label>
+              <label className="a-lbl">Colour<input className="a-input" value={f.color} onChange={on('color')} /></label>
+              <label className="a-lbl">Page yield / size<input className="a-input" value={f.yield} onChange={on('yield')} /></label>
+              <label className="a-lbl pf-w3">Short spec line<input className="a-input" value={f.spec} onChange={on('spec')} placeholder="e.g. 33 ppm · Wi-Fi · Duplex" /></label>
+              <label className="a-lbl pf-w3">Compatible printers<textarea className="a-input" rows={2} value={f.compat || ''} onChange={on('compat')} /></label>
+            </div>
+          </section>
+          <section className="pf-card">
+            <h4>Description <small>basic HTML allowed · shown on the product page</small></h4>
+            <textarea className="a-input pf-desc" rows={8} value={f.description || ''} onChange={on('description')} placeholder="<p>…</p>" />
+          </section>
+          <div className="pf-two">
+            <section className="pf-card">
+              <h4>Specifications <small>one per line: Name: value</small></h4>
+              <textarea className="a-input pf-specs" rows={9} value={specText} onChange={e => setSpecText(e.target.value)} placeholder={'Page yield: 1,500 pages\nColour: Black'} />
+            </section>
+            <section className="pf-card pf-seo">
+              <h4>SEO · Google listing
+                <button type="button" className="a-btn" onClick={() => setF(s => ({ ...s, metaTitle: s.name + ' Price in Bangladesh | AR Trade', metaDesc: `${s.name}. Buy online in Dhaka, Bangladesh. Genuine, fast delivery.`, metaKeywords: [s.name, s.brand && `${s.brand} ${s.part || ''}`.trim(), s.part, `${s.name} price in Bangladesh`, 'AR Trade International'].filter(Boolean).join(', ') }))}>Auto-fill</button>
+              </h4>
+              <label className="a-lbl">SEO title <small style={{ color: (f.metaTitle || '').length > 60 ? '#b3261e' : undefined }}>{(f.metaTitle || '').length}/60</small><input className="a-input" maxLength={160} value={f.metaTitle || ''} onChange={on('metaTitle')} placeholder="Product name + Price in Bangladesh | AR Trade" /></label>
+              <label className="a-lbl">Meta description <small style={{ color: (f.metaDesc || '').length > 160 ? '#b3261e' : undefined }}>{(f.metaDesc || '').length}/160</small><textarea className="a-input" rows={2} maxLength={320} value={f.metaDesc || ''} onChange={on('metaDesc')} /></label>
+              <label className="a-lbl">SEO keywords <small>comma separated, most important first</small><textarea className="a-input" rows={2} maxLength={500} value={f.metaKeywords || ''} onChange={on('metaKeywords')} placeholder="hp 79a toner, hp cf279a, toner price in bangladesh" /></label>
+            </section>
           </div>
-          <label className="a-lbl">Specifications <small style={{ fontWeight: 500, color: '#8a8f9b' }}>one per line: Name: value</small><textarea className="a-input" rows={5} value={specText} onChange={e => setSpecText(e.target.value)} placeholder={'Page yield: 1,500 pages\nColour: Black'} /></label>
-          <span style={{ fontSize: 12, color: '#6b7080' }}>Set price to 0 to show “Ask price” on the store.</span>
         </div>
       </div>
     </Modal>
@@ -114,7 +140,7 @@ function ProductCards({ t, patch, catName, setEdit, canWrite }) {
           <span className="pg-meta">{p.brand} · #{p.id} · {catName(p.cat)}</span>
           <div className="pg-nums">
             {[['price', 'Price'], ['old', 'Regular'], ['stock', 'Stock']].map(([k, l]) => (
-              <label key={k}><small>{l}</small>{!canWrite ? <b className="ro-val">{p[k]}</b> : <input className="a-mini" type="number" min="0" defaultValue={p[k]} style={k === 'stock' && p.price && p.stock <= 5 ? { borderColor: 'oklch(0.6 0.2 350)' } : undefined} onBlur={e => { if (+e.target.value !== p[k]) patch(p, { [k]: +e.target.value }); }} />}</label>
+              <label key={k}><small>{l}</small>{!canWrite || k === 'stock' ? <b className="ro-val">{p[k]}</b> : <input className="a-mini" type="number" min="0" defaultValue={p[k]} style={k === 'stock' && p.price && p.stock <= 5 ? { borderColor: 'oklch(0.6 0.2 350)' } : undefined} onBlur={e => { if (+e.target.value !== p[k]) patch(p, { [k]: +e.target.value }); }} />}</label>
             ))}
           </div>
           <div className="pg-foot">
@@ -156,7 +182,7 @@ export function Products({ cats, staff }) {
           { key: 'stock', label: 'Stock', all: 'Any stock', icon: 'box', span: 'c2', options: [{ v: 'low', t: 'Low stock (5 or fewer)' }] },
           { key: 'live', label: 'Visibility', all: 'Live and hidden', icon: 'status', span: 'c2', options: [{ v: '0', t: 'Hidden only' }] }
         ]} />
-      <Toolbar t={t} search={false}>{!canWrite && <span className="ro-note" title="Only an Admin or the Master Admin can change products">👁 View only</span>}<ViewToggle view={view} setView={setView} />{canWrite && <button className="a-btn sm" style={{ marginLeft: 4 }} onClick={() => setEdit('new')}>+ Add product</button>}</Toolbar>
+      <Toolbar t={t} search={false}>{!canWrite && <span className="ro-note" title="Only an Admin or the Master Admin can change products">👁 View only</span>}<ViewToggle view={view} setView={setView} /></Toolbar>
       {view === 'grid' ? <ProductCards t={t} patch={patch} catName={catName} setEdit={setEdit} canWrite={canWrite} /> : <div className="a-table" style={{ opacity: t.loading ? .6 : 1 }}>
         <div style={{ minWidth: 904 }}>
           <div className="head" style={{ gridTemplateColumns: cols }}><span>SL</span><span /><span>Product</span><span>Category</span><span>Price</span><span>Regular</span><span>Stock</span><span>Flags</span><span>Live</span></div>
@@ -166,7 +192,7 @@ export function Products({ cats, staff }) {
               <div className="a-thumb" style={{ backgroundImage: p.img ? `url('${p.img}')` : 'none' }} />
               <button disabled={!canWrite} onClick={() => setEdit(p)} style={{ textAlign: 'left', border: 0, background: 'transparent', padding: 0, display: 'flex', flexDirection: 'column', gap: 2, cursor: canWrite ? 'pointer' : 'default', color: 'inherit' }}><b>{p.name}</b><span style={{ color: '#5d6270', fontSize: 12 }}>{p.brand} · #{p.id} · Edit</span></button>
               <span style={{ color: '#5d6270' }}>{catName(p.cat)}</span>
-              {['price', 'old', 'stock'].map(k => !canWrite ? <span key={k} className="ro-val" style={k === 'stock' && p.price && p.stock <= 5 ? { color: 'oklch(0.55 0.2 350)', fontWeight: 800 } : undefined}>{p[k]}</span> : <input key={k} className="a-mini" type="number" min="0" defaultValue={p[k]} style={k === 'stock' && p.price && p.stock <= 5 ? { borderColor: 'oklch(0.6 0.2 350)' } : undefined} onBlur={e => { if (+e.target.value !== p[k]) patch(p, { [k]: +e.target.value }); }} />)}
+              {['price', 'old', 'stock'].map(k => !canWrite || k === 'stock' ? <span key={k} className="ro-val" style={k === 'stock' && p.price && p.stock <= 5 ? { color: 'oklch(0.55 0.2 350)', fontWeight: 800 } : undefined}>{p[k]}</span> : <input key={k} className="a-mini" type="number" min="0" defaultValue={p[k]} style={k === 'stock' && p.price && p.stock <= 5 ? { borderColor: 'oklch(0.6 0.2 350)' } : undefined} onBlur={e => { if (+e.target.value !== p[k]) patch(p, { [k]: +e.target.value }); }} />)}
               <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                 {[['popular', 'Popular'], ['isNew', 'New']].filter(([k]) => canWrite || p[k]).map(([k, l]) => <button key={k} className="a-chip" disabled={!canWrite} style={{ padding: '3px 8px', fontSize: 11, background: p[k] ? 'oklch(0.95 0.04 150)' : '#fff', cursor: canWrite ? 'pointer' : 'default' }} onClick={() => patch(p, { [k]: !p[k] })}>{l}</button>)}
               </div>
@@ -176,7 +202,7 @@ export function Products({ cats, staff }) {
         </div>
       </div>}
       <Empty t={t} /><Pager t={t} />
-      {edit && <Editor product={edit === 'new' ? null : edit} cats={cats} onClose={() => setEdit(null)} onSaved={t.reload} />}
+      {edit && <Editor product={edit} cats={cats} onClose={() => setEdit(null)} onSaved={t.reload} />}
     </>
   );
 }

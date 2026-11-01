@@ -11,13 +11,14 @@ import { digits, esc, fail, parseJson, wrap, checkPassword, secret, isLocalImg, 
 import { applyFlow, cancelOrder, FROM_STATUS } from './flow.js';
 import { buildInvoicePdf, invoiceNo } from './invoice.js';
 import { buildOverview, buildProductReport } from './overview.js';
-import { runBackup, status as backupStatus, fileOf as backupFile, deleteBackup, setDeleteCode, setDir as setBackupDir } from './backup.js';
 import { mailReady, mailSetupHint, sendMail } from './mailer.js';
 import { addRange, day } from './listing.js';
-import { can, permsOf, matrix, saveRole, DEFAULTS, MASTER, MASTER_ONLY, ROLE_DEFS, ROLE_NAMES, REGISTRABLE } from './permissions.js';
+import { mountSystemRoutes } from './adminSystem.js';
+import { mountEngageRoutes } from './adminEngage.js';
+import { like, page } from './adminHelpers.js';
+import { can, permsOf, MASTER, ROLE_DEFS, ROLE_NAMES, REGISTRABLE } from './permissions.js';
 
 const router = Router();
-const CV_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../uploads/cv');
 const STATUSES = ['Pending', 'Confirmed', 'Packed', 'Shipped', 'Delivered', 'Cancelled'];
 
 const staffOut = s => ({ id: s.id, name: s.name, email: s.email, phone: s.phone, role: s.role, status: s.status, since: s.created_at });
@@ -41,12 +42,6 @@ export const guard = need => async (req, res, next) => {
   }
 };
 
-const page = req => {
-  const size = Math.min(100, Math.max(5, parseInt(req.query.size, 10) || 10));
-  const p = Math.max(1, parseInt(req.query.page, 10) || 1);
-  return { size, p, offset: (p - 1) * size };
-};
-const like = q => `%${String(q || '').trim()}%`;
 const inRange = (d, req) => { const a = day(req.query.from), b = day(req.query.to); const t = d ? new Date(d).getTime() : NaN; return (!a || t >= Date.parse(a + 'T00:00:00')) && (!b || t < Date.parse(b + 'T00:00:00') + 864e5); };
 
 // ---------- auth ----------
@@ -459,7 +454,7 @@ router.put('/services/:id', guard('services.manage'), wrap(async (req, res) => {
 }));
 
 // ---------- blog: managed by Admin and the Content writer role ----------
-const SAN = {
+export const SAN = {
   allowedTags: ['p', 'br', 'h2', 'h3', 'h4', 'ul', 'ol', 'li', 'strong', 'b', 'em', 'i', 'u', 'a', 'img', 'blockquote', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'hr', 'figure', 'figcaption'],
   allowedAttributes: { a: ['href', 'target', 'rel'], img: ['src', 'alt', 'loading'] },
   allowedSchemes: ['http', 'https', 'mailto', 'tel'],
@@ -637,129 +632,7 @@ router.put('/content/:section', guard('pages.manage'), wrap(async (req, res) => 
   res.json({ ok: true, value });
 }));
 
-// ---------- product reviews moderation ----------
-router.get('/reviews', guard('reviews.moderate'), wrap(async (req, res) => {
-  const { size, offset } = page(req);
-  const cond = [], params = [];
-  if (req.query.q) { cond.push('(r.name LIKE ? OR r.body LIKE ? OR p.name LIKE ?)'); params.push(like(req.query.q), like(req.query.q), like(req.query.q)); }
-  if (req.query.status) { cond.push('r.status = ?'); params.push(req.query.status); }
-  addRange(cond, params, 'r.created_at', req);
-  const where = cond.length ? 'WHERE ' + cond.join(' AND ') : '';
-  const from = 'FROM reviews r LEFT JOIN products p ON p.id = r.product_id';
-  const [[{ n }]] = await pool.query(`SELECT COUNT(*) n ${from} ${where}`, params);
-  const [rows] = await pool.query(`SELECT r.*, p.name AS product ${from} ${where} ORDER BY (r.status = 'Pending') DESC, r.created_at DESC LIMIT ${size} OFFSET ${offset}`, params);
-  const [[{ pending }]] = await pool.query('SELECT COUNT(*) pending FROM reviews WHERE status = "Pending"');
-  res.json({ total: n, pending, rows: rows.map(r => ({ id: r.id, productId: r.product_id, product: r.product || ('#' + r.product_id), name: r.name, rating: r.rating, title: r.title, body: r.body, verified: !!r.verified, status: r.status, created: r.created_at, reviewed: r.reviewed_at })) });
-}));
-router.put('/reviews/:id', guard('reviews.moderate'), wrap(async (req, res) => {
-  if (!['Pending', 'Approved', 'Rejected'].includes(req.body.status)) throw fail(400, 'Unknown status');
-  await pool.query('UPDATE reviews SET status = ?, reviewed_at = NOW() WHERE id = ?', [req.body.status, req.params.id]);
-  res.json({ ok: true });
-}));
-router.delete('/reviews/:id', guard('reviews.moderate'), wrap(async (req, res) => { await pool.query('DELETE FROM reviews WHERE id = ?', [req.params.id]); res.json({ ok: true }); }));
-
-router.get('/messages', guard('messages.manage'), wrap(async (req, res) => {
-  const [rows] = await pool.query('SELECT * FROM messages ORDER BY created_at DESC LIMIT 200');
-  res.json({ chat: rows.filter(m => m.subject === 'Live chat').map(m => ({ id: m.id, text: m.body, at: m.created_at })), contact: rows.filter(m => m.subject !== 'Live chat').map(m => ({ id: m.id, name: m.name, contact: m.contact, company: m.company, subject: m.subject, body: m.body, at: m.created_at, status: m.status || 'New', note: m.note || '', handledBy: m.handled_by || '', handledAt: m.handled_at })) });
-}));
-// work a message: its status (New, Read, Replied, Closed) and a private note for the team
-router.put('/messages/:id', guard('messages.manage'), wrap(async (req, res) => {
-  const [[m]] = await pool.query('SELECT id, status FROM messages WHERE id = ?', [req.params.id]);
-  if (!m) throw fail(404, 'Message not found');
-  const sets = [], vals = [];
-  if ('status' in req.body) {
-    if (!['New', 'Read', 'Replied', 'Closed'].includes(req.body.status)) throw fail(400, 'Unknown status');
-    sets.push('status = ?', 'handled_by = ?', 'handled_at = NOW()'); vals.push(req.body.status, req.body.status === 'New' ? '' : req.staff.name);
-  }
-  if ('note' in req.body) { sets.push('note = ?'); vals.push(String(req.body.note || '').trim().slice(0, 1000)); }
-  if (!sets.length) throw fail(400, 'Nothing to update');
-  await pool.query(`UPDATE messages SET ${sets.join(', ')} WHERE id = ?`, [...vals, m.id]);
-  res.json({ ok: true });
-}));
-router.delete('/messages/:id', guard('messages.manage'), wrap(async (req, res) => { await pool.query('DELETE FROM messages WHERE id = ?', [req.params.id]); res.json({ ok: true }); }));
-
-// ---------- marketing: subscribers, consent log, campaigns ----------
-router.get('/subscribers', guard('marketing.manage'), wrap(async (req, res) => {
-  const { size, offset } = page(req);
-  const cond = [], params = [];
-  if (req.query.q) { cond.push('email LIKE ?'); params.push(like(req.query.q)); }
-  addRange(cond, params, 'created_at', req);
-  const q = cond.length ? 'WHERE ' + cond.join(' AND ') : '';
-  const [[{ n }]] = await pool.query(`SELECT COUNT(*) n FROM subscribers ${q}`, params);
-  const [rows] = await pool.query(`SELECT email, created_at FROM subscribers ${q} ORDER BY created_at DESC LIMIT ${size} OFFSET ${offset}`, params);
-  res.json({ total: n, rows });
-}));
-router.post('/subscribers', guard('marketing.manage'), wrap(async (req, res) => {
-  const email = String(req.body.email || '').trim().toLowerCase();
-  if (!/^\S+@\S+\.\S+$/.test(email)) throw fail(400, 'Enter a valid email');
-  await pool.query('INSERT IGNORE INTO subscribers (email) VALUES (?)', [email]);
-  res.json({ ok: true });
-}));
-router.delete('/subscribers/:email', guard('marketing.manage'), wrap(async (req, res) => {
-  await pool.query('DELETE FROM subscribers WHERE email = ?', [req.params.email]);
-  await pool.query('UPDATE consents SET status = "Unsubscribed" WHERE email = ? AND status <> "Unsubscribed"', [req.params.email]);
-  res.json({ ok: true });
-}));
-router.get('/consents', guard('marketing.manage'), wrap(async (req, res) => {
-  const { size, offset } = page(req);
-  const cond = [], params = [];
-  if (req.query.q) { cond.push('(email LIKE ? OR source LIKE ?)'); params.push(like(req.query.q), like(req.query.q)); }
-  if (req.query.status) { cond.push('status = ?'); params.push(req.query.status); }
-  addRange(cond, params, 'created_at', req);
-  const where = cond.length ? 'WHERE ' + cond.join(' AND ') : '';
-  const [[{ n }]] = await pool.query(`SELECT COUNT(*) n FROM consents ${where}`, params);
-  const [rows] = await pool.query(`SELECT * FROM consents ${where} ORDER BY created_at DESC LIMIT ${size} OFFSET ${offset}`, params);
-  res.json({ total: n, rows: rows.map(c => ({ id: c.id, email: c.email, source: c.source, token: c.token, status: c.status, ip: c.ip, at: c.created_at, confirmedAt: c.confirmed_at })) });
-}));
-router.put('/consents/:id/confirm', guard('marketing.manage'), wrap(async (req, res) => {
-  const [[c]] = await pool.query('SELECT * FROM consents WHERE id = ?', [req.params.id]);
-  if (!c) throw fail(404, 'Not found');
-  await pool.query('UPDATE consents SET status = "Confirmed", confirmed_at = COALESCE(confirmed_at, NOW()) WHERE id = ?', [c.id]);
-  await pool.query('INSERT IGNORE INTO subscribers (email) VALUES (?)', [c.email]);
-  (await import('./mkt.js')).onSubscribed(c.email).catch(() => {});
-  res.json({ ok: true });
-}));
-
-// ---------- careers ----------
-router.get('/jobs', guard('careers.manage'), wrap(async (req, res) => {
-  const [rows] = await pool.query('SELECT j.*, (SELECT COUNT(*) FROM applications a WHERE a.job_id = j.id) apps FROM jobs j ORDER BY j.deadline DESC');
-  res.json(rows.map(j => ({ id: j.id, title: j.title, dept: j.dept, type: j.type, loc: j.loc, exp: j.exp, salary: j.salary, vacancies: j.vacancies, deadline: j.deadline, open: !!j.open, about: j.about, resp: parseJson(j.resp) || [], req: parseJson(j.req) || [], perks: parseJson(j.perks) || [], apps: j.apps })));
-}));
-router.post('/jobs', guard('careers.manage'), wrap(async (req, res) => {
-  const j = req.body;
-  if (!j.title || !j.dept) throw fail(400, 'Title and department are required');
-  const id = j.id || 'J-' + (Math.floor(Date.now() / 1000) % 100000);
-  const lines = v => (Array.isArray(v) ? v : String(v || '').split('\n')).map(s => s.trim()).filter(Boolean);
-  await pool.query(
-    `REPLACE INTO jobs (id,title,dept,type,loc,exp,salary,vacancies,deadline,open,about,resp,req,perks) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-    [id, j.title, j.dept, j.type || 'Full-time', j.loc || '', j.exp || '', j.salary || '', parseInt(j.vacancies, 10) || 1,
-      (j.deadline ? new Date(j.deadline) : new Date(Date.now() + 30 * 864e5)).toISOString().slice(0, 19).replace('T', ' '), +(j.open !== false), j.about || '',
-      JSON.stringify(lines(j.resp)), JSON.stringify(lines(j.req)), JSON.stringify(lines(j.perks))]);
-  res.json({ id });
-}));
-router.delete('/jobs/:id', guard('careers.manage'), wrap(async (req, res) => {
-  await pool.query('DELETE FROM applications WHERE job_id = ?', [req.params.id]);
-  await pool.query('DELETE FROM jobs WHERE id = ?', [req.params.id]);
-  res.json({ ok: true });
-}));
-router.get('/applications', guard('careers.manage'), wrap(async (req, res) => {
-  const [rows] = await pool.query('SELECT a.*, j.title job_title FROM applications a JOIN jobs j ON j.id = a.job_id ORDER BY a.created_at DESC');
-  res.json(rows.map(a => ({ id: a.id, job: a.job_id, jobTitle: a.job_title, name: a.name, phone: a.phone, email: a.email, exp: a.exp, salary: a.salary, link: a.link, note: a.note, cv: a.cv_name, stage: a.stage, at: a.created_at })));
-}));
-// applicants' CVs are private files: downloaded here by an Admin, never through the public /api/uploads path
-router.get('/applications/:id/cv', guard('careers.manage'), wrap(async (req, res) => {
-  const [[a]] = await pool.query('SELECT cv_file, cv_name FROM applications WHERE id = ?', [req.params.id]);
-  if (!a || !a.cv_file) throw fail(404, 'CV not found');
-  const file = path.join(CV_DIR, path.basename(a.cv_file));
-  if (!fs.existsSync(file)) throw fail(404, 'CV file is missing on the server');
-  res.download(file, (/\.[a-z]{3,4}$/i.test(a.cv_name || '') ? a.cv_name : a.cv_file).replace(/[^\w.\- ]/g, '_'));
-}));
-router.put('/applications/:id', guard('careers.manage'), wrap(async (req, res) => {
-  if (!['New', 'Shortlisted', 'Interview', 'Offered', 'Hired', 'Rejected'].includes(req.body.stage)) throw fail(400, 'Unknown stage');
-  await pool.query('UPDATE applications SET stage = ? WHERE id = ?', [req.body.stage, req.params.id]);
-  res.json({ ok: true });
-}));
-
+mountEngageRoutes(router, guard);
 // ---------- team ----------
 router.get('/staff', guard('team.manage'), wrap(async (req, res) => {
   const [rows] = await pool.query('SELECT * FROM staff ORDER BY FIELD(status,"Pending","Active","Disabled"), created_at');
@@ -854,62 +727,6 @@ router.get('/staff/roles', guard('team.manage'), wrap(async (req, res) => {
   const master = req.staff.role === MASTER;
   res.json(ROLE_DEFS.map(r => ({ name: r.name, icon: r.icon, desc: r.desc, legacy: !!r.legacy, assignable: r.name !== MASTER && (master || r.name !== 'Admin'), perms: [...permsOf(r.name)].length })));
 }));
-// ---------- database backups (Master Admin only: a backup holds every customer's data) ----------
-router.get('/backups', guard(MASTER_ONLY), wrap(async (req, res) => { res.json(await backupStatus()); }));
-router.post('/backups', guard(MASTER_ONLY), wrap(async (req, res) => { res.json(await runBackup(req.body?.scope === 'files' ? 'files' : 'db', 'manual', req.staff.name)); }));
-router.put('/backups/dir', guard(MASTER_ONLY), wrap(async (req, res) => { const dir = await setBackupDir(req.body?.dir); console.log('[backup] folder changed to', dir, 'by', req.staff.name); res.json(await backupStatus()); }));
-router.get('/backups/:id/download', guard(MASTER_ONLY), wrap(async (req, res) => {
-  const f = await backupFile(req.params.id);
-  res.set('Cache-Control', 'no-store');
-  res.download(f.full, f.name);
-}));
-router.put('/backups/delete-code', guard(MASTER_ONLY), wrap(async (req, res) => { await setDeleteCode(req.body?.code, req.body?.current); res.json(await backupStatus()); }));
-// POST (not DELETE) so the delete code travels in the body; the audit log hides it
-router.post('/backups/:id/delete', guard(MASTER_ONLY), wrap(async (req, res) => { await deleteBackup(req.params.id, req.body?.code); res.json({ ok: true }); }));
-
-router.get('/roles', guard(MASTER_ONLY), wrap(async (req, res) => { res.json(await matrix()); }));
-router.put('/roles/:name', guard(MASTER_ONLY), wrap(async (req, res) => {
-  const name = req.params.name;
-  if (!ROLE_NAMES.includes(name)) throw fail(404, 'Unknown role');
-  if (name === MASTER) throw fail(400, 'The Master Admin always has full access');
-  res.json({ ok: true, perms: await saveRole(name, req.body.perms, req.staff) });
-}));
-router.post('/roles/:name/reset', guard(MASTER_ONLY), wrap(async (req, res) => {
-  const name = req.params.name;
-  if (!ROLE_NAMES.includes(name)) throw fail(404, 'Unknown role');
-  if (name === MASTER) throw fail(400, 'The Master Admin always has full access');
-  res.json({ ok: true, perms: await saveRole(name, DEFAULTS[name], req.staff) });
-}));
-
-// ---------- settings ----------
-router.get('/settings', guard('settings.manage'), wrap(async (req, res) => {
-  const [[row]] = await pool.query('SELECT v FROM settings WHERE k = "site"');
-  res.json(parseJson(row.v));
-}));
-router.put('/settings', guard('settings.manage'), wrap(async (req, res) => {
-  const [[row]] = await pool.query('SELECT v FROM settings WHERE k = "site"');
-  const cur = parseJson(row.v);
-  const b = req.body, num = v => Math.max(0, parseInt(v, 10) || 0);
-  const next = {
-    ...cur,
-    promo: b.promo ?? cur.promo, showPromo: b.showPromo ?? cur.showPromo, showOffer: 'showOffer' in b ? !!b.showOffer : (cur.showOffer ?? true), heroTitle: b.heroTitle ?? cur.heroTitle, heroSub: b.heroSub ?? cur.heroSub,
-    offerTitle: b.offerTitle ?? cur.offerTitle, offerSub: b.offerSub ?? cur.offerSub,
-    insideFee: 'insideFee' in b ? num(b.insideFee) : cur.insideFee, outsideFee: 'outsideFee' in b ? num(b.outsideFee) : cur.outsideFee,
-    suburbFee: 'suburbFee' in b ? num(b.suburbFee) : cur.suburbFee, freeOver: 'freeOver' in b ? num(b.freeOver) : cur.freeOver,
-    coupon: b.coupon ? String(b.coupon).toUpperCase() : cur.coupon, couponPct: 'couponPct' in b ? Math.min(90, num(b.couponPct)) : cur.couponPct,
-    phone: b.phone ?? cur.phone, whatsapp: b.whatsapp ?? cur.whatsapp, email: b.email ?? cur.email, address: b.address ?? cur.address,
-    payments: b.payments ?? cur.payments, svcPrices: b.svcPrices ?? cur.svcPrices,
-    // home page category rows: products per category (1-20) and an on/off switch
-    homeRailLimit: 'homeRailLimit' in b ? Math.min(20, Math.max(1, num(b.homeRailLimit))) : (cur.homeRailLimit ?? 20),
-    homeRails: 'homeRails' in b ? !!b.homeRails : (cur.homeRails ?? true),
-    // popups: only one is ever open at a time; the admin chooses which ones may show and when
-    popupMode: ['one', 'sequential', 'promo', 'newsletter', 'off'].includes(b.popupMode) ? b.popupMode : (cur.popupMode ?? 'one'),
-    promoDelay: 'promoDelay' in b ? Math.min(120, num(b.promoDelay)) : (cur.promoDelay ?? 1),
-    nlDelay: 'nlDelay' in b ? Math.min(600, Math.max(1, num(b.nlDelay))) : (cur.nlDelay ?? 30),
-    nlExit: 'nlExit' in b ? !!b.nlExit : (cur.nlExit ?? true)
-  };
-  await pool.query('UPDATE settings SET v = ? WHERE k = "site"', [JSON.stringify(next)]);
-  res.json(next);
-}));
+mountSystemRoutes(router, guard);
 
 export default router;
