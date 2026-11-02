@@ -1,0 +1,114 @@
+/* Utility classes that used to be inline style={{ }} attributes (generated from EmailApp.jsx); same values, one class per distinct set.
+   !important keeps each one exactly as strong as the inline style it replaces (an inline style beats every normal rule). */
+.em-s1 { font-size: 12px !important; color: #7a8090 !important; }
+.em-s2 { display: flex !important; gap: 12px !important; align-items: center !important; background: oklch(0.97 0.04 85) !important; border: 1px solid oklch(0.88 0.08 80) !important; border-radius: 16px !important; padding: 12px 16px !important; font-size: 13px !important; color: #4a3b10 !important; }
+.em-s3 { width: 30px !important; height: 30px !important; border-radius: 9px !important; background: oklch(0.82 0.13 85) !important; color: #16181d !important; display: grid !important; place-items: center !important; font-weight: 800 !important; flex-shrink: 0 !important; }
+.em-s4 { font-weight: 700 !important; }
+.em-s5 { color: #a0a5b1 !important; }
+.em-s6 { display: flex !important; align-items: center !important; gap: 8px !important; }
+.em-s7 { flex: 1 !important; height: 7px !important; border-radius: 999px !important; background: #eef1f6 !important; overflow: hidden !important; }
+.em-s8 { font-size: 12.5px !important; width: 44px !important; text-align: right !important; }
+.em-s9 { display: grid !important; grid-template-columns: repeat(auto-fit,minmax(170px,1fr)) !important; gap: 12px !important; }
+.em-s10 { font-size: 12px !important; font-weight: 700 !important; color: #6b7080 !important; }
+.em-s11 { font-family: var(--disp) !important; font-size: 28px !important; letter-spacing: -.02em !important; color: #0b1631 !important; white-space: nowrap !important; }
+.em-s12 { font-size: 11.5px !important; color: #8a8f9b !important; }
+.em-s13 { padding: 16px 20px !important; border-bottom: 1px solid #eef0f4 !important; display: flex !important; justify-content: space-between !important; gap: 10px !important; flex-wrap: wrap !important; align-items: center !important; }
+.em-s14 { font-size: 15px !important; }
+.em-s15 { border: 1px solid #d3d8e3 !important; background: #fff !important; border-radius: 999px !important; padding: 8px 14px !important; font-size: 12.5px !important; font-weight: 700 !important; }
+.em-s16 { overflow-x: auto !important; }
+.em-s17 { width: 100% !important; border-collapse: collapse !important; min-width: 820px !important; }
+.em-s18 { background: #f7f8fb !important; }
+.em-s19 { padding: 20px !important; color: #6b7080 !important; }
+.em-s20 { padding: 12px 16px !important; border-top: 1px solid #f1f2f6 !important; }
+.em-s21 { display: flex !important; flex-direction: column !important; gap: 3px !important; }
+.em-s22 { font-size: 13.5px !important; }
+.em-s23 { font-size: 11.5px !important; color: #6b7080 !important; }
+.em-s24 { padding: 12px 16px !important; border-top: 1px solid #f1f2f6 !important; text-align: right !important; font-size: 13px !important; font-weight: 700 !important; }
+.em-s25 { padding: 12px 16px !important; border-top: 1px solid #f1f2f6 !important; text-align: right !important; font-size: 13px !important; }
+.em-s26 { padding: 12px 16px !important; border-top: 1px solid #f1f2f6 !important; text-align: right !important; font-size: 13px !important; font-weight: 800 !important; color: #0b1631 !important; white-space: nowrap !important; }
+.em-s27 { display: grid !important; grid-template-columns: repeat(auto-fit,minmax(min(100%,420px),1fr)) !important; gap: 16px !important; }
+.em-s28 { display: flex !important; justify-content: space-between !important; gap: 12px !important; align-items: flex-start !important; }
+.em-s29 { display: flex !important; flex-direction: column !important; gap: 4px !important; }
+.em-s30 { font-family: var(--disp) !important; font-size: 19px !important; color: #0b1631 !important; }
+.em-s31 { font-size: 12.5px !important; color: #6b7080 !important; }
+.em-s32 { border-left: 2px dashed #d3dbea !important; margin-left: 8px !important; padding-left: 16px !important; }
+.em-s33 { position: relative !important; padding: 6px 0 !important; display: flex !important; gap: 10px !important; align-items: baseline !important; }
+.em-s34 { position: absolute !important; left: -23px !important; top: 11px !important; width: 12px !important; height: 12px !important; border-radius: 50% !important; background: #fff !important; border: 3px solid oklch(0.55 0.15 250) !important; }
+.em-s35 { font-size: 11px !important; font-weight: 700 !important; color: oklch(0.48 0.16 254) !important; min-width: 70px !important; }
+.em-s36 { font-size: 13.5px !important; color: #2b2e36 !important; }
+.em-s37 { display: grid !important; grid-template-columns: repeat(3,minmax(0,1fr)) !important; gap: 8px !important; background: #f6f8fc !important; border-radius: 14px !important; padding: 12px !important; }
+.em-s38 { display: flex !important; flex-direction: column !important; gap: 2px !important; }
+.em-s39 { font-size: 11px !important; color: #6b7080 !important; }
+.em-s40 { font-size: 14px !important; }
+.em-s41 { align-self: flex-start !important; border: 1px solid #d3d8e3 !important; background: #fff !important; border-radius: 999px !important; padding: 7px 13px !important; font-size: 12.5px !important; font-weight: 700 !important; }
+.em-s42 { display: grid !important; grid-template-columns: repeat(auto-fit,minmax(110px,1fr)) !important; gap: 8px !important; align-items: end !important; }
+.em-s43 { border: 0 !important; background: #0b1631 !important; color: #fff !important; border-radius: 10px !important; padding: 10px 14px !important; font-size: 12.5px !important; font-weight: 800 !important; }
+.em-s44 { display: flex !important; gap: 18px !important; flex-wrap: wrap !important; align-items: flex-start !important; }
+.em-s45 { flex: 999 1 520px !important; display: flex !important; flex-direction: column !important; gap: 12px !important; min-width: 0 !important; }
+.em-s46 { display: flex !important; gap: 10px !important; align-items: center !important; flex-wrap: wrap !important; }
+.em-s47 { font-size: 15px !important; flex: 1 !important; min-width: 160px !important; color: #0b1631 !important; }
+.em-s48 { font-size: 12px !important; color: #6b7080 !important; }
+.em-s49 { display: flex !important; flex-direction: column !important; gap: 6px !important; }
+.em-s50 { font-size: 11px !important; font-weight: 700 !important; color: #6b7080 !important; }
+.em-s51 { flex: 1 !important; min-width: 0 !important; overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; }
+.em-s52 { font-size: 12px !important; }
+.em-s53 { font-size: 10.5px !important; font-weight: 800 !important; padding: 3px 8px !important; border-radius: 999px !important; background: oklch(0.9 0.08 150) !important; color: oklch(0.36 0.12 150) !important; }
+.em-s54 { display: grid !important; grid-template-columns: repeat(5,minmax(0,1fr)) !important; gap: 8px !important; font-size: 12px !important; }
+.em-s55 { display: flex !important; flex-direction: column !important; }
+.em-s56 { color: #6b7080 !important; }
+.em-s57 { font-size: 14px !important; white-space: nowrap !important; }
+.em-s58 { display: flex !important; gap: 8px !important; flex-wrap: wrap !important; }
+.em-s59 { border: 0 !important; background: #0b1631 !important; color: #fff !important; border-radius: 999px !important; padding: 8px 14px !important; font-size: 12.5px !important; font-weight: 700 !important; }
+.em-s60 { display: grid !important; grid-template-columns: repeat(auto-fill,minmax(250px,1fr)) !important; gap: 14px !important; }
+.em-s61 { align-self: flex-start !important; font-size: 10.5px !important; font-weight: 800 !important; letter-spacing: .08em !important; text-transform: uppercase !important; background: rgba(255,255,255,.18) !important; padding: 4px 9px !important; border-radius: 999px !important; }
+.em-s62 { font-family: var(--disp) !important; font-size: 20px !important; line-height: 1.1 !important; }
+.em-s63 { padding: 14px 16px !important; display: flex !important; flex-direction: column !important; gap: 4px !important; }
+.em-s64 { font-size: 14px !important; color: #0b1631 !important; }
+.em-s65 { font-size: 12px !important; color: #6b7080 !important; overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; }
+.em-s66 { font-size: 12px !important; font-weight: 700 !important; color: oklch(0.48 0.16 254) !important; margin-top: 4px !important; }
+.em-s67 { position: fixed !important; inset: 0 !important; z-index: 90 !important; background: rgba(8,14,32,.62) !important; backdrop-filter: blur(6px) !important; display: grid !important; place-items: center !important; padding: 20px !important; overflow: auto !important; }
+.em-s68 { width: 100% !important; max-width: 600px !important; background: #e9edf4 !important; border-radius: 22px !important; overflow: hidden !important; box-shadow: 0 40px 90px -30px rgba(0,0,0,.6) !important; }
+.em-s69 { background: #fff !important; padding: 14px 18px !important; display: flex !important; flex-direction: column !important; gap: 3px !important; font-size: 12.5px !important; color: #56607a !important; border-bottom: 1px solid #e3e8f2 !important; }
+.em-s70 { display: flex !important; justify-content: space-between !important; gap: 10px !important; }
+.em-s71 { font-size: 14.5px !important; color: #0b1631 !important; }
+.em-s72 { border: 0 !important; background: transparent !important; font-size: 18px !important; color: #56607a !important; }
+.em-s73 { padding: 20px !important; }
+.em-s74 { background: #fff !important; border-radius: 16px !important; overflow: hidden !important; }
+.em-s75 { width: 40px !important; height: 40px !important; border-radius: 50% !important; }
+.em-s76 { font-family: var(--disp) !important; font-size: 28px !important; line-height: 1.1 !important; }
+.em-s77 { padding: 22px 26px !important; display: flex !important; flex-direction: column !important; gap: 14px !important; }
+.em-s78 { font-size: 14.5px !important; line-height: 1.65 !important; color: #2b2e36 !important; }
+.em-s79 { align-self: flex-start !important; background: #0b1631 !important; color: #fff !important; border-radius: 999px !important; padding: 12px 22px !important; font-size: 14px !important; font-weight: 800 !important; }
+.em-s80 { background: #f6f8fc !important; padding: 16px 26px !important; display: flex !important; flex-direction: column !important; gap: 6px !important; font-size: 11.5px !important; color: #6b7080 !important; border-top: 1px solid #eef0f4 !important; }
+.em-s81 { display: flex !important; gap: 12px !important; flex-wrap: wrap !important; }
+.em-s82 { display: block !important; margin-top: 10px !important; font-size: 11.5px !important; color: #56607a !important; text-align: center !important; }
+.em-s83 { display: flex !important; gap: 12px !important; align-items: center !important; background: oklch(0.96 0.03 250) !important; border: 1px solid oklch(0.88 0.05 250) !important; border-radius: 16px !important; padding: 14px 18px !important; font-size: 13.5px !important; color: #0b1631 !important; }
+.em-s84 { width: 34px !important; height: 34px !important; border-radius: 10px !important; background: #0b1631 !important; color: #fff !important; display: grid !important; place-items: center !important; font-weight: 800 !important; flex-shrink: 0 !important; }
+.em-s85 { padding: 16px 20px !important; border-bottom: 1px solid #eef0f4 !important; display: flex !important; justify-content: space-between !important; gap: 10px !important; flex-wrap: wrap !important; }
+.em-s86 { padding: 18px 20px !important; color: #6b7080 !important; font-size: 13px !important; }
+.em-s87 { display: flex !important; gap: 12px !important; align-items: center !important; padding: 12px 20px !important; border-top: 1px solid #f1f2f6 !important; flex-wrap: wrap !important; }
+.em-s88 { font-size: 13.5px !important; flex: 1 !important; min-width: 200px !important; }
+.em-s89 { display: flex !important; gap: 6px !important; flex-wrap: wrap !important; }
+.em-s90 { font-size: 12.5px !important; font-weight: 700 !important; }
+.em-s91 { border: 0 !important; background: transparent !important; color: oklch(0.5 0.18 25) !important; font-size: 12.5px !important; font-weight: 700 !important; }
+.em-s92 { padding: 16px 20px !important; border-bottom: 1px solid #eef0f4 !important; }
+.em-s93 { padding: 18px 20px !important; font-size: 13px !important; color: #6b7080 !important; }
+.em-s94 { display: flex !important; gap: 12px !important; padding: 10px 20px !important; border-top: 1px solid #f1f2f6 !important; font-size: 13px !important; flex-wrap: wrap !important; }
+.em-s95 { font-size: 11.5px !important; color: #6b7080 !important; min-width: 130px !important; }
+.em-s96 { color: #56607a !important; }
+.em-s97 { font-family: var(--disp) !important; font-size: 20px !important; color: #0b1631 !important; }
+.em-s98 { display: grid !important; grid-template-columns: repeat(3,minmax(0,1fr)) !important; gap: 8px !important; }
+.em-s99 { display: flex !important; flex-direction: column !important; gap: 10px !important; }
+.em-s100 { font-weight: 500 !important; color: #8a8f9b !important; }
+.em-s101 { align-self: flex-start !important; border: 0 !important; background: #0b1631 !important; color: #fff !important; border-radius: 999px !important; padding: 10px 18px !important; font-size: 13px !important; font-weight: 700 !important; }
+.em-s102 { font-size: 12.5px !important; font-weight: 700 !important; color: oklch(0.42 0.12 150) !important; }
+.em-s103 { display: flex !important; gap: 12px !important; align-items: flex-start !important; }
+.em-s104 { border: 0 !important; background: linear-gradient(135deg,oklch(0.6 0.14 240),oklch(0.46 0.16 256)) !important; color: #fff !important; border-radius: 999px !important; padding: 9px 16px !important; font-size: 12.5px !important; font-weight: 800 !important; }
+.em-s105 { width: 100% !important; border-collapse: collapse !important; min-width: 760px !important; }
+.em-s106 { padding: 14px 20px !important; border-top: 1px solid #f1f2f6 !important; width: 110px !important; }
+.em-s107 { padding: 14px 12px !important; border-top: 1px solid #f1f2f6 !important; font-size: 12px !important; color: #56607a !important; width: 240px !important; }
+.em-s108 { padding: 14px 12px !important; border-top: 1px solid #f1f2f6 !important; font-size: 12px !important; word-break: break-all !important; }
+.em-s109 { padding: 14px 20px !important; border-top: 1px solid #f1f2f6 !important; text-align: right !important; width: 120px !important; }
+.em-s110 { padding: 80px !important; text-align: center !important; }
+.em-s111 { padding: 40px !important; }
+.em-s112 { min-width: 0 !important; flex: 1 !important; line-height: 1.25 !important; }

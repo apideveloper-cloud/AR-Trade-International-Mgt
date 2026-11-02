@@ -5,7 +5,8 @@
 import { Router } from 'express';
 import { pool } from './db.js';
 import sanitizeHtml from 'sanitize-html';
-import { guard, SAN } from './admin.js';
+import { guard } from './admin.js';
+import { SAN } from './adminContent.js';
 import { D, fail, int, iso, localImg, monthBounds, nextSeq, text, today, tx, wrap } from './util.js';
 import { addAmount, addRange, addSearch, pageOf, whereOf, wantsPage } from './listing.js';
 

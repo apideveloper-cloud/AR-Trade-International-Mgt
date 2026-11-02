@@ -1,4 +1,5 @@
-import { lazy, Suspense, useEffect } from 'react';
+import { Suspense, useEffect } from 'react';
+import { lazyPage } from './lazyPage.js';
 import { Route, Routes, useLocation } from 'react-router-dom';
 import { PageLoader } from './components/PageLoader.jsx';
 import { useStore } from './store.jsx';
@@ -11,7 +12,7 @@ import Home from './pages/Home.jsx';
 import { NotFound } from './pages/Info.jsx';
 
 /** Pages other than the Home page load on demand, so the first visit downloads only what it needs. */
-const page = (load, name = 'default') => lazy(() => load().then(m => ({ default: m[name] })));
+const page = lazyPage;
 const Reset = page(() => import('./pages/Reset.jsx'));
 const Blog = page(() => import('./pages/Blog.jsx'), 'Blog');
 const BlogPost = page(() => import('./pages/Blog.jsx'), 'BlogPost');
@@ -34,10 +35,10 @@ const Contact = page(() => import('./pages/Info.jsx'), 'Contact');
 const Faq = page(() => import('./pages/Info.jsx'), 'Faq');
 const Policy = page(() => import('./pages/Info.jsx'), 'Policy');
 
-const AdminApp = lazy(() => import('./admin/AdminApp.jsx'));
-const HubApp = lazy(() => import('./hub/HubApp.jsx'));
-const EmailApp = lazy(() => import('./email/EmailApp.jsx'));
-const Prefs = lazy(() => import('./pages/Prefs.jsx'));
+const AdminApp = lazyPage(() => import('./admin/AdminApp.jsx'));
+const HubApp = lazyPage(() => import('./hub/HubApp.jsx'));
+const EmailApp = lazyPage(() => import('./email/EmailApp.jsx'));
+const Prefs = lazyPage(() => import('./pages/Prefs.jsx'));
 
 export default function App() {
   const { data, error } = useStore();

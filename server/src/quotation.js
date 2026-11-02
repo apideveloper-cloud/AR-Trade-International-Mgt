@@ -102,13 +102,15 @@ router.get('/', guard(VIEW), wrap(async (req, res) => {
   const items = rows.map(r => ({ ...qOut(r), items: Number(r.n) }));
   res.json({ total: Number(t.n), rows: items, totals: { net: Number(t.net), draft: Number(t.draft), sent: Number(t.sent), accepted: Number(t.won), acceptedNet: Number(t.won_net) } });
 }));
-/** Customers to choose from when writing a quotation: Existing = active field customers, Upcoming = prospects. */
-router.get('/customers', guard(MANAGE), wrap(async (req, res) => {
-  const cond = [req.query.type === 'Upcoming' ? "kind = 'Upcoming'" : "kind <> 'Upcoming'"], args = [];
-  addSearch(cond, args, ['name', 'contact_person', 'phone', 'email', 'area'], req.query.q);
-  const [rows] = await pool.query(`SELECT id, name, contact_person, contact_role, phone, email, address, area, kind FROM field_customers ${whereOf(cond)} ORDER BY name LIMIT 12`, args).catch(() => [[]]);
-  res.json({ items: rows.map(r => ({ id: r.id, name: r.name, contact: r.contact_person, role: r.contact_role, phone: r.phone, email: r.email, address: [r.address, r.area].filter(Boolean).join(', ') })) });
-}));
+/** Customers to choose from when writing a quotation or an order: Existing = active field customers, Upcoming = prospects. */
+export async function fieldCustomers(type, search) {
+  const cond = [type === 'Upcoming' ? "kind = 'Upcoming'" : "kind <> 'Upcoming'"], args = [];
+  addSearch(cond, args, ['name', 'contact_person', 'phone', 'email', 'area'], search);
+  const [rows] = await pool.query(`SELECT id, name, contact_person, contact_role, phone, email, address, area FROM field_customers ${whereOf(cond)} ORDER BY name LIMIT 12`, args).catch(() => [[]]);
+  return rows.map(r => ({ id: r.id, name: r.name, contact: r.contact_person, role: r.contact_role, phone: r.phone, email: r.email, address: [r.address, r.area].filter(Boolean).join(', ') }));
+}
+router.get('/customers', guard(MANAGE), wrap(async (req, res) => { res.json({ items: await fieldCustomers(req.query.type, req.query.q) }); }));
+
 // ---------- scan a picture of the terms (N.B.) into text ----------
 // tesseract.js runs here on the server with the English data from @tesseract.js-data/eng, so it works offline. One worker is kept for later scans.
 const require = createRequire(import.meta.url);

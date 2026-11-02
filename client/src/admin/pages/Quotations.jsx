@@ -4,8 +4,9 @@ import { can, quoteApi, slNo, useTable } from '../adminApi.js';
 import { Drawer, Modal, Summary, Toolbar, alertBox, confirmBox } from '../ui.jsx';
 import { ListFilter } from '../ListFilter.jsx';
 import { IconBtn } from '../IconBtn.jsx';
-import { Chip, Fact, Grid, Notice, PdfButton, PdfPreview, Skeleton, fDate, taka, todayBd, useDebounced } from '../fieldKit.jsx';
+import { Chip, Fact, Grid, Notice, PdfButton, PdfPreview, Skeleton, fDate, taka, todayBd } from '../fieldKit.jsx';
 import { ProductPick, num } from './inventory/shared.jsx';
+import { CustomerPick } from '../CustomerPick.jsx';
 import '../field.css';
 import './inventory/inventory.css';
 import './quotations.css';
@@ -20,31 +21,7 @@ const blank = (staff, defaults) => ({
   lines: [{ description: '', qty: 1, unit: 'PCS', warranty: '', unitPrice: '' }]
 });
 
-/** Search the field app's customers (Existing or Upcoming) and hand the chosen one back. */
-function CustomerPick({ type, selected, onPick, onClear, bad }) {
-  const [q, setQ] = useState(''); const dq = useDebounced(q, 250);
-  const [items, setItems] = useState(null);
-  useEffect(() => {
-    if (selected) return undefined;
-    let stale = false;
-    quoteApi.get(`/customers?type=${type}&q=${encodeURIComponent(dq.trim())}`).then(r => { if (!stale) setItems(r.items); }).catch(() => { if (!stale) setItems([]); });
-    return () => { stale = true; };
-  }, [type, dq, selected]);
-  const [openList, setOpenList] = useState(false);
-  if (selected) return <div className="iv-sel" title={selected}><b>{selected}</b><small>{type}</small><button type="button" onClick={onClear} aria-label="Choose another customer">✕</button></div>;
-  return (
-    <div className="iv-pick">
-      <input className={'a-input' + (bad ? ' bad' : '')} value={q} onChange={e => { setQ(e.target.value); setOpenList(true); }} onFocus={() => setOpenList(true)} onBlur={() => setTimeout(() => setOpenList(false), 150)} placeholder={type === 'Upcoming' ? 'Search upcoming customers by name, phone or area…' : 'Search existing customers by name, phone or area…'} aria-label="Search customers" />
-      {openList && (
-        <div className="iv-res">
-          {items === null ? <small>Searching…</small> : !items.length ? <small>{q.trim() ? 'No customer found.' : `No ${type.toLowerCase()} customers yet.`} Use "New customer" to type one in.</small> : items.map(c => (
-            <button key={c.id} type="button" onMouseDown={e => e.preventDefault()} onClick={() => { onPick(c); setQ(''); setOpenList(false); }}><span>{c.name}{c.contact ? ' · ' + c.contact : ''}</span><em>{c.phone}</em></button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
+const loadCustomers = (type, q) => quoteApi.get(`/customers?type=${type}&q=${encodeURIComponent(q)}`);
 
 /** Write a new quotation, edit one, or start from a copy of another. */
 function QuoteForm({ quote, copy, staff, onClose, onSaved, onPreview }) {
@@ -100,7 +77,7 @@ function QuoteForm({ quote, copy, staff, onClose, onSaved, onPreview }) {
                 {f.custType === 'New'
                   ? <label className="a-lbl">Customer / organisation<input className={'a-input' + (custErr ? ' bad' : '')} value={f.toName} onChange={e => { setCustErr(''); set('toName')(e); }} placeholder="e.g. Northern University Bangladesh" /></label>
                   : <div className="a-lbl">{f.custType === 'Upcoming' ? 'Upcoming customer' : 'Existing customer'}
-                    <CustomerPick type={f.custType} bad={!!custErr} selected={f.customerId ? f.toName : ''} onClear={() => setF(x => ({ ...x, customerId: null, toName: '' }))}
+                    <CustomerPick load={loadCustomers} type={f.custType} bad={!!custErr} selected={f.customerId ? f.toName : ''} onClear={() => setF(x => ({ ...x, customerId: null, toName: '' }))}
                       onPick={c => { setCustErr(''); setF(x => ({ ...x, customerId: c.id, toName: c.name, attend: c.contact || x.attend, desig: c.role || x.desig, mobile: c.phone || x.mobile, email: c.email || x.email, address: c.address || x.address })); }} />
                     </div>}
                 {custErr && <small className="qt-err" role="alert">{custErr}</small>}

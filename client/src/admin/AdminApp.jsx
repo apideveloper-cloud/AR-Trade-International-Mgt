@@ -1,4 +1,5 @@
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { lazyPage } from '../lazyPage.js';
 import { PageLoader } from '../components/PageLoader.jsx';
 import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import './admin.css';
@@ -9,7 +10,7 @@ import { AdminFooter, TopBar } from './AdminChrome.jsx';
 import { DialogHost } from './ui.jsx';
 
 // Pages load on demand (one chunk per area), so the first screen of the console stays small; the map library only loads with the Field pages.
-const pick = (load, ...names) => Object.fromEntries(names.map(n => [n, lazy(() => load().then(m => ({ default: m[n] })))]));
+const pick = (load, ...names) => Object.fromEntries(names.map(n => [n, lazyPage(load, n)]));
 const { Categories, Products } = pick(() => import('./pages/Catalog.jsx'), 'Categories', 'Products');
 const { Careers, Inbox, Marketing, Reviews, Services } = pick(() => import('./pages/Engage.jsx'), 'Careers', 'Inbox', 'Marketing', 'Reviews', 'Services');
 const { BlogAdmin } = pick(() => import('./pages/BlogAdmin.jsx'), 'BlogAdmin');

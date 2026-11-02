@@ -15,8 +15,7 @@ import accountRouter from './account.js';
 import fieldRouter from './field.js';
 import { hubRouter, liveRouter } from './hub.js';
 import { invRouter } from './inventory.js';
-import { quoteRouter } from './quotation.js';
-import { addSearch, whereOf } from './listing.js';
+import { quoteRouter, fieldCustomers } from './quotation.js';
 import { auditMiddleware, auditRouter, startAuditPrune } from './audit.js';
 import { mktRouter, onSubscribed, prefsRouter, startMailWorker } from './mkt.js';
 import { initPermissions } from './permissions.js';
@@ -378,12 +377,8 @@ app.post('/api/admin/orders', guard('orders.create'), wrap(async (req, res) => {
 }));
 
 /** Customers a staff member can pick on the New order form: the field app's Existing customers or Upcoming (prospect) customers. */
-app.get('/api/admin/order-customers', guard('orders.create'), wrap(async (req, res) => {
-  const cond = [req.query.type === 'Upcoming' ? "kind = 'Upcoming'" : "kind <> 'Upcoming'"], args = [];
-  addSearch(cond, args, ['name', 'contact_person', 'phone', 'email', 'area'], req.query.q);
-  const [rows] = await pool.query(`SELECT id, name, contact_person, phone, email, address, area FROM field_customers ${whereOf(cond)} ORDER BY name LIMIT 12`, args).catch(() => [[]]);
-  res.json({ items: rows.map(r => ({ id: r.id, name: r.name, contact: r.contact_person, phone: r.phone, email: r.email, address: [r.address, r.area].filter(Boolean).join(', ') })) });
-}));
+app.get('/api/admin/order-customers', guard('orders.create'), wrap(async (req, res) => { res.json({ items: await fieldCustomers(req.query.type, req.query.q) }); }));
+
 
 app.get('/api/orders', auth(true), wrap(async (req, res) => {
   const [rows] = await pool.query('SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC', [req.user.id]);
