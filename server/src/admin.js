@@ -277,6 +277,7 @@ router.get('/products', guard('products.view'), wrap(async (req, res) => {
   const cond = [], params = [];
   if (req.query.q) { cond.push('(name LIKE ? OR brand LIKE ? OR part LIKE ? OR id = ?)'); params.push(like(req.query.q), like(req.query.q), like(req.query.q), Number(req.query.q) || 0); }
   if (req.query.cat && req.query.cat !== 'all') { cond.push('category_id = ?'); params.push(req.query.cat); }
+  if (req.query.priced === '1') cond.push('price > 0'); // products with a selling price (the New order picker: a product without one cannot be ordered)
   if (req.query.stock === 'low') cond.push('price > 0 AND stock <= 5');
   if (req.query.live === '0') cond.push('active = 0');
   const where = cond.length ? 'WHERE ' + cond.join(' AND ') : '';

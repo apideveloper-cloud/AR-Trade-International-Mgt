@@ -15,7 +15,7 @@ function Pick({ onPick }) {
   useEffect(() => {
     if (dq.length < 2) { setRows(null); return undefined; }
     let stale = false;
-    adm.get(`/products?q=${encodeURIComponent(dq)}&size=8&page=1`).then(r => { if (!stale) setRows((r.rows || r.items || []).filter(p => p.price > 0)); }).catch(() => { if (!stale) setRows([]); });
+    adm.get(`/products?q=${encodeURIComponent(dq)}&priced=1&size=8&page=1`).then(r => { if (!stale) setRows(r.rows || r.items || []); }).catch(() => { if (!stale) setRows([]); });
     return () => { stale = true; };
   }, [dq]);
   return (
