@@ -4,6 +4,7 @@ import sanitizeHtml from 'sanitize-html';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { pool } from './db.js';
+import { assignSlug } from './productSlugs.js';
 import { digits, esc, fail, parseJson, wrap, checkPassword, secret, isLocalImg, localImg } from './util.js';
 import { applyFlow, cancelOrder, FROM_STATUS } from './flow.js';
 import { buildInvoicePdf, invoiceNo } from './invoice.js';
@@ -336,6 +337,7 @@ router.post('/products', guard('products.manage'), wrap(async (req, res) => {
   const id = Math.max(30000, m + 1);
   await pool.query('INSERT INTO products (id,category_id,brand,name,old_price,price,img,stock,is_new,active,tech,color,yield_info,part,compat,spec,description,gallery,edited) VALUES (?,?,?,?,?,?,?,?,1,1,?,?,?,?,?,?,?,?,1)',
     [id, b.cat, b.brand, b.name, parseInt(b.old, 10) || 0, parseInt(b.price, 10) || 0, localImg(b.img) || null, parseInt(b.stock, 10) || 0, b.tech || '', b.color || '', b.yield || '', b.part || '', b.compat || '', b.spec || '', sanitizeHtml(String(b.description || ''), SAN), JSON.stringify(Array.isArray(b.gallery) ? b.gallery.map(String).slice(0, 12) : (b.img ? [b.img] : []))]);
+  await assignSlug(pool, id);
   const [[p]] = await pool.query('SELECT * FROM products WHERE id = ?', [id]);
   res.json(prodOut(p));
 }));

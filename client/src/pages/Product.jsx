@@ -26,7 +26,6 @@ function specs(p) {
 
 export default function Product() {
   const { id: segment } = useParams();
-  const id = productIdOf(segment) || segment; // /product/hp-230a-toner-21554 and the old /product/21554 both open product 21554
   const here = useLocation().pathname;
   const { find, products, cats, site, addToCart, wish, toggleWish, compare, toggleCompare, user, setLoginOpen } = useStore();
   const nav = useNavigate();
@@ -42,7 +41,8 @@ export default function Product() {
   const railRef = useRef(null);
   const howRef = useRef(null);
   const [howIn, setHowIn] = useState(false);
-  const p = find(id);
+  const p = products.find(x => x.slug === segment) || find(productIdOf(segment) || segment); // /product/hp-230a-toner, and the old /product/hp-230a-toner-21554 or /product/21554
+  const id = p ? p.id : productIdOf(segment) || segment;
 
   useEffect(() => { setQty(1); setTab('spec'); setZoom(null); setView(0); setBox(false); }, [id]);
   // an old or mistyped address (/product/21554) is replaced by the real one, so the address bar and shared links always show the keyword address

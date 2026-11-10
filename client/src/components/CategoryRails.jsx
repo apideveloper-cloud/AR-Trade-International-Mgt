@@ -4,12 +4,14 @@ import ProductCard from './ProductCard.jsx';
 import { useStore } from '../store.jsx';
 
 const MAX = 20;
+const SEED = 4; // cards (and their links) rendered up front in a row that is still far below the fold
 
 /** One horizontally scrolling row; drifts back and forth by itself while visible, pauses on hover/touch/drag. */
 function Rail({ cat, items, total }) {
   // endless loop: the list is rendered twice and the scroll position wraps from the second copy back to the first
   const loop = items.length >= 5;
-  const list = loop ? [...items, ...items] : items;
+  const [near, setNear] = useState(false); // below-the-fold rows render only a first slice until they come near the viewport
+  const list = near ? (loop ? [...items, ...items] : items) : items.slice(0, SEED);
   const ref = useRef(null);
   const paused = useRef(false);
   const [vis, setVis] = useState(false);
@@ -22,8 +24,15 @@ function Rail({ cat, items, total }) {
   }, []);
 
   useEffect(() => {
+    if (typeof IntersectionObserver === 'undefined') { setNear(true); return undefined; }
+    const io = new IntersectionObserver(([e]) => { if (e.isIntersecting) { setNear(true); io.disconnect(); } }, { rootMargin: '900px 0px' });
+    wrap.current && io.observe(wrap.current);
+    return () => io.disconnect();
+  }, []);
+
+  useEffect(() => {
     const el = ref.current;
-    if (!vis || !el || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return undefined;
+    if (!vis || !near || !el || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return undefined;
     let raf, last = performance.now(), pos = el.scrollLeft;
     const tick = now => {
       const dt = Math.min(64, now - last); last = now;
@@ -42,7 +51,7 @@ function Rail({ cat, items, total }) {
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [vis, loop]);
+  }, [vis, near, loop]);
 
   const by = d => {
     const el = ref.current;

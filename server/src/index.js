@@ -72,11 +72,11 @@ const AREAS = ['inside', 'suburb', 'outside'];
 const PARTIAL = ['split', 'together', 'drop'];
 
 /** The columns productOut() reads. The catalogue list and best sellers select just these instead of SELECT *, so the long description, gallery and SEO text are never read for 2,000 products. */
-const LIST_COLS = 'id, category_id, brand, name, old_price, price, img, stock, popular, is_new, featured, tech, color, yield_info, part, compat, spec, extra';
+const LIST_COLS = 'id, category_id, brand, name, old_price, price, img, stock, popular, is_new, featured, tech, color, yield_info, part, compat, spec, extra, slug';
 const productOut = r => ({
   id: r.id, cat: r.category_id, brand: r.brand, name: r.name, old: r.old_price, price: r.price, img: r.img, stock: r.stock,
   popular: !!r.popular, isNew: !!r.is_new, featured: !!r.featured, tech: r.tech, color: r.color, yield: r.yield_info,
-  part: r.part, compat: r.compat, spec: r.spec, extra: parseJson(r.extra) || []
+  part: r.part, compat: r.compat, spec: r.spec, extra: parseJson(r.extra) || [], slug: r.slug || ''
 });
 const seoOut = r => ({ metaTitle: r.meta_title || '', metaDesc: r.meta_desc || '', metaKeywords: r.meta_keywords || '' });
 const userOut = u => ({ id: u.id, name: u.name, email: u.email, phone: u.phone, address: u.address, area: u.area, role: u.role });
@@ -552,6 +552,7 @@ app.use('/api/prefs', prefsRouter);
 // ---------- production: serve the built client ----------
 const dist = path.resolve(here, '../../client/dist');
 if (fs.existsSync(dist)) {
+  app.get('/index.html', (req, res) => res.redirect(301, '/')); // the home page has one address
   app.use(express.static(dist, { index: false }));
   mountSeo(app, dist); // robots.txt, sitemap.xml and the HTML shell with per-page meta tags
 }

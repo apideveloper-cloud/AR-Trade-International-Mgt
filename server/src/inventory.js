@@ -7,6 +7,7 @@ import { pool } from './db.js';
 import sanitizeHtml from 'sanitize-html';
 import { guard } from './admin.js';
 import { SAN } from './adminContent.js';
+import { assignSlug } from './productSlugs.js';
 import { D, fail, int, iso, localImg, monthBounds, nextSeq, text, today, tx, wrap } from './util.js';
 import { addAmount, addRange, addSearch, pageOf, whereOf, wantsPage } from './listing.js';
 
@@ -215,6 +216,7 @@ router.post('/products', guard(MANAGE), wrap(async (req, res) => {
     const specs = (Array.isArray(b.specs) ? b.specs : []).map(s => [text(s.name, 80), text(s.value, 500)]).filter(s => s[0] && s[1]).slice(0, 40);
     for (const [i, [n, v]] of specs.entries()) await conn.query('INSERT INTO product_specs (product_id, position, name, value) VALUES (?,?,?,?)', [id, i, n, v]);
   });
+  await assignSlug(pool, id);
   res.json({ id, brand, name, price: 0, stock: 0, img: img || '', lastCost: null });
 }));
 router.get('/stock', guard(VIEW), wrap(async (req, res) => {
