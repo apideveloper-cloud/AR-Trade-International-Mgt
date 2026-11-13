@@ -9,7 +9,7 @@ import { Empty, Modal, Pager, Summary, Switch, Toolbar, ViewToggle, alertBox, co
 import { readFileAsDataUrl as readFile } from '../hooks/download.js';
 import { useApiData } from '../hooks/useApiData.js';
 
-const BLANK = { name: '', brand: '', cat: '', price: '', old: '', stock: 10, img: '', part: '', tech: '', color: '', yield: '', compat: '', spec: '', description: '', gallery: [], metaTitle: '', metaDesc: '', metaKeywords: '' };
+const BLANK = { warranty: true, name: '', brand: '', cat: '', price: '', old: '', stock: 10, img: '', part: '', tech: '', color: '', yield: '', compat: '', spec: '', description: '', gallery: [], metaTitle: '', metaDesc: '', metaKeywords: '' };
 /** "Name: value" lines -> [{ name, value }] (lines without a colon are dropped). */
 const parseSpecs = text => text.split('\n').map(l => { const i = l.indexOf(':'); return i > 0 ? { name: l.slice(0, i), value: l.slice(i + 1) } : null; }).filter(Boolean);
 
@@ -104,6 +104,16 @@ export function Editor({ product, cats, onClose, onSaved, purchase = false, init
               <label className="a-lbl">Stock (from purchases)<input className="a-input" type="number" value={f.stock} readOnly disabled title="Stock changes through purchases, returns and stock counts" /></label>
             </div>
           </section>}
+          <section className="pf-card">
+            <h4>Warranty</h4>
+            <div className="pf-warr" role="radiogroup" aria-label="Product warranty available">
+              <span className="a-lbl">Product warranty available</span>
+              <div className="pf-yn">
+                {[[true, 'Yes'], [false, 'No']].map(([v, l]) => <button type="button" key={l} role="radio" aria-checked={f.warranty !== false === v} className={f.warranty !== false === v ? 'on' : ''} onClick={() => setF(x => ({ ...x, warranty: v }))}>{l}</button>)}
+              </div>
+              <small className="pf-hint">Shown on the product page next to the price. Choose No for items sold without a warranty.</small>
+            </div>
+          </section>
           <section className="pf-card">
             <h4>Details</h4>
             <div className="pf-g pf-g3">

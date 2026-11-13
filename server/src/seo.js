@@ -4,6 +4,7 @@ import { hasPicture, published } from './productImages.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { pool } from './db.js';
+import { mergeDelivery } from './delivery.js';
 import { parseJson, wrap } from './util.js';
 import { legacySlug, productIdOf, productPath, productSlug } from './slug.js';
 
@@ -145,8 +146,9 @@ export function mountSeo(app, dist) {
             '@type': 'Offer', url, priceCurrency: 'BDT', price: String(x.price), priceValidUntil: priceUntil(), itemCondition: 'https://schema.org/NewCondition',
             availability: x.stock > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock', seller: { '@type': 'Organization', name: NAME }
           };
-          // delivery charges come from the site settings (Dhaka / rest of Bangladesh); nothing is guessed when they are not set
-          const ship = [['Dhaka', site.insideFee], [null, site.outsideFee]].filter(([, f]) => money(f) !== null).map(([region, f]) => ({
+          // delivery charges come from the site settings: Dhaka is free within freeKm of the office, then priced by distance (the cheapest tier is listed); the rest of Bangladesh is outsideFee; nothing is guessed when they are not set
+          const dlv = mergeDelivery(site.delivery);
+          const ship = [['Dhaka', Math.min(...dlv.tiers.map(t => t.fee).concat(dlv.maxFee))], [null, site.outsideFee]].filter(([, f]) => money(f) !== null).map(([region, f]) => ({
             '@type': 'OfferShippingDetails', shippingRate: { '@type': 'MonetaryAmount', value: money(f), currency: 'BDT' },
             shippingDestination: { '@type': 'DefinedRegion', addressCountry: 'BD', addressRegion: region || undefined }
           }));

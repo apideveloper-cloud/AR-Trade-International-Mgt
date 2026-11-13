@@ -53,7 +53,7 @@
 .a-chips { display: flex; gap: 4px; flex-wrap: wrap; }
 .a-chip { border: 1px solid #d5dbe7; background: #fff; color: #0b1631; border-radius: 999px; padding: 7px 12px; font-size: 12px; font-weight: 700; white-space: nowrap; }
 .a-chip.on { background: #16181d; color: #fff; border-color: #16181d; }
-.a-table { background: #fff; border: 1px solid #e4e2dc; border-radius: 18px; overflow-x: auto; }
+.a-table { position: relative; /* so the box is the containing block of absolutely positioned cells and clips them too */ background: #fff; border: 1px solid #e4e2dc; border-radius: 18px; overflow-x: auto; }
 .a-table .head, .a-table .row { display: grid; gap: 12px; padding: 12px 18px; align-items: center; }
 .a-table .head { font-family: var(--mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: #8a8f9b; border-bottom: 1px solid #e4e2dc; }
 .a-table .row { width: 100%; text-align: left; border: 0; border-bottom: 1px solid #efede8; background: transparent; font-size: 13px; }
@@ -118,7 +118,8 @@
 .adm-login .role { display: flex; align-items: center; gap: 7px; border: 1px solid #26314e; border-radius: 10px; background: #0c1429; padding: 9px 8px; font-size: 12px; font-weight: 700; color: #c9d2e6; text-transform: none; letter-spacing: 0; flex-direction: row; }
 
 @media (max-width: 900px) {
-  .adm-side { max-width: none; flex-basis: 100%; height: auto; position: static; }
+  /* relative (not static) so that overflow:hidden also clips the decorative ring in ::after, which sticks out 90px */
+  .adm-side { max-width: none; flex-basis: 100%; height: auto; position: relative; }
   .adm-nav { flex-direction: row; flex-wrap: wrap; overflow: visible; }
   .adm-main { padding: 18px 14px 50px; }
 }

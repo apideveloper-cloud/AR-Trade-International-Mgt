@@ -1,0 +1,8 @@
+.dcb { position: relative; }
+.dcb .field { width: 100%; padding-right: 38px; box-sizing: border-box; }
+.dcb-ar { position: absolute; right: 14px; top: 50%; width: 8px; height: 8px; margin-top: -6px; border-right: 2px solid #5b6778; border-bottom: 2px solid #5b6778; transform: rotate(45deg); pointer-events: none; }
+.dcb-list { position: absolute; z-index: 800; left: 0; right: 0; top: calc(100% + 6px); margin: 0; padding: 4px; list-style: none; background: #fff; border: 1px solid #dfe5ef; border-radius: 14px; max-height: 260px; overflow: auto; box-shadow: 0 12px 30px rgba(20,35,70,.18); }
+.dcb-list li { padding: 10px 12px; border-radius: 10px; font-size: 14.5px; cursor: pointer; color: #123; }
+.dcb-list li.hi { background: #eef4fd; }
+.dcb-list li.on { font-weight: 800; color: oklch(0.45 0.16 258); }
+.dcb-list li.none { color: #5b6778; cursor: default; font-size: 13.5px; }

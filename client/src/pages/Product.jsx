@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import ProductCard from '../components/ProductCard.jsx';
 import { api, fmt, offPct, waLink } from '../api.js';
+import { deliveryOf } from '../data.js';
 import Reviews, { Stars } from '../components/Reviews.jsx';
 import BestSellers from '../components/BestSellers.jsx';
 import { useStore } from '../store.jsx';
@@ -22,15 +23,27 @@ const HOW = [
 const NAMES = { f: 'Facebook', X: 'X', in: 'LinkedIn', W: 'WhatsApp', '@': 'email' };
 const SPEC_ICON = { Brand: '★', 'Part no.': '#', Technology: '⚡', 'Printing colour': '◐', 'Page yield / capacity': '≡', 'Compatible printers': '⎙', Warranty: '✓' };
 
+/** The product name in two levels: brand + model first, then what it is. "Toshiba T-FC415P CMYK Original Toner Cartridge" becomes
+ *  "Toshiba T-FC415P CMYK" and "Original Toner Cartridge". The heading still holds the whole name; a name that does not split stays in one piece. */
+const DESC_START = /\s(?=(?:Original|Compatible|Genuine|Premium|Toner|Ink|Cartridge|Cartridges|Laser|LaserJet|Printer|Photocopier|Copier|Drum|Developer|Refill|Bottle)\b)/i;
+function nameParts(name) {
+  const n = String(name || '').trim(), m = DESC_START.exec(n);
+  if (!m || n.slice(0, m.index).trim().split(/\s+/).length < 2) return [['pn-main', n]];
+  return [['pn-main', n.slice(0, m.index).trim()], ['pn-sub', n.slice(m.index).trim()]];
+}
+
+const hasWarranty = x => !(x && x.warranty === false); // a product without the flag counts as Yes
+
 function specs(p) {
   return [['Brand', p.brand], ['Part no.', p.part], ['Technology', p.tech], ['Printing colour', p.color], ['Page yield / capacity', p.yield], ['Compatible printers', p.compat], ...(p.extra || [])]
-    .filter(r => r[1] && r[1] !== '—').concat([['Warranty', 'Yes — 100% original product']]);
+    .filter(r => r[1] && r[1] !== '—').concat([['Warranty', hasWarranty(p) ? 'Yes — 100% original product' : 'No']]);
 }
 
 export default function Product() {
   const { id: segment } = useParams();
   const here = useLocation().pathname;
   const { find, products, cats, site, addToCart, wish, toggleWish, compare, toggleCompare, user, setLoginOpen } = useStore();
+  const dlv = deliveryOf(site);
   const nav = useNavigate();
   const [qty, setQty] = useState(1);
   const [tab, setTab] = useState('spec');
@@ -113,6 +126,7 @@ export default function Product() {
     return () => { live = false; };
   }, [pid, user?.id]);
   if (!p) return <NotFound />;
+  const warranty = hasWarranty(full && 'warranty' in full ? full : p); // admin: Product Entry > Warranty (Yes | No)
   const photos = full && full.gallery && full.gallery.length > 1 ? full.gallery : null;
   const views = photos
     ? photos.map((u, i) => ({ k: 'Photo ' + (i + 1), s: 1, o: '50% 50%', img: u }))
@@ -174,9 +188,9 @@ export default function Product() {
           </div>
           </div>
           <div className="trust">
-            <div><i>✓</i><span><b>100% genuine</b><span>Original, warranty backed</span></span></div>
+            <div><i>✓</i><span><b>100% genuine</b><span>{warranty ? 'Original, warranty backed' : 'Original product'}</span></span></div>
             <div><i>⚡</i><span><b>Fast delivery</b><span>Same-day in Dhaka</span></span></div>
-            <div><i>↺</i><span><b>7-day returns</b><span>Faulty items replaced</span></span></div>
+            <div className={'wty ' + (warranty ? 'yes' : 'no')}><i>{warranty ? '🛡' : '✕'}</i><span><b>Warranty available</b><span>{warranty ? 'Yes' : 'No'}</span></span></div>
           </div>
         </div>
 
@@ -185,7 +199,7 @@ export default function Product() {
             <div className="pd-tags"><span className="pd-tag">{cat ? cat.t : 'Shop'}</span><span className="mono" style={{ fontSize: 11, letterSpacing: '.06em', textTransform: 'uppercase', color: '#8a8f9b' }}>SKU · {p.id}</span></div>
             <div className="pd-nav"><Link to={productPath(prev)} title="Previous product" aria-label="Previous product">‹</Link><Link to={productPath(next)} title="Next product" aria-label="Next product">›</Link></div>
           </div>
-          <h1>{p.name}</h1>
+          <h1 className="pn">{nameParts(p.name).map(([k, t], i) => <span key={k} className={k}>{i ? ' ' : ''}{t}</span>)}</h1>
           <div className="pd-rate"><a href="#reviews" className="rate-link"><Stars value={rv ? rv.avg : 0} size={15} /><b>{rv && rv.count ? rv.avg.toFixed(1) : ''}</b><span>{rv && rv.count ? `(${rv.count} review${rv.count > 1 ? 's' : ''})` : 'No reviews yet'}</span></a><span>Genuine product · Official warranty</span><span className="chip2">✓ Cash on delivery</span></div>
 
           <div className="pd-price">
@@ -193,7 +207,7 @@ export default function Product() {
               <b>{p.price ? fmt(p.price) : 'On request'}</b>
               {off > 0 && <><s>{fmt(p.old)}</s><span className="save">Save {fmt(p.old - p.price)} · {off}% off</span></>}
             </div>
-            <div className="note"><span>Prices include VAT</span><span>•</span><span>{site.insideFee ? fmt(site.insideFee) : 'Free'} delivery inside Dhaka{site.freeOver ? ` (free over ${fmt(site.freeOver)})` : ''}</span></div>
+            <div className="note"><span>Prices include VAT</span><span>•</span><span>Free delivery within {dlv.freeKm} km of our Santinagar office</span></div>
           </div>
 
           {p.stock > 0 && (
@@ -283,7 +297,7 @@ export default function Product() {
                   <table>
                     <thead><tr><th>Destination</th><th>Delivery time</th><th>Fee</th></tr></thead>
                     <tbody>
-                      <tr><td><b>Inside Dhaka</b><small>Order before 2 PM for same-day</small></td><td>Same day</td><td>{site.insideFee ? fmt(site.insideFee) : <em className="free">FREE</em>}{site.freeOver ? <small>Free over {fmt(site.freeOver)}</small> : null}</td></tr>
+                      <tr><td><b>Inside Dhaka</b><small>Order before 2 PM for same-day</small></td><td>Same day</td><td><em className="free">FREE</em> within {dlv.freeKm} km<small>then {fmt(dlv.tiers[0].fee)} up to {fmt(dlv.maxFee)} by distance</small></td></tr>
                       <tr><td><b>Outside Dhaka</b><small>Courier, on condition</small></td><td>1–3 working days</td><td>{fmt(site.outsideFee)}</td></tr>
                     </tbody>
                   </table>
@@ -325,7 +339,10 @@ export default function Product() {
           <ol className="howto-steps">
             {HOW.map((t, i) => (
               <li key={i} data-n={i + 1} style={{ '--r': `${i * 2 + 1} / span 4` }}>
-                <img src={`/api/uploads/site/how-step-${i + 1}.png`} alt={`Step ${i + 1}: ${t}`} loading="lazy" />
+                <figure className="hs">
+                  <figcaption>{t}</figcaption>
+                  {(i === 4 ? ['5a', '5b'] : [String(i + 1)]).map(n => <img key={n} src={`/how/step-${n}.webp`} alt={`Step ${i + 1}: ${t}`} loading="lazy" width="960" />)}
+                </figure>
               </li>
             ))}
             <li className="done" style={{ '--r': `${(HOW.length - 1) * 2 + 5}` }}><div className="fin"><i>✓</i><b>অর্ডার সম্পন্ন!</b><span>আমরা ফোন করে কনফার্ম করব এবং দ্রুত ডেলিভারি দেব।</span></div></li>

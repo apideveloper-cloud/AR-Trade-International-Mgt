@@ -89,3 +89,33 @@ export const DEFAULT_MENUS = {
 
 /** Defaults + saved values, where a blank saved value falls back to the default (so an empty field never blanks the page). */
 export const withDefaults = (def, saved) => Object.fromEntries(Object.entries(def).map(([k, v]) => [k, saved && String(saved[k] ?? '').trim() ? saved[k] : v]));
+
+/** The 64 districts of Bangladesh, A to Z, for the checkout Location list. */
+export const DISTRICTS = ['Bagerhat', 'Bandarban', 'Barguna', 'Barishal', 'Bhola', 'Bogura', 'Brahmanbaria', 'Chandpur', 'Chapainawabganj', 'Chattogram', 'Chuadanga', "Cox's Bazar", 'Cumilla', 'Dhaka', 'Dinajpur', 'Faridpur', 'Feni', 'Gaibandha', 'Gazipur', 'Gopalganj', 'Habiganj', 'Jamalpur', 'Jashore', 'Jhalokati', 'Jhenaidah', 'Joypurhat', 'Khagrachhari', 'Khulna', 'Kishoreganj', 'Kurigram', 'Kushtia', 'Lakshmipur', 'Lalmonirhat', 'Madaripur', 'Magura', 'Manikganj', 'Meherpur', 'Moulvibazar', 'Munshiganj', 'Mymensingh', 'Naogaon', 'Narail', 'Narayanganj', 'Narsingdi', 'Natore', 'Netrokona', 'Nilphamari', 'Noakhali', 'Pabna', 'Panchagarh', 'Patuakhali', 'Pirojpur', 'Rajbari', 'Rajshahi', 'Rangamati', 'Rangpur', 'Satkhira', 'Shariatpur', 'Sherpur', 'Sirajganj', 'Sunamganj', 'Sylhet', 'Tangail', 'Thakurgaon'];
+
+/** Distance-based delivery settings with safe fallbacks (the server merges the same defaults). */
+export const DELIVERY_DEFAULTS = {
+  office: { lat: 23.739316, lng: 90.415567, label: '159 Santinagar, Dhaka-1217' },
+  freeKm: 2, roadFactor: 1.25,
+  tiers: [{ upToKm: 5, fee: 100 }, { upToKm: 8, fee: 150 }, { upToKm: 12, fee: 200 }, { upToKm: 18, fee: 250 }],
+  maxFee: 350,
+  partners: [{ id: 'redx', name: 'RedX' }, { id: 'sa-paribahan', name: 'SA Paribahan' }, { id: 'steadfast', name: 'Steadfast Courier' }, { id: 'sundarban', name: 'Sundarban Courier' }]
+};
+export const deliveryOf = site => {
+  const d = site?.delivery || {}, D = DELIVERY_DEFAULTS;
+  const num = (v, f) => (Number.isFinite(Number(v)) && v !== '' && v !== null ? Number(v) : f);
+  return {
+    office: { lat: num(d.office?.lat, D.office.lat), lng: num(d.office?.lng, D.office.lng), label: d.office?.label || D.office.label },
+    freeKm: num(d.freeKm, D.freeKm),
+    tiers: Array.isArray(d.tiers) && d.tiers.length ? d.tiers : D.tiers,
+    maxFee: num(d.maxFee, D.maxFee),
+    partners: Array.isArray(d.partners) && d.partners.length ? d.partners : D.partners
+  };
+};
+
+/** The logo of a shipping partner (cut from the footer strip, shipped in client/public/brand), or '' when a partner has none. */
+export const PARTNER_LOGOS = { redx: '/brand/ship-redx.webp', 'sa-paribahan': '/brand/ship-sa-paribahan.webp', steadfast: '/brand/ship-steadfast.webp', sundarban: '/brand/ship-sundarban.webp' };
+export const partnerLogo = id => PARTNER_LOGOS[id] || '';
+
+/** Thanas of Dhaka city, offered as suggestions in the checkout Thana box (other districts are typed in). */
+export const DHAKA_THANAS = ['Adabor', 'Badda', 'Banani', 'Bangshal', 'Bhatara', 'Cantonment', 'Chawkbazar', 'Dakshinkhan', 'Darus Salam', 'Demra', 'Dhanmondi', 'Gendaria', 'Gulshan', 'Hazaribagh', 'Jatrabari', 'Kadamtali', 'Kafrul', 'Kalabagan', 'Kamrangirchar', 'Khilgaon', 'Khilkhet', 'Kotwali', 'Lalbagh', 'Mirpur', 'Mohammadpur', 'Motijheel', 'Mugda', 'New Market', 'Pallabi', 'Paltan', 'Ramna', 'Rampura', 'Sabujbagh', 'Shah Ali', 'Shahbag', 'Shahjahanpur', 'Sher-e-Bangla Nagar', 'Shyampur', 'Sutrapur', 'Tejgaon', 'Turag', 'Uttara East', 'Uttara West', 'Uttar Khan', 'Vashantek', 'Wari'];

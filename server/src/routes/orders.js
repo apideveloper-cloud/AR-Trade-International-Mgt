@@ -1,17 +1,18 @@
 // Orders: pricing (mirrors the design's AR.totals), the customer's own orders, order tracking and staff-placed orders.
 import { pool } from '../db.js';
-import { digits, fail, nextSeq, wrap } from '../util.js';
+import { bdMobile, digits, fail, nextSeq, wrap } from '../util.js';
 import { guard } from '../admin.js';
 import { fieldCustomers } from '../quotation.js';
 import { limit } from '../middleware/security.js';
 import { auth } from '../middleware/customerAuth.js';
 import { AREAS } from './auth.js';
 import { getSettings } from './shared.js';
+import { mergeDelivery, validCoord, distanceKm, feeForKm, quote, deliveryCharge } from '../delivery.js';
 
 const PARTIAL = ['split', 'together', 'drop'];
 const ORDER_SOURCES = ['Call center', 'Admin', 'Seller'];
 
-async function priceOrder(items, { area, coupon, userId, express, partial, phone }) {
+async function priceOrder(items, { area, coupon, userId, express, partial, phone, district, dest, partner }) {
   const s = (await getSettings()).site;
   if (!Array.isArray(items) || items.length > 100) throw fail(400, 'Your cart is empty or too large');
   const ids = items.map(i => parseInt(i?.id, 10)).filter(Number.isInteger);
@@ -42,17 +43,35 @@ async function priceOrder(items, { area, coupon, userId, express, partial, phone
   const memberPct = userId ? s.memberPct : 0;
   const member = Math.round((subtotal - discount) * memberPct / 100);
 
-  const zone = AREAS.includes(area) ? area : 'inside';
-  const base = zone === 'outside' ? s.outsideFee : zone === 'suburb' ? s.suburbFee : s.insideFee;
-  const freeElig = zone !== 'outside' && subtotal >= s.freeOver;
+  const dl = mergeDelivery(s.delivery);
+  let zone, base, distanceKmV = null, shipPartner = '', destPt = null;
+  if (district != null && String(district).trim() !== '') { // new checkout: Dhaka is priced by distance, everywhere else by courier
+    if (String(district).trim().toLowerCase() === 'dhaka') {
+      zone = 'inside';
+      if (!validCoord(dest)) throw fail(400, 'Pick your delivery location on the map');
+      destPt = { lat: Number(dest.lat), lng: Number(dest.lng) };
+      distanceKmV = quote(destPt, dl).km;
+      base = feeForKm(distanceKmV, dl);
+    } else {
+      zone = 'outside';
+      const pt = dl.partners.find(x => x.id === String(partner ?? ''));
+      if (!pt) throw fail(400, 'Choose a shipping partner');
+      shipPartner = pt.name;
+      base = s.outsideFee;
+    }
+  } else { // an old cached checkout page: the zone comes from the area and the old fees apply
+    zone = AREAS.includes(area) ? area : 'inside';
+    base = zone === 'outside' ? s.outsideFee : zone === 'suburb' ? s.suburbFee : s.insideFee;
+  }
   const expressFee = express && zone === 'inside' ? s.expressFee : 0;
-  const delivery = subtotal ? (freeElig ? 0 : base) + expressFee : 0;
+  const { freeElig, delivery } = deliveryCharge({ subtotal, zone, base, freeOver: destPt ? 0 : s.freeOver, express: expressFee }); // a map-priced delivery is always charged: the free-over-a-spend rule is for the old checkout
+  const freeOn = !destPt && Number(s.freeOver) > 0;
   const total = Math.max(0, subtotal - discount - member + delivery);
   const vat = Math.round(total * s.vatPct / (100 + s.vatPct));
 
   return {
     lines, subtotal, saved, discount, member, memberPct, delivery, express: expressFee, base, freeOver: s.freeOver, freeElig,
-    freeLeft: zone === 'outside' ? 0 : Math.max(0, s.freeOver - subtotal), zone, total, vat, vatPct: s.vatPct,
+    freeLeft: zone === 'outside' || !freeOn ? 0 : Math.max(0, s.freeOver - subtotal), zone, distanceKm: distanceKmV, shipPartner, dest: destPt, total, vat, vatPct: s.vatPct,
     okCoupon, coupon: okCoupon ? cu : '', heldN: lines.filter(l => l.held).length, shortN: lines.filter(l => l.short > 0).length,
     count: lines.reduce((a, l) => a + l.qty, 0), partial: mode,
     short: lines.filter(l => l.short > 0).map(l => ({ id: l.p.id, name: l.p.name, avail: l.avail, qty: l.qty }))
@@ -61,7 +80,7 @@ async function priceOrder(items, { area, coupon, userId, express, partial, phone
 
 const quoteOut = t => ({
   subtotal: t.subtotal, saved: t.saved, discount: t.discount, member: t.member, memberPct: t.memberPct, delivery: t.delivery, express: t.express,
-  freeOver: t.freeOver, freeElig: t.freeElig, freeLeft: t.freeLeft, zone: t.zone, total: t.total, vat: t.vat, vatPct: t.vatPct,
+  freeOver: t.freeOver, freeElig: t.freeElig, freeLeft: t.freeLeft, zone: t.zone, distanceKm: t.distanceKm, shipPartner: t.shipPartner, total: t.total, vat: t.vat, vatPct: t.vatPct,
   okCoupon: t.okCoupon, heldN: t.heldN, count: t.count, short: t.short
 });
 
@@ -73,7 +92,8 @@ async function hydrateOrders(rows) {
   return rows.map(r => ({
     id: r.id, date: r.created_at, status: r.status, payment: r.payment, gateway: r.gateway, payStatus: r.pay_status, area: r.area,
     address: r.address, note: r.note, slot: r.slot, partial: r.partial, hold: !!r.hold, holdNote: r.hold_note, vatInvoice: !!r.vat_invoice,
-    company: r.company, bin: r.bin, express: !!r.express, source: r.source || 'Customer', placedBy: r.placed_by || '',
+    company: r.company, bin: r.bin, express: !!r.express, distanceKm: r.distance_km != null ? Number(r.distance_km) : null, shipPartner: r.ship_partner || '',
+    destLat: r.dest_lat != null ? Number(r.dest_lat) : null, destLng: r.dest_lng != null ? Number(r.dest_lng) : null, source: r.source || 'Customer', placedBy: r.placed_by || '',
     customer: { name: r.customer_name, phone: r.customer_phone, email: r.customer_email },
     subtotal: r.subtotal, discount: r.discount + r.member_discount, delivery: r.delivery, total: r.total, vat: r.vat,
     items: items.filter(i => i.order_id === r.id).map(i => ({ id: i.product_id, name: i.name, img: i.img, price: i.price, qty: i.qty, backorder: i.backorder })),
@@ -83,15 +103,17 @@ async function hydrateOrders(rows) {
 
 /** Prices and saves one order. `source` says who generated it: Customer (the website), or Call center / Admin / Seller (staff in the console). */
 async function placeOrder(body, { userId = null, source = 'Customer', placedBy = '' } = {}) {
-  const { items, customer: cust = {}, area, coupon, express, partial, vatInvoice } = body;
+  const { items, customer: cust = {}, area, coupon, express, partial, vatInvoice, district, dest, partner } = body;
   // payment status is never taken from the browser: orders start Unpaid and staff / the delivery flow mark them Paid
   const str = (v, n) => String(v ?? '').trim().slice(0, n);
   const customer = { name: str(cust.name, 120), phone: str(cust.phone, 40), email: str(cust.email, 160) };
-  const address = str(body.address, 500), payment = str(body.payment, 60), gateway = str(body.gateway, 60), note = str(body.note, 500), slot = str(body.slot, 60), company = str(body.company, 160), bin = str(body.bin, 60);
+  const address = str(body.address, 255), payment = str(body.payment, 40), gateway = str(body.gateway, 40), note = str(body.note, 500), slot = str(body.slot, 60), company = str(body.company, 160), bin = str(body.bin, 40); // lengths match the columns
   if (!Array.isArray(items) || !items.length) throw fail(400, 'Your cart is empty');
   if (!customer.name || !customer.phone || !address) throw fail(400, 'Name, phone and delivery address are required');
-  if (!/^01\d{9}$/.test(digits(customer.phone).slice(-11))) throw fail(400, 'Enter a valid mobile number (01XXXXXXXXX)');
-  const t = await priceOrder(items, { area, coupon, userId, express, partial, phone: customer.phone });
+  const mobile = bdMobile(customer.phone);
+  if (!mobile) throw fail(400, 'Enter a valid mobile number (01XXXXXXXXX)');
+  customer.phone = mobile;
+  const t = await priceOrder(items, { area, coupon, userId, express, partial, phone: customer.phone, district, dest, partner });
   const live = t.lines.filter(l => l.chargeQty > 0);
   if (!live.length) throw fail(400, 'None of the items in your cart are in stock right now');
 
@@ -102,10 +124,10 @@ async function placeOrder(body, { userId = null, source = 'Customer', placedBy =
     const hold = t.heldN > 0;
     await conn.query(
       `INSERT INTO orders (id,user_id,customer_name,customer_phone,customer_email,company,bin,address,area,subtotal,discount,member_discount,delivery,express,total,vat,
-         payment,gateway,pay_status,partial,slot,vat_invoice,hold,hold_note,note,coupon,source,placed_by) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+         payment,gateway,pay_status,partial,slot,vat_invoice,hold,hold_note,note,coupon,source,placed_by,dest_lat,dest_lng,distance_km,ship_partner) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [id, userId || null, customer.name, customer.phone, customer.email, vatInvoice ? company : '', vatInvoice ? bin : '', address, t.zone,
         t.subtotal, t.discount, t.member, t.delivery, +!!t.express, t.total, t.vat, payment || 'Cash on delivery', gateway, 'Unpaid',
-        t.partial, slot, +!!vatInvoice, +hold, hold ? 'High-value / special-order items held until our team approves them' : '', note, t.coupon, source, placedBy]);
+        t.partial, slot, +!!vatInvoice, +hold, hold ? 'High-value / special-order items held until our team approves them' : '', note, t.coupon, source, placedBy, t.dest ? t.dest.lat : null, t.dest ? t.dest.lng : null, t.distanceKm, t.shipPartner]);
     for (const l of live) {
       if (l.avail) {
         const [u] = await conn.query('UPDATE products SET stock = stock - ? WHERE id = ? AND stock >= ?', [l.avail, l.p.id, l.avail]);
@@ -128,6 +150,10 @@ export function mountOrderRoutes(app) {
   app.post('/api/quote', auth(false), wrap(async (req, res) => {
     const t = await priceOrder(req.body.items || [], { ...req.body, userId: req.user?.id, phone: req.body.phone });
     res.json(quoteOut(t));
+  }));
+
+  app.post('/api/delivery/quote', limit('dquote', 60, 600000), wrap(async (req, res) => {
+    res.json(quote(req.body, mergeDelivery((await getSettings()).site?.delivery)));
   }));
 
   app.post('/api/orders', limit('order', 20, 3600000), auth(false), wrap(async (req, res) => {

@@ -140,5 +140,5 @@ table.dt th { font-size: 10.5px; }
 .a-table .head { position: sticky; top: var(--adm-top-h); z-index: 4; background: #f5f8fc; }
 .a-table.mx thead th { position: sticky; top: var(--adm-top-h); z-index: 5; }
 .a-table.mx thead th:first-child { z-index: 6 !important; }
-@media (max-width: 1100px) { .a-table { overflow-x: auto; } .a-table .head { position: static; } .a-table.mx thead th { position: static; } .a-table.mx thead th:first-child { position: sticky; left: 0; } }
+@media (max-width: 1100px) { .a-table { overflow-x: auto; overflow-y: hidden; } .a-table .head { position: static; } .a-table.mx thead th { position: static; } .a-table.mx thead th:first-child { position: sticky; left: 0; } }
 

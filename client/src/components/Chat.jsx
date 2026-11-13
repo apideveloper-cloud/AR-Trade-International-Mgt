@@ -2,17 +2,19 @@ import { useEffect, useRef, useState } from 'react';
 import { productPath } from '../slug.js';
 import { Link } from 'react-router-dom';
 import { api, fmt } from '../api.js';
+import { deliveryOf } from '../data.js';
 import { useStore } from '../store.jsx';
 import ChatStart from './ChatStart.jsx';
+import { assistantStatus } from '../supportHours.js';
 import './chat-avatar.css';
 
 // the support agent's photo (client/public/agent.png); the round AR logo is the fallback
 const AGENT_PIC = '/agent.png', LOGO_PIC = '/ar-icon-round.png';
-const AgentPic = ({ className = '' }) => <img className={className} src={AGENT_PIC} alt="AR Support" onError={e => { if (!e.currentTarget.src.endsWith(LOGO_PIC)) e.currentTarget.src = LOGO_PIC; }} />;
+const AgentPic = ({ className = '' }) => <img className={className} src={AGENT_PIC} alt="Support Team" onError={e => { if (!e.currentTarget.src.endsWith(LOGO_PIC)) e.currentTarget.src = LOGO_PIC; }} />;
 
 export const openChat = () => window.dispatchEvent(new Event('ar:openchat'));
 
-const time = t => new Date(t).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+const time = t => new Date(t).toLocaleTimeString('en-US', { timeZone: 'Asia/Dhaka', hour: 'numeric', minute: '2-digit', hour12: true });
 const welcome = name => `Assalamu alaikum${name ? ', ' + name.split(' ')[0] : ''}! 👋 Welcome to AR Trade International. How can we help you today?`;
 const LEAD_KEY = 'ar_chat_lead';
 const readLead = () => { try { const l = JSON.parse(localStorage.getItem(LEAD_KEY)); return l?.token ? l : null; } catch { return null; } };
@@ -76,7 +78,7 @@ export default function Chat() {
   const canned = t => {
     t = t.toLowerCase();
     if (/toner|cartridge|ink|টোনার|কার্টিজ/.test(t)) return 'We stock original HP, Canon, Toshiba and Sharp toner. Share your printer model (e.g. HP M12w) and we will confirm the exact cartridge and today\'s price.';
-    if (/deliver|shipping|ডেলিভারি/.test(t)) return `Inside Dhaka: ${site.insideFee ? fmt(site.insideFee) : 'free'} delivery with cash on delivery. Outside Dhaka: ${fmt(site.outsideFee)} via courier. Order before 2 PM for same-day dispatch.`;
+    if (/deliver|shipping|ডেলিভারি/.test(t)) { const dv = deliveryOf(site); return `Inside Dhaka: free within ${dv.freeKm} km of our Santinagar office, then ${fmt(dv.tiers[0].fee)} up to ${fmt(dv.maxFee)} depending on distance (cash on delivery). Outside Dhaka by courier: ${fmt(site.outsideFee)}. Order before 2 PM for same-day dispatch.`; }
     if (/service|repair|servicing|সার্ভিস/.test(t)) return `Printer servicing starts from ${fmt(site.svcPrices[0].offer)} inside Dhaka, and it is free every Saturday at our Santinagar house (parts extra). You can book from the Servicing page.`;
     if (/order|track|অর্ডার/.test(t)) return 'You can track every order on the Track order page. Share your order ID (e.g. AR-10480) and I will check the status for you.';
     if (/price|cost|দাম|quote/.test(t)) return 'Happy to help with a quote. Tell me the model and quantity — corporate and bulk orders get special pricing.';
@@ -99,6 +101,10 @@ export default function Chat() {
     }
     return { text: canned(t) };
   };
+
+  // the assistant is always online; the clock shows Dhaka time and is refreshed every minute
+  const [sup, setSup] = useState(() => assistantStatus());
+  useEffect(() => { const t = setInterval(() => setSup(assistantStatus()), 60000); return () => clearInterval(t); }, []);
 
   const ctxRef = useRef({});
   const send = t => {
@@ -125,7 +131,7 @@ export default function Chat() {
   if (!open) {
     return (
       <button className="chat-open" onClick={() => { setOpen(true); setSeen(agentN); }}>
-        <span className="avatar"><AgentPic /></span>
+        <span className={'avatar' + (sup.online ? '' : ' off')}><AgentPic /></span>
         <span className="tx"><b>Chat with us</b><small>Replies in a few minutes</small></span>
         {unread > 0 && <span className="un">{unread}</span>}
       </button>
@@ -135,7 +141,7 @@ export default function Chat() {
     <div className="chat">
       <div className="hd">
         <div className="row">
-          <div className="who"><span className="avatar"><AgentPic /></span><div><b>AR Trade Support</b><small>Online · Sat–Thu, 10:00–20:00</small></div></div>
+          <div className="who"><span className={'avatar' + (sup.online ? '' : ' off')}><AgentPic /></span><div><b>Support Team</b><small>{sup.label}</small></div></div>
           <button className="min" onClick={() => { setOpen(false); setSeen(agentN); }} title="Minimise">✕</button>
         </div>
         <div className="links">
@@ -165,7 +171,7 @@ export default function Chat() {
                 ))}
               </div>
             )}
-            <small>{m.from === 'me' ? 'You' : 'AR Support'} · {time(m.at)}</small>
+            <small>{m.from === 'me' ? 'You' : 'Support Team'} · {time(m.at)}</small>
           </div>
         ))}
         {typing && <div className="brow"><AgentPic className="agent-pic" /><div className="typing"><i /><i /><i /></div></div>}

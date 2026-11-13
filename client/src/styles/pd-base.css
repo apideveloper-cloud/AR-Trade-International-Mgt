@@ -166,3 +166,23 @@
   .sticky-buy .nm span { display: none; }
 }
 
+
+/* sticky buy bar: when it slides up the name is revealed left to right, then a soft highlight keeps passing over it */
+.sticky-buy.on .nm b { background: linear-gradient(100deg, var(--navy) 38%, oklch(0.56 0.18 255) 50%, var(--navy) 62%); background-size: 260% 100%; background-position: 100% 0; -webkit-background-clip: text; background-clip: text; color: transparent; animation: sb-reveal .75s .2s cubic-bezier(.2,.8,.2,1) both, sb-shine 5s 1.4s ease-in-out infinite; }
+.sticky-buy.on .nm span { animation: sb-fade .6s .5s ease both; }
+.sticky-buy.on .pr { animation: sb-pop .5s .35s cubic-bezier(.3,1.5,.5,1) both; }
+@keyframes sb-reveal { from { clip-path: inset(0 100% 0 0); transform: translateX(-10px); opacity: 0; } to { clip-path: inset(0 0 0 0); transform: none; opacity: 1; } }
+@keyframes sb-shine { 0% { background-position: 100% 0; } 45%, 100% { background-position: 0 0; } }
+@keyframes sb-fade { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+@keyframes sb-pop { from { opacity: 0; transform: scale(.85); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .sticky-buy.on .nm b, .sticky-buy.on .nm span, .sticky-buy.on .pr { animation: none; } .sticky-buy.on .nm b { background: none; color: var(--navy); } }
+
+/* the warranty card: green for Yes, grey for No */
+.trust .wty.yes i { background: linear-gradient(135deg, oklch(0.66 0.15 150), oklch(0.5 0.14 155)); }
+.trust .wty.yes span span { color: #1a6b3c; font-weight: 700; }
+.trust .wty.no i { background: linear-gradient(135deg, #9aa3b8, #6b7388); }
+
+/* the product name in two levels (see nameParts in Product.jsx): model on top, the description under it */
+.pdp2-info h1.pn { display: flex; flex-direction: column; gap: 8px; text-wrap: initial; }
+.pdp2-info h1.pn .pn-main { display: block; font-size: clamp(26px, 2.6vw, 38px); font-weight: 800; letter-spacing: -.035em; line-height: 1.08; color: var(--navy); text-wrap: balance; }
+.pdp2-info h1.pn .pn-sub { display: block; font-size: clamp(15px, 1.35vw, 19px); font-weight: 600; letter-spacing: -.005em; line-height: 1.35; color: #54648a; }

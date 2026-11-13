@@ -1,0 +1,73 @@
+/* Admin menu on a phone: a slim top bar (logo + hamburger) and the menu in a side drawer.
+   On desktop the drawer wrapper disappears (display: contents) so the sidebar is exactly what it was. */
+.adm-drawer { display: contents; }
+.adm-side > .adm-drawer > * { position: relative; z-index: 1; }
+.adm-burger, .adm-scrim, .adm-drawer-hd { display: none; }
+
+@media (max-width: 900px) {
+  .adm-side { display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 12px; }
+  .adm-side > .adm-brand { flex: 1; min-width: 0; padding: 0; border-bottom: 0; flex-direction: row; align-items: center; gap: 10px; }
+  .adm-side > .adm-brand.logo img { width: auto; max-width: 150px; height: 34px; object-fit: contain; }
+  .adm-side > .adm-brand small { padding-left: 0; }
+  .adm-burger { display: inline-grid; place-items: center; flex: none; width: 42px; height: 42px; border-radius: 12px; border: 1px solid rgba(255,255,255,.22); background: rgba(255,255,255,.1); color: #fff; cursor: pointer; transition: background .2s, transform .15s; }
+  .adm-burger:hover { background: rgba(255,255,255,.2); }
+  .adm-burger:active { transform: scale(.94); }
+  .adm-burger:focus-visible { outline: 2px solid #8fb4ff; outline-offset: 2px; }
+
+  .adm-scrim { display: block; position: fixed; inset: 0; z-index: 85; background: rgba(7, 13, 31, .58); -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); animation: adm-fade .2s ease both; }
+  .adm-side > .adm-drawer { display: flex; flex-direction: column; gap: 12px; position: fixed; top: 0; left: 0; bottom: 0; z-index: 90; width: min(86vw, 330px); padding: 14px 14px 18px; overflow-y: auto; overscroll-behavior: contain;
+    background: radial-gradient(300px 240px at 100% 0%, oklch(0.55 0.14 235 / .45), transparent 70%), linear-gradient(170deg, #0b1631 0%, #12295a 60%, #13306b 100%);
+    box-shadow: 30px 0 70px -20px rgba(0, 0, 0, .65); transform: translateX(-104%); visibility: hidden; transition: transform .3s cubic-bezier(.2, .8, .2, 1), visibility 0s .3s; }
+  .adm-side.open > .adm-drawer { transform: none; visibility: visible; transition: transform .3s cubic-bezier(.2, .8, .2, 1), visibility 0s 0s; }
+  .adm-drawer-hd { display: flex; align-items: center; justify-content: space-between; padding: 2px 4px 10px; border-bottom: 1px solid rgba(255,255,255,.1); }
+  .adm-drawer-hd b { font-family: var(--disp); font-size: 17px; font-weight: 800; color: #fff; letter-spacing: -.01em; }
+  .adm-drawer-hd button { width: 36px; height: 36px; border-radius: 10px; border: 1px solid rgba(255,255,255,.18); background: rgba(255,255,255,.08); color: #fff; font-size: 14px; cursor: pointer; }
+  .adm-drawer-hd button:focus-visible { outline: 2px solid #8fb4ff; outline-offset: 2px; }
+
+  /* inside the drawer the menu is the usual vertical, folding list (the old chip row is switched off) */
+  .adm-drawer .adm-nav { flex-direction: column; flex-wrap: nowrap; overflow-y: auto; overflow-x: hidden; flex: 1 1 auto; min-height: 0; margin: 0 -14px; padding: 0 14px 8px; }
+  .adm-drawer .adm-nav a { padding: 9px 10px; font-size: 14px; }
+  .adm-drawer .adm-nav a .ic { width: 28px; height: 28px; }
+  .adm-drawer .nav-search { margin: 0; }
+  /* the old phone rules hide the group titles and lay the items in a row: inside the drawer the groups fold again, one item per line */
+  /* admin-refresh.css forces the groups into a row with !important on phones; the drawer needs them as columns */
+  .adm-drawer .adm-nav > div.nav-grp { flex: 0 0 auto !important; flex-direction: column !important; align-items: stretch !important; gap: 0 !important; margin-bottom: 2px; }
+  .adm-drawer .nav-g { display: flex; width: 100%; padding: 9px 10px; font-size: 11px; }
+  .adm-drawer .nav-items-wrap { width: 100%; }
+  .adm-drawer .nav-items-wrap { display: grid; grid-template-rows: 1fr; }
+  .adm-drawer .nav-grp.shut .nav-items-wrap { display: grid; grid-template-rows: 0fr; }
+  .adm-drawer .nav-items, .adm-drawer .nav-grp.shut .nav-items { display: flex; flex-direction: column; gap: 2px; margin: 0 -14px; padding: 0 14px; min-height: 0; overflow: hidden; visibility: visible; }
+  .adm-drawer .nav-grp.shut .nav-items { visibility: hidden; }
+  body.adm-menu-open { overflow: hidden; }
+}
+@keyframes adm-fade { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .adm-side > .adm-drawer, .adm-side.open > .adm-drawer { transition: none; }
+  .adm-scrim { animation: none; }
+}
+
+/* ===== phone layout of the dashboard top and the page footer ===== */
+@media (max-width: 900px) {
+  /* footer: not pinned over the content any more, and the options (Storefront, Hub, Email, Privacy) are shown as chips */
+  .adm-foot { position: static; display: flex; flex-direction: column; align-items: center; gap: 10px; margin: auto -12px 0; padding: 16px 12px 18px; text-align: center; }
+  /* the options as an even 2-column grid (an odd last one spans the full width) */
+  .adm-foot .m { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; width: 100%; max-width: 360px; order: -1; }
+  .adm-foot .m a:last-child:nth-child(odd) { grid-column: 1 / -1; }
+  .adm-foot .m a { display: inline-flex; align-items: center; justify-content: center; text-align: center; padding: 10px 12px; border: 1px solid #d9e1ef; border-radius: 999px; background: #fff; color: #33405f; font-size: 12.5px; font-weight: 700; }
+  .adm-foot .m a:active { background: #eef3fb; }
+}
+@media (max-width: 700px) {
+  /* greeting card: the "what is waiting" pills fill the width, one per line, arrow at the end */
+  .dash-hero.compact .qa { flex: 1 1 100%; width: 100%; max-width: none; flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 8px; }
+  .dash-hero.compact .qa .td { display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 14px; font-size: 13px; text-align: left; }
+  .dash-hero.compact .qa .td i { margin-left: auto; font-style: normal; }
+  .dash-hero.compact .qa .qa-ok { align-self: flex-start; }
+  .dash-hero.compact > div:first-child { flex: 1 1 100%; }
+
+  /* period bar: a short title, two equal columns of chips, the note underneath */
+  /* (div.pbar: dash.css loads after this file and sets .pbar to flex, so the selector needs a little more weight) */
+  div.pbar { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding: 12px; }
+  div.pbar .pb-l { grid-column: 1 / -1; }
+  div.pbar button { width: 100%; justify-content: center; text-align: center; padding: 9px 8px; }
+  div.pbar small { grid-column: 1 / -1; margin-left: 0; }
+}

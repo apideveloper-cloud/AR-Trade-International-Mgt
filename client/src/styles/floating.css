@@ -47,3 +47,7 @@
 .cmp-bar .go:hover { color: #fff; }
 .cmp-bar .x { border: 0; background: rgba(255,255,255,.1); color: #fff; width: 34px; height: 34px; border-radius: 10px; }
 
+
+/* Checkout in the cart drawer is green, like Place order */
+.drawer .ft .acts a:last-child { background: linear-gradient(180deg, oklch(0.62 0.17 150), oklch(0.52 0.16 150)); box-shadow: 0 10px 22px -10px oklch(0.42 0.14 150 / .8); }
+.drawer .ft .acts a:last-child:hover { background: linear-gradient(180deg, oklch(0.58 0.17 150), oklch(0.47 0.16 150)); }

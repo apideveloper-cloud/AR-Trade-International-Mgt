@@ -3,6 +3,7 @@
 import { pool } from './db.js';
 import { fail, parseJson, wrap } from './util.js';
 import { runBackup, status as backupStatus, fileOf as backupFile, deleteBackup, setDeleteCode, setDir as setBackupDir } from './backup.js';
+import { mergeDelivery, validateDelivery } from './delivery.js';
 import { matrix, saveRole, DEFAULTS, MASTER, MASTER_ONLY, ROLE_NAMES } from './permissions.js';
 
 export function mountSystemRoutes(router, guard) {
@@ -36,7 +37,8 @@ export function mountSystemRoutes(router, guard) {
   // ---------- settings ----------
   router.get('/settings', guard('settings.manage'), wrap(async (req, res) => {
     const [[row]] = await pool.query('SELECT v FROM settings WHERE k = "site"');
-    res.json(parseJson(row.v));
+    const cur = parseJson(row.v);
+    res.json({ ...cur, delivery: mergeDelivery(cur.delivery) });
   }));
   router.put('/settings', guard('settings.manage'), wrap(async (req, res) => {
     const [[row]] = await pool.query('SELECT v FROM settings WHERE k = "site"');
@@ -50,6 +52,7 @@ export function mountSystemRoutes(router, guard) {
       suburbFee: 'suburbFee' in b ? num(b.suburbFee) : cur.suburbFee, freeOver: 'freeOver' in b ? num(b.freeOver) : cur.freeOver,
       coupon: b.coupon ? String(b.coupon).toUpperCase() : cur.coupon, couponPct: 'couponPct' in b ? Math.min(90, num(b.couponPct)) : cur.couponPct,
       phone: b.phone ?? cur.phone, whatsapp: b.whatsapp ?? cur.whatsapp, email: b.email ?? cur.email, address: b.address ?? cur.address,
+      delivery: 'delivery' in b ? validateDelivery(b.delivery) : cur.delivery,
       payments: b.payments ?? cur.payments, svcPrices: b.svcPrices ?? cur.svcPrices,
       // home page category rows: products per category (1-20) and an on/off switch
       homeRailLimit: 'homeRailLimit' in b ? Math.min(20, Math.max(1, num(b.homeRailLimit))) : (cur.homeRailLimit ?? 20),
@@ -61,6 +64,6 @@ export function mountSystemRoutes(router, guard) {
       nlExit: 'nlExit' in b ? !!b.nlExit : (cur.nlExit ?? true)
     };
     await pool.query('UPDATE settings SET v = ? WHERE k = "site"', [JSON.stringify(next)]);
-    res.json(next);
+    res.json({ ...next, delivery: mergeDelivery(next.delivery) });
   }));
 }

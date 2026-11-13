@@ -21,6 +21,7 @@ async function loadOrders(where, params, extra = '') {
   return rows.map(r => ({
     id: r.id, date: r.created_at, status: r.status, payment: r.payment, gateway: r.gateway, payStatus: r.pay_status, area: r.area, address: r.address,
     note: r.note, slot: r.slot, partial: r.partial, hold: !!r.hold, holdNote: r.hold_note, vatInvoice: !!r.vat_invoice, company: r.company, bin: r.bin, express: !!r.express, source: r.source || 'Customer', placedBy: r.placed_by || '',
+    distanceKm: r.distance_km != null ? Number(r.distance_km) : null, shipPartner: r.ship_partner || '', destLat: r.dest_lat != null ? Number(r.dest_lat) : null, destLng: r.dest_lng != null ? Number(r.dest_lng) : null,
     customer: { name: r.customer_name, phone: r.customer_phone, email: r.customer_email },
     subtotal: r.subtotal, discount: r.discount + r.member_discount, delivery: r.delivery, total: r.total, vat: r.vat,
     items: items.filter(i => i.order_id === r.id).map(i => ({ id: i.product_id, name: i.name, img: i.img, price: i.price, qty: i.qty, backorder: i.backorder })),

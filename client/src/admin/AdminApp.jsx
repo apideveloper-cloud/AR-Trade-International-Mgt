@@ -39,12 +39,30 @@ export default function AdminApp() {
   const [menuQ, setMenuQ] = useState(''); // left-menu search
   // left menu behaves as an accordion: one group open at a time, and the group of the page you are on opens by itself
   const [openG, setOpenG] = useState('');
+  const [menuOpen, setMenuOpen] = useState(false); // phone width: the menu is a side drawer opened by the hamburger button
   const [mods, setMods] = useState(null); // field-app modules this role may use: the menu hides pages whose module is off for them
   const nav = useNavigate();
   const { pathname } = useLocation();
 
   const pageKey = pathname.split('/')[2] || '';
   useEffect(() => { const g = NAV.find(([, items]) => items.some(i => i[0] === pageKey)); if (g) setOpenG(g[0]); }, [pageKey]);
+  useEffect(() => { setMenuOpen(false); }, [pageKey]); // choosing a page closes the drawer
+  useEffect(() => { // widening the window past the phone layout also closes it, so it does not pop open again later
+    const mq = window.matchMedia('(min-width: 901px)'), on = e => { if (e.matches) setMenuOpen(false); };
+    mq.addEventListener('change', on);
+    return () => mq.removeEventListener('change', on);
+  }, []);
+  useEffect(() => {
+    if (!menuOpen) return undefined;
+    const onKey = e => { if (e.key === 'Escape') setMenuOpen(false); };
+    document.addEventListener('keydown', onKey);
+    document.body.classList.add('adm-menu-open');
+    const f = setTimeout(() => document.querySelector('.adm-drawer-hd button')?.focus(), 60);
+    return () => {
+      document.removeEventListener('keydown', onKey); document.body.classList.remove('adm-menu-open'); clearTimeout(f);
+      if (document.querySelector('.adm-drawer')?.contains(document.activeElement)) document.querySelector('.adm-burger')?.focus(); // focus goes back to the button that opened it
+    };
+  }, [menuOpen]);
   useEffect(() => { // keep the current page's link in view in a long menu (after the group has finished opening)
     const t = setTimeout(() => document.querySelector('.adm-nav a.on')?.scrollIntoView({ block: 'nearest' }), 260);
     return () => clearTimeout(t);
@@ -101,8 +119,14 @@ export default function AdminApp() {
 
   return (
     <div className="adm">
-      <aside className="adm-side">
+      <aside className={'adm-side' + (menuOpen ? ' open' : '')}>
         <div className="adm-brand logo"><img src="/admin-logo-light.png" alt="AR Trade International" /><small>Admin console</small></div>
+        <button type="button" className="adm-burger" aria-label={menuOpen ? 'Close the menu' : 'Open the menu'} aria-expanded={menuOpen} aria-controls="adm-drawer" onClick={() => setMenuOpen(o => !o)}>
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
+        </button>
+        {menuOpen && <div className="adm-scrim" onClick={() => setMenuOpen(false)} aria-hidden="true" />}
+        <div className="adm-drawer" id="adm-drawer">
+        <div className="adm-drawer-hd"><b>Menu</b><button type="button" onClick={() => setMenuOpen(false)} aria-label="Close the menu">✕</button></div>
         <div className="nav-search">
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
           <input value={menuQ} placeholder="Search menu…" aria-label="Search the menu" onChange={e => setMenuQ(e.target.value)}
@@ -123,15 +147,13 @@ export default function AdminApp() {
                 </button>
                 <div className="nav-items-wrap">
                   <div className="nav-items" id={id} role="group" aria-labelledby={id + '-h'}>
-                    {items.map(([k, t, ic]) => <Link key={k} to={'/admin/' + k} className={page === k ? 'on' : ''} aria-current={page === k ? 'page' : undefined}><span className="ic"><NavIcon k={k} fallback={ic} /></span><span className="tx">{t}</span></Link>)}
+                    {items.map(([k, t, ic]) => <Link key={k} to={'/admin/' + k} onClick={() => setMenuOpen(false)} className={page === k ? 'on' : ''} aria-current={page === k ? 'page' : undefined}><span className="ic"><NavIcon k={k} fallback={ic} /></span><span className="tx">{t}</span></Link>)}
                   </div>
                 </div>
               </div>
             );
           })}
         </nav>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <div className="adm-user"><span className="av">{staff.name[0]}</span><div style={{ minWidth: 0, flex: 1, lineHeight: 1.25 }}><b>{staff.name}</b><small>{staff.role}</small></div><button onClick={logout} title="Sign out">⏻</button></div>
         </div>
       </aside>
       <DialogHost />

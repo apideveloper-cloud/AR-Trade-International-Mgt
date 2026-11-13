@@ -1,10 +1,12 @@
 import { Link } from 'react-router-dom';
 import { fmt, fmtDate } from '../../api.js';
 import { useStore } from '../../store.jsx';
+import { supportStatus } from '../../supportHours.js';
 import { Badge, STEPS, Thumb, Loading, summary, isOpen } from './shared.jsx';
 
 export default function Overview({ orders, profile, reminders }) {
   const { wish, find, site } = useStore();
+  const sup = supportStatus();
   const active = (orders || []).find(isOpen);
   const recent = (orders || []).slice(0, 4);
   const idx = active ? STEPS.indexOf(active.status) : -1;
@@ -59,7 +61,7 @@ export default function Overview({ orders, profile, reminders }) {
             <Link to="/account/refill" className="ac-card ac-s31"><b>⏰ A refill is due soon</b><span className="ac-s6">Open Refill reminders to reorder in one tap.</span></Link>
           )}
           <div className="ac-card ac-s27">
-            <div className="ac-s32"><span className="ac-s33"><span className="ac-s34" /></span><div className="ac-s35"><b>Support is online</b><span className="ac-s6">Sat–Thu, 10:00–20:00</span></div></div>
+            <div className="ac-s32"><span className="ac-s33"><span className="ac-s34" /></span><div className="ac-s35"><b>{sup.online ? 'Support is online' : 'Support is offline'}</b><span className="ac-s6">{sup.online ? 'Sat–Thu, 10:00–20:00 · ' + sup.label.split(' · ')[1] : sup.label.replace('Offline · ', '')}</span></div></div>
             <a href={'https://wa.me/' + site.whatsapp} target="_blank" rel="noreferrer" className="ac-btn ac-s36">WhatsApp</a>
           </div>
         </div>

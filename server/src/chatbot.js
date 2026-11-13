@@ -5,9 +5,12 @@
 //   - Built-in engine: understands product type, brand, technology, budget ("between 5000 to 8000", "under 10k", "cheapest"),
 //     model numbers, follow-up questions, and the shop's services and policies, in English and Bangla.
 
+import { mergeDelivery } from './delivery.js';
+
 const BN_DIGITS = '০১২৩৪৫৬৭৮৯';
 const toEnDigits = s => String(s).replace(/[০-৯]/g, d => BN_DIGITS.indexOf(d));
 const isBangla = s => /[ঀ-৿]/.test(s);
+const dl = site => { const d = mergeDelivery(site.delivery); const fees = d.tiers.map(t => t.fee).concat(d.maxFee); return { freeKm: d.freeKm, min: Math.min(...fees), max: Math.max(...fees) }; };
 const taka = n => '৳' + Math.round(n).toLocaleString('en-IN');
 const squash = s => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 const has = (t, re) => re.test(t);
@@ -205,14 +208,14 @@ function infoAnswer(intent, bn, { site, content, cats, products }) {
     hours: [`We are open Saturday to Thursday, 10:00 to 20:00 (closed on Friday). Our showroom is at ${site.address}. You can order on this website any time.`, `আমরা শনিবার থেকে বৃহস্পতিবার, সকাল ১০টা থেকে রাত ৮টা পর্যন্ত খোলা (শুক্রবার বন্ধ)। শোরুম: ${site.address}। ওয়েবসাইটে যেকোনো সময় অর্ডার করতে পারবেন।`],
     where: [`Our showroom is at ${site.address}. Call ${phone} before you come so we can have your product ready.`, `আমাদের শোরুম: ${site.address}। আসার আগে ${phone} নম্বরে জানালে প্রোডাক্ট প্রস্তুত রাখতে পারব।`],
     contact: [`Call or WhatsApp us on ${phone}, or email ${site.email}. We reply Saturday to Thursday, 10:00 to 20:00.`, `ফোন বা WhatsApp: ${phone}, ইমেইল: ${site.email}। শনি–বৃহস্পতি, সকাল ১০টা থেকে রাত ৮টা।`],
-    delivery: [`Delivery inside Dhaka: ${site.insideFee ? taka(site.insideFee) : 'free'} with cash on delivery${site.freeOver ? ` (free over ${taka(site.freeOver)})` : ''}. Suburbs: ${taka(site.suburbFee)}. Outside Dhaka: ${taka(site.outsideFee)} by courier. Order before 2 PM for same-day dispatch in Dhaka.`,
-      `ঢাকার ভেতরে ডেলিভারি: ${site.insideFee ? taka(site.insideFee) : 'ফ্রি'} (ক্যাশ অন ডেলিভারি)${site.freeOver ? `, ${taka(site.freeOver)}-এর বেশি অর্ডারে ফ্রি` : ''}। শহরতলি: ${taka(site.suburbFee)}। ঢাকার বাইরে কুরিয়ারে: ${taka(site.outsideFee)}। ঢাকায় দুপুর ২টার আগে অর্ডার করলে একই দিনে পাঠানো হয়।`],
+    delivery: [`Delivery inside Dhaka is free within ${dl(site).freeKm} km of our Santinagar office; beyond that the charge depends on distance, from ${taka(dl(site).min)} up to ${taka(dl(site).max)}${site.freeOver > 0 ? ` (free over ${taka(site.freeOver)})` : ''}, with cash on delivery. Outside Dhaka: ${taka(site.outsideFee)} by courier. Order before 2 PM for same-day dispatch in Dhaka.`,
+      `ঢাকার ভেতরে শান্তিনগর অফিস থেকে ${dl(site).freeKm} কিমির মধ্যে ডেলিভারি ফ্রি; এর বেশি হলে দূরত্ব অনুযায়ী ${taka(dl(site).min)} থেকে ${taka(dl(site).max)} পর্যন্ত${site.freeOver > 0 ? `, ${taka(site.freeOver)}-এর বেশি অর্ডারে ফ্রি` : ''} (ক্যাশ অন ডেলিভারি)। ঢাকার বাইরে কুরিয়ারে: ${taka(site.outsideFee)}। ঢাকায় দুপুর ২টার আগে অর্ডার করলে একই দিনে পাঠানো হয়।`],
     payment: [`You can pay by ${f.pay.join(', ')}. Cash on delivery is available inside Dhaka. For bKash, Nagad, Upay or bank transfer, the payment details are shown at checkout.`, `পেমেন্ট করতে পারবেন: ${f.pay.join(', ')}। ঢাকার ভেতরে ক্যাশ অন ডেলিভারি আছে। বিকাশ, নগদ, উপায় বা ব্যাংক ট্রান্সফারের তথ্য চেকআউটে দেখানো হয়।`],
     returns: [policyText(content, 'returns') ? `Our returns policy: ${policyText(content, 'returns')}` : `Unused products in sealed packaging can be returned within 7 days. Call ${phone} for help.`, `রিটার্ন নীতি: অব্যবহৃত ও সিল করা প্রোডাক্ট ডেলিভারির ৭ দিনের মধ্যে ফেরত দেওয়া যায়; ত্রুটিযুক্ত প্রোডাক্ট ৪৮ ঘণ্টার মধ্যে জানালে বদলে দেওয়া হয়। বিস্তারিত: ${phone}।`],
-    warranty: [`Everything we sell is original and comes from authorised supply, backed by warranty. The warranty period depends on the product, and we state it on your invoice. Tell me the product and I will help you.`, `আমাদের সব প্রোডাক্ট অরিজিনাল ও ওয়ারেন্টিসহ। ওয়ারেন্টির মেয়াদ প্রোডাক্ট অনুযায়ী আলাদা, তা ইনভয়েসে লেখা থাকে। কোন প্রোডাক্ট জানালে সাহায্য করব।`],
+    warranty: [`Everything we sell is original and comes from authorised supply. Each product page says whether a warranty is available (Yes or No), and where it is, the period is stated on your invoice. Tell me the product and I will help you.`, `আমাদের সব প্রোডাক্ট অরিজিনাল ও ওয়ারেন্টিসহ। ওয়ারেন্টির মেয়াদ প্রোডাক্ট অনুযায়ী আলাদা, তা ইনভয়েসে লেখা থাকে। কোন প্রোডাক্ট জানালে সাহায্য করব।`],
     service: [`Printer servicing: ${(site.svcPrices || []).slice(0, 5).map(s => `${s.t} ${taka(s.offer)}`).join('; ')}. It is free to book from the Servicing page, and parts are extra. Want me to point you to the booking page?`,
       `প্রিন্টার সার্ভিসিং: ${(site.svcPrices || []).slice(0, 5).map(s => `${s.bn || s.t} ${taka(s.offer)}`).join('; ')}। Servicing পেজ থেকে বুক করুন; যন্ত্রাংশের দাম আলাদা।`],
-    offer: [`Use coupon ${site.coupon} for ${site.couponPct}% off at checkout. Registered members get ${site.memberPct}% more off. Delivery inside Dhaka is ${site.insideFee ? taka(site.insideFee) : 'free'}. See the Offers page for today's deals.`,
+    offer: [`Use coupon ${site.coupon} for ${site.couponPct}% off at checkout. Registered members get ${site.memberPct}% more off. Delivery inside Dhaka is free within ${dl(site).freeKm} km of our office. See the Offers page for today's deals.`,
       `চেকআউটে কুপন ${site.coupon} দিলে ${site.couponPct}% ছাড়। রেজিস্টার্ড সদস্যরা আরও ${site.memberPct}% ছাড় পান। আজকের অফার দেখুন Offers পেজে।`],
     bulk: [`Corporate and bulk orders get special pricing. Tell me the model and quantity, or call ${phone}, and we will send a quotation the same day.`, `কর্পোরেট ও বাল্ক অর্ডারে বিশেষ দাম আছে। মডেল ও পরিমাণ জানান বা ${phone} নম্বরে কল করুন, একই দিনে কোটেশন পাঠানো হবে।`],
     about: [`AR Trade International is a Dhaka IT supplier: hardware since 2011 and IT services since 2019. We sell original printers, toner, ink, photocopiers, computers, CCTV and networking, and we service printers. Showroom: ${site.address}.`, `AR Trade International ঢাকার একটি আইটি সরবরাহকারী প্রতিষ্ঠান: ২০১১ থেকে হার্ডওয়্যার, ২০১৯ থেকে আইটি সার্ভিস। অরিজিনাল প্রিন্টার, টোনার, কালি, ফটোকপিয়ার, কম্পিউটার, সিসিটিভি ও নেটওয়ার্কিং বিক্রি করি, প্রিন্টার সার্ভিসও দিই। শোরুম: ${site.address}।`],
@@ -321,7 +324,7 @@ async function claudeReply({ text, history = [], ctx = {} }, data, base) {
     `Reply in the customer's language (Bangla or English). Keep it short: 2 to 5 sentences, friendly and plain. Ask one useful question (use case, budget, quantity) when it helps, and gently guide to the next step: open the product, add to cart, or order by phone/WhatsApp. Do not use markdown tables; no lists longer than 3 items.`,
     `FACTS`,
     `Showroom: ${site.address}. Open Saturday to Thursday 10:00-20:00. Phone/WhatsApp: ${site.phone}. Email: ${site.email}.`,
-    `Delivery: inside Dhaka ${site.insideFee ? taka(site.insideFee) : 'free'}${site.freeOver ? ` (free over ${taka(site.freeOver)})` : ''}; suburbs ${taka(site.suburbFee)}; outside Dhaka ${taka(site.outsideFee)}; same-day dispatch in Dhaka if ordered before 2 PM.`,
+    `Delivery: inside Dhaka free within ${dl(site).freeKm} km of the Santinagar office, then ${taka(dl(site).min)} to ${taka(dl(site).max)} by distance${site.freeOver > 0 ? ` (free over ${taka(site.freeOver)})` : ''}; outside Dhaka ${taka(site.outsideFee)} by courier; same-day dispatch in Dhaka if ordered before 2 PM.`,
     `Payment: ${facts(site, content, data.cats, data.products).pay.join(', ')}. Coupon ${site.coupon} gives ${site.couponPct}% off; members get ${site.memberPct}% more.`,
     `Categories: ${data.cats.map(c => c.t).join(', ')}. Brands: ${brandNames(content).join(', ')}.`,
     `Servicing: ${(site.svcPrices || []).map(s => `${s.t} ${taka(s.offer)}`).join('; ')}.`,

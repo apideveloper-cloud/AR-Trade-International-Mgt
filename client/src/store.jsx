@@ -13,7 +13,7 @@ function usePersisted(key, init, storage = 'localStorage') {
 }
 
 /** Same pricing rules as the design's AR.totals; the server recomputes everything when the order is placed. */
-export function computeTotals(cartLines, site, { area = 'inside', coupon = '', express = false, partial = 'split', member = false } = {}) {
+export function computeTotals(cartLines, site, { area = 'inside', deliveryBase, coupon = '', express = false, partial = 'split', member = false } = {}) {
   const lines = cartLines.map(({ p, qty }) => {
     const avail = Math.max(0, Math.min(qty, p.stock || 0));
     const short = qty - avail;
@@ -27,15 +27,17 @@ export function computeTotals(cartLines, site, { area = 'inside', coupon = '', e
   const discount = okCoupon ? Math.round(subtotal * (welcome ? 10 : site.couponPct) / 100) : 0;
   const memberPct = member ? site.memberPct : 0;
   const memberOff = Math.round((subtotal - discount) * memberPct / 100);
-  const base = area === 'outside' ? site.outsideFee : area === 'suburb' ? site.suburbFee : site.insideFee;
-  const freeElig = area !== 'outside' && subtotal >= site.freeOver;
+  const base = area === 'outside' ? site.outsideFee : area === 'suburb' ? site.suburbFee : (Number.isFinite(deliveryBase) && deliveryBase >= 0 ? deliveryBase : site.insideFee);
+  const byMap = area !== 'outside' && Number.isFinite(deliveryBase) && deliveryBase >= 0; // priced from the map: that charge is always added, the free-over-a-spend rule does not apply
+  const freeOn = !byMap && Number(site.freeOver) > 0;
+  const freeElig = freeOn && area !== 'outside' && subtotal >= site.freeOver;
   const expressFee = express && area === 'inside' ? site.expressFee : 0;
   const delivery = subtotal ? (freeElig ? 0 : base) + expressFee : 0;
   const total = Math.max(0, subtotal - discount - memberOff + delivery);
   const vat = Math.round(total * site.vatPct / (100 + site.vatPct));
   return {
     lines, subtotal, saved, discount, member: memberOff, memberPct, delivery, express: expressFee, base, freeOver: site.freeOver, freeElig,
-    freeLeft: area === 'outside' ? 0 : Math.max(0, site.freeOver - subtotal), zone: area, total, vat, vatPct: site.vatPct, okCoupon,
+    freeLeft: !freeOn || area === 'outside' ? 0 : Math.max(0, site.freeOver - subtotal), zone: area, total, vat, vatPct: site.vatPct, okCoupon,
     heldN: lines.filter(l => l.held).length, shortN: lines.filter(l => l.short > 0).length, count: lines.reduce((a, l) => a + l.qty, 0)
   };
 }

@@ -18,7 +18,7 @@ async function loadChatData() {
 export function mountChatRoutes(app) {
   // the form that opens a chat: name, mobile, gender and location are saved as an upcoming-customer record for sellers and marketing
   app.post('/api/chat/start', limit('chatstart', 12, 3600000), wrap(async (req, res) => {
-    const lead = await startLead(req.body);
+    const lead = await startLead(req.body, req);
     res.json({ ok: true, lead });
   }));
 

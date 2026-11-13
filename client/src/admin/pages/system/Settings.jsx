@@ -1,9 +1,161 @@
-import { createContext, useContext, useState } from 'react';
+import { createContext, lazy, Suspense, useContext, useState } from 'react';
 import { adm } from '../../adminApi.js';
 import { Modal } from '../../ui.jsx';
 import { PAY } from '../../../data.js';
 import { useApiData } from '../../hooks/useApiData.js';
 import { useBusy } from '../../hooks/useBusy.js';
+import '../../styles/admin-delivery-rules.css';
+
+const OfficeMap = lazy(() => import('./OfficeMap.jsx')); // Leaflet loads only when this screen is opened
+
+const DEFAULT_DELIVERY = {
+  office: { lat: 23.739316, lng: 90.415567, label: '159 Santinagar, Dhaka-1217' },
+  freeKm: 2,
+  roadFactor: 1.25,
+  tiers: [{ upToKm: 5, fee: 100 }, { upToKm: 8, fee: 150 }, { upToKm: 12, fee: 200 }, { upToKm: 18, fee: 250 }],
+  maxFee: 350,
+  partners: [['redx', 'RedX'], ['sa-paribahan', 'SA Paribahan'], ['steadfast', 'Steadfast Courier'], ['sundarban', 'Sundarban Courier']].map(([id, name]) => ({ id, name })),
+};
+/** Delivery object with every missing piece filled from the defaults (values may still be strings while the admin types). */
+const getDelivery = d => {
+  const x = d && typeof d === 'object' ? d : {};
+  return {
+    office: { ...DEFAULT_DELIVERY.office, ...(x.office || {}) },
+    freeKm: x.freeKm ?? DEFAULT_DELIVERY.freeKm,
+    roadFactor: x.roadFactor ?? DEFAULT_DELIVERY.roadFactor,
+    tiers: Array.isArray(x.tiers) ? x.tiers : DEFAULT_DELIVERY.tiers,
+    maxFee: x.maxFee ?? DEFAULT_DELIVERY.maxFee,
+    partners: Array.isArray(x.partners) ? x.partners : DEFAULT_DELIVERY.partners,
+  };
+};
+const isNum = v => v !== '' && v !== null && v !== undefined && Number.isFinite(Number(v));
+const slug = n => String(n || '').toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
+/** Partners with ids: existing ids stay, new entries get a slug of the name. */
+const withIds = ps => ps.map(p => ({ id: p.id || slug(p.name), name: String(p.name || '').trim() }));
+
+function validateDelivery(raw) {
+  const d = getDelivery(raw), e = [];
+  const lat = d.office.lat, lng = d.office.lng;
+  if (!isNum(lat) || +lat < -90 || +lat > 90) e.push('Latitude must be a number between -90 and 90.');
+  if (!isNum(lng) || +lng < -180 || +lng > 180) e.push('Longitude must be a number between -180 and 180.');
+  if (String(d.office.label || '').length > 120) e.push('Office label is too long (max 120 characters).');
+  if (!isNum(d.freeKm) || +d.freeKm < 0) e.push('Free distance must be 0 or more.');
+  if (!isNum(d.roadFactor) || +d.roadFactor < 1 || +d.roadFactor > 3) e.push('Road factor must be a number between 1 and 3.');
+  d.tiers.forEach((t, i) => {
+    const n = i + 1;
+    if (!isNum(t.upToKm) || +t.upToKm <= 0) e.push(`Step ${n}: enter the distance in km (more than 0).`);
+    else if (i > 0 && isNum(d.tiers[i - 1].upToKm) && +t.upToKm <= +d.tiers[i - 1].upToKm) e.push(`Step ${n}: km must be more than the step above.`);
+    else if (+t.upToKm <= +d.freeKm && isNum(d.freeKm)) e.push(`Step ${n}: km must be more than the free distance.`);
+    if (!isNum(t.fee) || +t.fee < 0) e.push(`Step ${n}: enter the fee (0 or more).`);
+    else if (i > 0 && isNum(d.tiers[i - 1].fee) && +t.fee < +d.tiers[i - 1].fee) e.push(`Step ${n}: fee cannot be lower than the step above.`);
+  });
+  if (!isNum(d.maxFee) || +d.maxFee < 0) e.push('Fee beyond the last step must be 0 or more.');
+  else if (d.tiers.length && isNum(d.tiers[d.tiers.length - 1].fee) && +d.maxFee < +d.tiers[d.tiers.length - 1].fee) e.push('Fee beyond the last step cannot be lower than the last step.');
+  if (!d.partners.length) e.push('Keep at least one shipping partner, otherwise orders outside Dhaka cannot be placed.');
+  const seen = new Set();
+  d.partners.forEach((p, i) => {
+    const name = String(p.name || '').trim();
+    if (!name) { e.push(`Partner ${i + 1}: name is empty.`); return; }
+    if (name.length > 60) e.push(`Partner ${i + 1}: name is too long (max 60).`);
+    const id = p.id || slug(name);
+    if (!id) { e.push(`Partner "${name}": use English letters or numbers in the name.`); return; }
+    if (seen.has(id)) e.push(`Partner "${name}" is listed twice.`);
+    seen.add(id);
+  });
+  return e;
+}
+
+/** Numbers as numbers, partners with ids; call only after validateDelivery passes. */
+function deliveryPayload(raw) {
+  const d = getDelivery(raw);
+  return {
+    office: { lat: +d.office.lat, lng: +d.office.lng, label: String(d.office.label || '').trim() },
+    freeKm: +d.freeKm,
+    roadFactor: +d.roadFactor,
+    tiers: d.tiers.map(t => ({ upToKm: +t.upToKm, fee: +t.fee })),
+    maxFee: +d.maxFee,
+    partners: withIds(d.partners),
+  };
+}
+
+function DeliveryRules({ s, setS, errors }) {
+  const d = getDelivery(s.delivery);
+  const upd = fn => setS(x => ({ ...x, delivery: fn(getDelivery(x.delivery)) }));
+  const setTop = (k, v) => upd(c => ({ ...c, [k]: v }));
+  const setOffice = (k, v) => upd(c => ({ ...c, office: { ...c.office, [k]: v } }));
+  const setTier = (i, k, v) => upd(c => ({ ...c, tiers: c.tiers.map((t, j) => (j === i ? { ...t, [k]: v } : t)) }));
+  const setPartner = (i, name) => upd(c => ({ ...c, partners: c.partners.map((p, j) => (j === i ? { ...p, name } : p)) }));
+  const num = (label, value, onChange, extra = {}) => (
+    <label className="a-lbl">{label}<input className="a-input" type="number" step="any" inputMode="decimal" value={value ?? ''} onChange={e => onChange(e.target.value)} {...extra} /></label>
+  );
+  const f = n => (isNum(n) ? +n : '?');
+  const parts = [`Free up to ${f(d.freeKm)} km`];
+  let from = d.freeKm;
+  d.tiers.forEach(t => { parts.push(`${f(from)}-${f(t.upToKm)} km ৳${f(t.fee)}`); from = t.upToKm; });
+  parts.push(`over ${f(from)} km ৳${f(d.maxFee)}`);
+  const mapOk = isNum(d.office.lat) && isNum(d.office.lng);
+  const mapUrl = `https://www.openstreetmap.org/?mlat=${+d.office.lat}&mlon=${+d.office.lng}#map=16/${+d.office.lat}/${+d.office.lng}`;
+  return (
+    <>
+      <div className="dr-box">
+        <b>Delivery by distance (inside Dhaka)</b>
+        <p className="dr-hint">Distances are measured from here. Open the map and confirm the pin is on your office door.</p>
+        <div className="a-fields">
+          <label className="a-lbl">Office location label<input className="a-input" type="text" maxLength={120} value={d.office.label ?? ''} onChange={e => setOffice('label', e.target.value)} /></label>
+          {num('Latitude', d.office.lat, v => setOffice('lat', v))}
+          {num('Longitude', d.office.lng, v => setOffice('lng', v))}
+        </div>
+        {mapOk && <a className="dr-map" href={mapUrl} target="_blank" rel="noopener noreferrer">Check on map</a>}
+        <Suspense fallback={<div className="dr-hint">Loading map…</div>}>
+          <OfficeMap lat={d.office.lat} lng={d.office.lng} onPick={p => { setOffice('lat', p.lat); setOffice('lng', p.lng); }} />
+        </Suspense>
+        <div className="a-fields">
+          {num('Free distance (km)', d.freeKm, v => setTop('freeKm', v), { min: 0 })}
+          {num('Road factor', d.roadFactor, v => setTop('roadFactor', v), { min: 1, max: 3 })}
+        </div>
+        <p className="dr-hint">Straight-line distance x this number approximates the road distance</p>
+        <div className="dr-steps" role="group" aria-label="Distance steps">
+          {d.tiers.map((t, i) => (
+            <div className="dr-row" key={i}>
+              {num(`Step ${i + 1}: up to (km)`, t.upToKm, v => setTier(i, 'upToKm', v), { min: 0 })}
+              <span aria-hidden="true">→</span>
+              <label className="a-lbl">Fee<span className="adorn"><i>৳</i><input className="a-input" type="number" step="any" inputMode="decimal" min="0" value={t.fee ?? ''} onChange={e => setTier(i, 'fee', e.target.value)} /></span></label>
+              <button type="button" className="a-btn" aria-label={`Remove step ${i + 1}`} onClick={() => upd(c => ({ ...c, tiers: c.tiers.filter((_, j) => j !== i) }))}>Remove</button>
+            </div>
+          ))}
+          <div>
+            <button type="button" className="a-btn" disabled={d.tiers.length >= 8} onClick={() => upd(c => {
+              const last = c.tiers[c.tiers.length - 1];
+              const km = last && isNum(last.upToKm) ? +last.upToKm + 3 : (isNum(c.freeKm) ? +c.freeKm + 2 : 2);
+              return { ...c, tiers: [...c.tiers, { upToKm: km, fee: last && isNum(last.fee) ? +last.fee + 50 : 100 }] };
+            })}>+ Add step</button>
+            {d.tiers.length >= 8 && <span className="dr-hint"> Maximum 8 steps.</span>}
+          </div>
+        </div>
+        <div className="dr-last">
+          <label className="a-lbl">Beyond the last step<span className="adorn"><i>৳</i><input className="a-input" type="number" step="any" inputMode="decimal" min="0" value={d.maxFee ?? ''} onChange={e => setTop('maxFee', e.target.value)} /></span></label>
+        </div>
+        <div className="dr-prev" aria-live="polite"><b>Preview: </b>{parts.join(' · ')}</div>
+      </div>
+      <div className="dr-box">
+        <b>Shipping partners (outside Dhaka)</b>
+        <div className="dr-steps">
+          {d.partners.map((p, i) => (
+            <div className="dr-row" key={i}>
+              <label className="a-lbl">Partner {i + 1}<input className="a-input" type="text" maxLength={60} value={p.name ?? ''} onChange={e => setPartner(i, e.target.value)} /></label>
+              <button type="button" className="a-btn" aria-label={`Remove partner ${i + 1}`} onClick={() => upd(c => ({ ...c, partners: c.partners.filter((_, j) => j !== i) }))}>Remove</button>
+            </div>
+          ))}
+          <div>
+            <button type="button" className="a-btn" disabled={d.partners.length >= 12} onClick={() => upd(c => ({ ...c, partners: [...c.partners, { name: '' }] }))}>+ Add partner</button>
+            {d.partners.length >= 12 && <span className="dr-hint"> Maximum 12 partners.</span>}
+          </div>
+        </div>
+      </div>
+      {errors.length > 0 && <div role="alert">{errors.map(m => <p className="dr-err" key={m}>{m}</p>)}</div>}
+    </>
+  );
+}
 
 /** Big sample of one piece of storefront text, shown from the Preview button next to a field. */
 function PvSample({ kind, s }) {
@@ -79,14 +231,16 @@ export function Settings() {
   const [saving, runSave] = useBusy();
   const [pv, setPv] = useState(null); // which sample the Preview button is showing
   const err = saveErr || q.error;
+  const delErrs = s ? validateDelivery(s.delivery) : [];
   if (!s) return err ? <div className="a-msg err">{err}</div> : <span className="spin" />;
   const set = k => e => setS(x => ({ ...x, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value }));
   const setPay = (k, v) => setS(x => ({ ...x, payments: { ...x.payments, [k]: v } }));
   const setSvc = (i, k, v) => setS(x => ({ ...x, svcPrices: x.svcPrices.map((p, j) => (j === i ? { ...p, [k]: +v } : p)) }));
   const save = async e => {
     e.preventDefault(); setErr(''); setMsg('');
+    if (delErrs.length) { setErr('Fix the delivery settings first: ' + delErrs[0]); document.getElementById('st-checkout')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
     await runSave(async () => {
-      try { setS(await adm.put('/settings', s)); setMsg('Saved — the storefront updates immediately.'); } catch (er) { setErr(er.message); }
+      try { setS(await adm.put('/settings', { ...s, delivery: deliveryPayload(s.delivery) })); setMsg('Saved — the storefront updates immediately.'); } catch (er) { setErr(er.message); }
     });
   };
   const pvBtn = kind => <button type="button" className="pv-btn" onClick={() => setPv(kind)} title="Show a sample of how this looks on the website">👁 Preview</button>;
@@ -137,9 +291,10 @@ export function Settings() {
       <div className="a-card st-sec" id="st-checkout" style={{ '--h': 85 }}>
         <SecHead icon="🚚" title="Checkout & delivery" sub="Delivery fees, free-delivery limit, coupon code and payment methods" />
         <div className="a-fields">
-          <F k="insideFee" type="number" prefix="৳" label="Delivery fee: inside Dhaka" /><F k="suburbFee" type="number" prefix="৳" label="Delivery fee: suburbs" /><F k="outsideFee" type="number" prefix="৳" label="Delivery fee: outside Dhaka" /><F k="freeOver" type="number" prefix="৳" label="Free delivery over" />
+          <F k="outsideFee" type="number" prefix="৳" label="Delivery fee: outside Dhaka" /><F k="expressFee" type="number" prefix="৳" label="Express delivery fee" /><F k="freeOver" type="number" prefix="৳" label="Free delivery over (Dhaka orders, 0 = off)" />
           <F k="coupon" prefix="🏷️" label="Coupon code" style={{ textTransform: 'uppercase' }} /><F k="couponPct" type="number" suffix="%" label="Coupon discount" />
         </div>
+        <DeliveryRules s={s} setS={setS} errors={delErrs} />
         <div className="card-hd"><span style={{ fontSize: 13, fontWeight: 800 }}>Payment methods</span><span className="muted" style={{ fontSize: 12 }}>Tick the ones customers can choose at checkout</span></div>
         <div className="pm-grid">
           {PAY.map(([k, name, note, [txt, size, bg, img]]) => {

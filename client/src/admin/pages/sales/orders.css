@@ -1,7 +1,7 @@
 /* Orders page: the advanced search (os-*) and the order details drawer (od-*). */
 
 /* ---------- order details drawer ---------- */
-.a-drawer:has(.od-card) { width: min(580px, 100%); }
+.a-drawer:has(.od-card) { width: min(720px, 100%); }
 .a-drawer:has(.od-card) .bd { gap: 12px; }
 
 /* hero: customer, payment badges, total */

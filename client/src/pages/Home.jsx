@@ -7,6 +7,7 @@ import ProductCard, { BuyAction } from '../components/ProductCard.jsx';
 import { fmt, offPct } from '../api.js';
 import { CAT_FALLBACK, CAT_TINT, SVC_IMGS, isPhoto } from '../data.js';
 import { useStore } from '../store.jsx';
+import useReveal from '../useReveal.js';
 
 const to = h => String(h || '/').replace(/^#/, '') || '/';
 
@@ -285,6 +286,7 @@ function Fresh() {
 
 function Services() {
   const { site } = useStore();
+  const reveal = useReveal();
   const cards = [
     ['Printer servicing', 'LASER · INKJET · DOT', 'Cleaning, roller & fuser fixes, part replacement for any brand.', site.svcPrices[0].offer],
     ['Photocopier servicing', 'OFFICE CONTRACTS', 'Indoor and outdoor maintenance plans for offices and institutions.', site.svcPrices[1].offer],
@@ -292,7 +294,7 @@ function Services() {
   ];
   return (
     <section className="sec">
-      <div className="svc">
+      <div className="svc" ref={reveal}>
         <span className="grid-bg" />
         <div className="head">
           <div>
@@ -300,19 +302,19 @@ function Services() {
             <h2>We fix what we sell.</h2>
             <p>Trained engineers for every major brand — HP, Canon, Samsung, Epson, Lexmark and Brother. On-site visits across Dhaka or bring it to our Santinagar house.</p>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'flex-start' }}>
+          <div className="svc-aside">
             <div className="free-badge"><b className="big">FREE</b><span><b>Every Saturday</b><span>Laser printer servicing · parts extra</span></span></div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <Link to="/services" className="btn" style={{ background: '#fff', color: '#0d1220', borderRadius: 12, padding: '13px 20px' }}>Book a technician →</Link>
-              <Link to="/services" className="btn" style={{ border: '1px solid rgba(255,255,255,.18)', background: 'rgba(255,255,255,.05)', borderRadius: 12, padding: '13px 20px', fontWeight: 700 }}>See price list</Link>
+            <div className="svc-cta">
+              <Link to="/services" className="svc-btn pri">Book a technician <i>→</i></Link>
+              <Link to="/services" className="svc-btn ghost">See price list</Link>
             </div>
           </div>
         </div>
         <div className="svc-cards">
           {cards.map(([t, tag, d, from], k) => (
-            <Link key={t} to="/services" className="svc-card">
+            <Link key={t} to="/services" className="svc-card" style={{ '--i': k }}>
               <div className="bg" style={{ backgroundImage: `url('${SVC_IMGS[k]}')` }} /><div className="shade" />
-              <span className="tg">{tag}</span>
+              <span className="tg">{tag}</span><em className="no">{String(k + 1).padStart(2, '0')}</em>
               <div className="body"><span className="t">{t}</span><span className="d">{d}</span><div className="ft"><span>From <b>{fmt(from)}</b></span><i>→</i></div></div>
             </Link>
           ))}

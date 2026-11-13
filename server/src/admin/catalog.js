@@ -12,10 +12,11 @@ const prodOut = r => ({
   id: r.id, cat: r.category_id, brand: r.brand, name: r.name, old: r.old_price, price: r.price, img: r.img, stock: r.stock, popular: !!r.popular,
   isNew: !!r.is_new, featured: !!r.featured, active: !!r.active, tech: r.tech, color: r.color, yield: r.yield_info, part: r.part, compat: r.compat, spec: r.spec,
   description: r.description || '', gallery: parseJson(r.gallery) || [], source: r.source_url || '', edited: !!r.edited,
-  metaTitle: r.meta_title || '', metaDesc: r.meta_desc || '', metaKeywords: r.meta_keywords || ''
+  metaTitle: r.meta_title || '', metaDesc: r.meta_desc || '', metaKeywords: r.meta_keywords || '',
+  warranty: !(r.warranty === 0 || r.warranty === false)
 });
-const PROD_COLS = { metaTitle: 'meta_title', metaDesc: 'meta_desc', metaKeywords: 'meta_keywords', cat: 'category_id', brand: 'brand', name: 'name', old: 'old_price', price: 'price', img: 'img', stock: 'stock', popular: 'popular', isNew: 'is_new', featured: 'featured', active: 'active', tech: 'tech', color: 'color', yield: 'yield_info', part: 'part', compat: 'compat', spec: 'spec' };
-const BOOL = new Set(['popular', 'isNew', 'featured', 'active']);
+const PROD_COLS = { warranty: 'warranty', metaTitle: 'meta_title', metaDesc: 'meta_desc', metaKeywords: 'meta_keywords', cat: 'category_id', brand: 'brand', name: 'name', old: 'old_price', price: 'price', img: 'img', stock: 'stock', popular: 'popular', isNew: 'is_new', featured: 'featured', active: 'active', tech: 'tech', color: 'color', yield: 'yield_info', part: 'part', compat: 'compat', spec: 'spec' };
+const BOOL = new Set(['popular', 'isNew', 'featured', 'active', 'warranty']);
 const INT = new Set(['old', 'price', 'stock']);
 const META_MAX = { metaTitle: 160, metaDesc: 320, metaKeywords: 500 };
 
@@ -90,6 +91,7 @@ export function mountCatalogRoutes(router, guard) {
     await pool.query('INSERT INTO products (id,category_id,brand,name,old_price,price,img,stock,is_new,active,tech,color,yield_info,part,compat,spec,description,gallery,edited) VALUES (?,?,?,?,?,?,?,?,1,1,?,?,?,?,?,?,?,?,1)',
       [id, b.cat, b.brand, b.name, Math.max(0, parseInt(b.old, 10) || 0), Math.max(0, parseInt(b.price, 10) || 0), localImg(b.img) || null, Math.max(0, parseInt(b.stock, 10) || 0), String(b.tech || ''), String(b.color || ''), String(b.yield || ''), String(b.part || ''), String(b.compat || ''), String(b.spec || ''), sanitizeHtml(String(b.description || ''), SAN), JSON.stringify((Array.isArray(b.gallery) ? b.gallery : (b.img ? [b.img] : [])).map(u => String(u).trim()).filter(isLocalImg).slice(0, 12))]);
     await assignSlug(pool, id);
+    if ('warranty' in b) await pool.query('UPDATE products SET warranty = ? WHERE id = ?', [+!!b.warranty, id]);
     const [[p]] = await pool.query('SELECT * FROM products WHERE id = ?', [id]);
     res.json(prodOut(p));
   }));

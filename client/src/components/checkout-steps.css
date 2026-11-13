@@ -1,0 +1,43 @@
+/* checkout progress tracker: Cart > Details > Confirmation */
+.cks { --cks-green: oklch(0.62 0.15 150); --cks-ink: var(--navy, #0b1631); display: flex; align-items: center; gap: 8px; list-style: none; margin: 0; padding: 0; font-size: 12.5px; font-weight: 700; }
+.cks-i { display: flex; align-items: center; gap: 8px; color: #7a8296; transition: color .3s; }
+.cks-dot { position: relative; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: #eef1f7; color: #7a8296; font-size: 12px; font-weight: 800; transition: background .3s, color .3s; }
+.cks-i.done { color: oklch(0.42 0.13 150); }
+.cks-i.done .cks-dot { background: var(--cks-green); color: #fff; animation: cks-pop .45s cubic-bezier(.3, 1.6, .5, 1) both; }
+.cks-i.cur { color: var(--cks-ink); }
+.cks-i.cur .cks-dot { background: var(--cks-ink); color: #fff; animation: cks-ring 1.8s ease-out infinite; }
+
+/* the road between two steps */
+.cks-line { position: relative; flex: none; width: 44px; height: 3px; border-radius: 3px; background: #e3e7f0; overflow: hidden; }
+.cks-line.done::before { content: ""; position: absolute; inset: 0; background: var(--cks-green); transform-origin: left; animation: cks-fill .7s ease-out both; }
+.cks-line.next::before { content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 55%; border-radius: 3px; background: linear-gradient(90deg, transparent, var(--cks-ink), transparent); animation: cks-run 1.5s ease-in-out infinite; }
+
+@keyframes cks-fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes cks-run { from { transform: translateX(-100%); } to { transform: translateX(190%); } }
+@keyframes cks-pop { from { transform: scale(.4); } to { transform: scale(1); } }
+@keyframes cks-ring { 0% { box-shadow: 0 0 0 0 rgba(11, 22, 49, .35); } 70% { box-shadow: 0 0 0 9px rgba(11, 22, 49, 0); } 100% { box-shadow: 0 0 0 0 rgba(11, 22, 49, 0); } }
+
+@media (max-width: 560px) {
+  .cks { gap: 6px; font-size: 12px; }
+  .cks-line { width: 22px; }
+  .cks-i:not(.cur) .cks-t { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cks-i.cur .cks-dot, .cks-i.done .cks-dot, .cks-line.done::before, .cks-line.next::before { animation: none; }
+  .cks-line.next::before { width: 100%; opacity: .25; }
+}
+
+/* v2: the tracker as a floating card-pill with icons and a colour flow */
+.cks { gap: 10px; padding: 8px 20px 8px 10px; background: #fff; border: 1px solid #e3e9f3; border-radius: 999px; box-shadow: 0 16px 34px -24px rgba(11, 22, 49, .55), 0 1px 0 rgba(255, 255, 255, .9) inset; }
+.cks-i { gap: 9px; font-size: 13.5px; }
+.cks-dot { width: 36px; height: 36px; background: #f1f4fa; color: #93a0ba; box-shadow: inset 0 0 0 1.5px #e0e6f1; }
+.cks-i.done .cks-dot { background: linear-gradient(135deg, oklch(0.68 0.15 152), oklch(0.52 0.14 156)); color: #fff; box-shadow: 0 6px 14px -6px oklch(0.5 0.14 155 / .7); }
+.cks-i.cur .cks-dot { background: linear-gradient(135deg, oklch(0.5 0.17 258), var(--cks-ink)); color: #fff; box-shadow: 0 8px 18px -8px oklch(0.4 0.16 260 / .8); }
+.cks-i.cur .cks-t { font-weight: 800; }
+.cks-line { width: 64px; height: 4px; background: #e6ebf4; }
+.cks-line.done::before { background: linear-gradient(90deg, oklch(0.68 0.15 152), oklch(0.58 0.15 156)); }
+.cks-line.next::before { width: 45%; background: linear-gradient(90deg, transparent, oklch(0.5 0.17 258), transparent); }
+@media (max-width: 560px) { .cks { padding: 6px 14px 6px 8px; gap: 6px; } .cks-dot { width: 32px; height: 32px; } .cks-line { width: 28px; } }
+
+/* the circles and roads keep their size when the title row is narrow */
+.cks-dot, .cks-line, .cks-i { flex: none; }

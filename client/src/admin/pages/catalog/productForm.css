@@ -33,3 +33,12 @@
 .pf .pf-card textarea.a-input { resize: vertical; min-height: 62px; }
 .pf .pf-card textarea.pf-desc { min-height: 190px; }
 .pf .pf-card .pf-specs { min-height: 150px; }
+
+/* warranty: a Yes | No choice */
+.pf-warr { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.pf-yn { display: inline-flex; border: 1.5px solid #d7dbe8; border-radius: 12px; overflow: hidden; background: #fff; }
+.pf-yn button { min-width: 84px; padding: 9px 20px; border: 0; background: transparent; font: inherit; font-weight: 700; color: #4a5168; cursor: pointer; transition: background .15s, color .15s; }
+.pf-yn button + button { border-left: 1.5px solid #d7dbe8; }
+.pf-yn button:hover { background: #f3f5fa; }
+.pf-yn button.on { background: oklch(0.55 0.16 254); color: #fff; }
+.pf-yn button:focus-visible { outline: 2px solid oklch(0.55 0.16 254); outline-offset: -2px; }

@@ -20,7 +20,14 @@ export async function ensureSchema() {
     const haveO = new Set(oc.map(r => r.c));
     if (!haveO.has('source')) await pool.query("ALTER TABLE orders ADD COLUMN source VARCHAR(16) NOT NULL DEFAULT 'Customer'");
     if (!haveO.has('placed_by')) await pool.query("ALTER TABLE orders ADD COLUMN placed_by VARCHAR(120) NOT NULL DEFAULT ''");
+    // distance-based delivery: where the order goes, the estimated road km and (outside Dhaka) the courier chosen
+    for (const [c, def] of [['dest_lat', 'DECIMAL(9,6) NULL'], ['dest_lng', 'DECIMAL(9,6) NULL'], ['distance_km', 'DECIMAL(5,1) NULL'], ['ship_partner', "VARCHAR(60) NOT NULL DEFAULT ''"]]) {
+      if (!haveO.has(c)) await pool.query(`ALTER TABLE orders ADD COLUMN ${c} ${def}`);
+    }
   }
+  // product warranty available: Yes (1, the default for every existing product) or No (0), set in the admin Product Entry form
+  const [prc] = await pool.query("SELECT COLUMN_NAME c FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'products'");
+  if (prc.length && !prc.some(r => r.c === 'warranty')) await pool.query('ALTER TABLE products ADD COLUMN warranty TINYINT(1) NOT NULL DEFAULT 1');
   // search-engine fields the admin fills in for blog articles and site pages (title, description, keywords, hide from Google)
   for (const table of ['blog_posts', 'site_pages']) {
     const [tc] = await pool.query('SELECT COLUMN_NAME c FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?', [table]);

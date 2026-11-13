@@ -67,10 +67,6 @@
 /* ---- checkout polish ---- */
 .co .co-top { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 26px; }
 .co .co-top .h1 { margin: 0; }
-.co-steps { display: flex; gap: 6px; font-size: 12.5px; font-weight: 700; }
-.co-steps span { padding: 7px 14px; border-radius: 999px; background: #eef1f7; color: #7a8296; }
-.co-steps .done { background: oklch(0.95 0.05 150); color: oklch(0.42 0.13 150); }
-.co-steps .cur { background: var(--navy, #0b1631); color: #fff; }
 .co .cardbox, .co .cardbox2 { background: #fff; border: 1px solid #e6eaf2; border-radius: 20px; padding: 26px; display: flex; flex-direction: column; gap: 16px; box-shadow: none; transition: border-color .2s; }
 .co .cardbox:focus-within, .co .cardbox2:focus-within { border-color: oklch(0.7 0.1 252); }
 .co-h { display: flex; align-items: center; gap: 14px; padding-bottom: 14px; border-bottom: 1px solid #eef1f6; }

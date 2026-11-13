@@ -22,8 +22,8 @@ export function ChatLeads() {
   const exportCsv = async () => {
     try {
       const { rows } = await adm.get('/chat-leads/export');
-      const head = ['Name', 'Mobile', 'Location', 'Interested in', 'Last message', 'Offers OK', 'Status', 'Note', 'First chat', 'Last seen'];
-      const csv = '\ufeff' + [head.join(','), ...rows.map(r => [r.name, r.phone, r.location, r.interest, r.lastMessage, r.marketing ? 'Yes' : 'No', r.status, r.note, r.created, r.seen].map(csvCell).join(','))].join('\r\n');
+      const head = ['Name', 'Mobile', 'Usage', 'Location', 'Latitude', 'Longitude', 'Accuracy (m)', 'Device', 'System', 'Browser', 'IP address', 'IP place', 'Language', 'Time zone', 'Screen', 'Came from', 'Campaign', 'First page', 'Interested in', 'Last message', 'Offers OK', 'Status', 'Note', 'First chat', 'Last seen'];
+      const csv = '\ufeff' + [head.join(','), ...rows.map(r => [r.name, r.phone, r.usage, r.location, r.lat, r.lng, r.accuracy, r.device, r.os, r.browser, r.ip, r.ipPlace, r.tech?.lang, r.tech?.tz, r.tech?.screen, r.tech?.ref, [r.tech?.utm_source, r.tech?.utm_medium, r.tech?.utm_campaign].filter(Boolean).join(' / '), r.tech?.landing, r.interest, r.lastMessage, r.marketing ? 'Yes' : 'No', r.status, r.note, r.created, r.seen].map(csvCell).join(','))].join('\r\n');
       saveTextFile('chat-leads.csv', csv, 'text/csv;charset=utf-8');
     } catch (e) { setErr(e.message); }
   };
@@ -50,13 +50,21 @@ export function ChatLeads() {
         </div>
         <div style={{ overflow: 'auto' }}>
           <table className="dt">
-            <thead><tr>{['SL', 'Name', 'Mobile', 'Location', 'Asked about', 'Offers', 'Status', 'Last chat', ''].map(h => <th key={h}>{h}</th>)}</tr></thead>
+            <thead><tr>{['SL', 'Name', 'Mobile', 'Usage', 'Location', 'Device & place', 'Asked about', 'Offers', 'Status', 'Last chat', ''].map(h => <th key={h}>{h}</th>)}</tr></thead>
             <tbody>{t.data.rows.map((l, i) => (
               <tr key={l.id}>
                 <td><span className="sl">{slNo(t, i)}</span></td>
                 <td><b>{l.name}</b>{l.handledBy && <div style={{ fontSize: 11, color: '#6b7388' }}>by {l.handledBy}</div>}</td>
                 <td><a href={'tel:' + l.phone}>{l.phone}</a> · <a href={wa(l.phone)} target="_blank" rel="noreferrer">WhatsApp</a></td>
+                <td>{l.usage || '—'}</td>
                 <td>{l.location}</td>
+                <td style={{ fontSize: 12, minWidth: 150 }}>
+                  {l.device ? <b>{l.device}</b> : '—'}{l.os ? ' · ' + l.os : ''}
+                  {l.browser && <div>{l.browser}</div>}
+                  {l.ip && <div style={{ color: '#6b7388' }}>IP {l.ip}{l.ipPlace ? ' · near ' + l.ipPlace : ''}</div>}
+                  {l.lat != null && <a href={`https://www.openstreetmap.org/?mlat=${l.lat}&mlon=${l.lng}#map=16/${l.lat}/${l.lng}`} target="_blank" rel="noreferrer">Map ↗ {l.lat.toFixed(4)}, {l.lng.toFixed(4)}</a>}
+                  {(l.tech?.utm_source || l.tech?.ref) && <div style={{ color: '#6b7388' }} title={l.tech.ref || ''}>from {l.tech.utm_source || (l.tech.ref || '').replace(/^https?:\/\//, '').split('/')[0]}</div>}
+                </td>
                 <td title={l.lastMessage}>{l.interest ? <b>{l.interest}</b> : '—'}<div style={{ fontSize: 11.5, color: '#6b7388', maxWidth: 190, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.lastMessage}</div></td>
                 <td>{l.marketing ? <Pill s="Hired" label="Yes" /> : <span style={{ color: '#8a90a2' }}>No</span>}</td>
                 <td><select className="a-input" aria-label={'Status of ' + l.name} value={l.status} onChange={e => save(l.id, { status: e.target.value })} style={{ width: 'auto', padding: '4px 8px' }}>{STATUSES.map(x => <option key={x}>{x}</option>)}</select></td>

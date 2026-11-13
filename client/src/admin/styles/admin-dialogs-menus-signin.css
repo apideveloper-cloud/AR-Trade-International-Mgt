@@ -3,7 +3,7 @@
 .rm-th b, .rm-pl { overflow-wrap: anywhere; }
 .rm-act { flex-wrap: wrap; row-gap: 3px; }
 .rm-act button { padding: 1px 7px; }
-@media (max-width: 1140px) { .a-table.mx { overflow-x: auto; } }
+@media (max-width: 1140px) { .a-table.mx { overflow-x: auto; overflow-y: hidden; } }
 .a-save { z-index: 20; }
 
 /* Email Center uses the admin console frame: provider status chip in the sidebar */

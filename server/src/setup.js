@@ -65,7 +65,7 @@ async function migrate() {
   // staff.role is now free text (see permissions.js: role matrix) and is migrated by initPermissions()
   const [pc] = await pool.query("SELECT COLUMN_NAME c FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'products'");
   const pHave = new Set(pc.map(r => r.c));
-  for (const [c, def] of [['gallery', 'JSON NULL'], ['description', 'MEDIUMTEXT NULL'], ['source_url', "VARCHAR(500) NOT NULL DEFAULT ''"], ['edited', 'TINYINT(1) NOT NULL DEFAULT 0'], ['short_desc', 'TEXT NULL'], ['sku', "VARCHAR(80) NOT NULL DEFAULT ''"], ['tags', 'JSON NULL'], ['meta_title', "VARCHAR(160) NOT NULL DEFAULT ''"], ['meta_desc', "VARCHAR(320) NOT NULL DEFAULT ''"], ['meta_keywords', "VARCHAR(500) NOT NULL DEFAULT ''"]]) {
+  for (const [c, def] of [['gallery', 'JSON NULL'], ['description', 'MEDIUMTEXT NULL'], ['source_url', "VARCHAR(500) NOT NULL DEFAULT ''"], ['edited', 'TINYINT(1) NOT NULL DEFAULT 0'], ['short_desc', 'TEXT NULL'], ['sku', "VARCHAR(80) NOT NULL DEFAULT ''"], ['tags', 'JSON NULL'], ['meta_title', "VARCHAR(160) NOT NULL DEFAULT ''"], ['meta_desc', "VARCHAR(320) NOT NULL DEFAULT ''"], ['meta_keywords', "VARCHAR(500) NOT NULL DEFAULT ''"], ['warranty', 'TINYINT(1) NOT NULL DEFAULT 1']]) {
     if (!pHave.has(c)) await pool.query(`ALTER TABLE products ADD COLUMN ${c} ${def}`);
   }
   const [cols] = await pool.query("SELECT COLUMN_NAME c FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'blog_posts'");

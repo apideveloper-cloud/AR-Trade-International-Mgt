@@ -31,6 +31,6 @@
 .thumbs span { background-repeat: no-repeat; background-position: center; }
 
 /* keep the chat button clear of the sticky buy bar (and the footer text) */
-.chat-open { transition: bottom .3s ease, background .2s; }
+.chat-open { transition: transform .18s ease, box-shadow .18s ease, bottom .3s ease, background .2s; }
 body:has(.sticky-buy.on) .chat-open { bottom: 96px; }
 body:has(.sticky-buy.on) .chat { bottom: 96px; }

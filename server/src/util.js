@@ -24,6 +24,17 @@ export const localImg = (v, message = 'Pictures must be uploaded here. Web addre
   return u;
 };
 export const digits = s => String(s || '').replace(/\D/g, '');
+
+/** A Bangladesh mobile number as 01XXXXXXXXX (operators 013 to 019), read from forms like 01712-345678, +880 1712 345678 or 8801712345678.
+ *  Returns '' when the text is not one (letters, wrong length, or an operator code that does not exist). */
+export function bdMobile(v) {
+  const raw = String(v ?? '');
+  if (!raw || /[^\d\s+\-().]/.test(raw)) return '';
+  let d = digits(raw);
+  if (d.length === 13 && d.startsWith('880')) d = '0' + d.slice(3);
+  else if (d.length === 10 && d[0] === '1') d = '0' + d;
+  return /^01[3-9]\d{8}$/.test(d) ? d : '';
+}
 export const parseJson = v => (typeof v === 'string' ? JSON.parse(v) : v);
 
 /** Wraps an async express handler so thrown errors become JSON responses. */
