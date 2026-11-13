@@ -1,0 +1,30 @@
+/* buy box: dark panel */
+.buybox { background: #0d1b3a; border: 1px solid #1d2f5c; color: #fff; box-shadow: 0 24px 48px -30px rgba(11,22,49,.9); padding: 18px; gap: 16px; }
+.buybox .line { gap: 10px; flex-wrap: nowrap; }
+.buybox .qty3 { background: #13244b; border: 1px solid #263c6f; border-radius: 12px; padding: 3px; gap: 0; }
+.buybox .qty3 button { width: 40px; height: 44px; border-radius: 9px; background: transparent; color: #cfdaf3; box-shadow: none; font-size: 18px; font-weight: 600; }
+.buybox .qty3 button:hover { background: #1c3166; color: #fff; }
+.buybox .qty3 button:last-child { background: transparent; color: #cfdaf3; }
+.buybox .qty3 span { min-width: 34px; color: #fff; font-size: 15px; }
+.buybox .cta { display: flex; align-items: center; justify-content: center; gap: 9px; height: 52px; border-radius: 12px; font-size: 15px; font-weight: 700; letter-spacing: .01em; filter: none; }
+.buybox .cta::after { display: none; }
+.buybox .cta:hover { transform: translateY(-1px); filter: brightness(1.06); }
+.buybox .cta.add { background: #2f7de1; box-shadow: 0 10px 20px -12px #2f7de1; }
+.buybox .cta.buy { background: #fff; color: #0d1b3a; box-shadow: none; }
+.buybox .cta .ar { transition: transform .2s; }
+.buybox .cta.buy:hover .ar { transform: translateX(3px); }
+.buybox .sqbtn { width: 52px; height: 52px; border-radius: 12px; background: #13244b; border: 1px solid #263c6f; color: #cfdaf3; font-size: 18px; transform: none; }
+.buybox .sqbtn:hover { background: #1c3166; border-color: #3a5598; color: #fff; transform: none; }
+.buybox .sqbtn.on { background: #c8325f; border-color: #c8325f; color: #fff; }
+.buybox .contacts2 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; padding: 14px 0 0; border-top: 1px solid #22386a; }
+.buybox .contacts2 > * { background: transparent; border: 0; border-radius: 0; color: #fff; padding: 2px 14px; gap: 10px; font-size: 13px; min-width: 0; align-items: center; }
+.buybox .contacts2 > *:first-child { padding-left: 0; }
+.buybox .contacts2 > * + * { border-left: 1px solid #22386a; }
+.buybox .contacts2 a:hover { color: #8db8f5; }
+.buybox .contacts2 i { flex: none; width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; font-style: normal; background: #13244b; border: 1px solid #263c6f; color: #8db8f5; }
+.buybox .contacts2 span { display: flex; flex-direction: column; min-width: 0; font-weight: 600; line-height: 1.3; overflow-wrap: anywhere; }
+.buybox .contacts2 small { font-size: 10px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: #7f93bd; }
+.buybox .contacts2 a.wa2 { background: transparent; color: #fff; }
+.buybox .contacts2 a.wa2 i { background: #123a2e; border-color: #1f6a52; color: #4cd39b; }
+@media (max-width: 560px) { .buybox .line { flex-wrap: wrap; } .buybox .contacts2 { grid-template-columns: 1fr; gap: 10px; } .buybox .contacts2 > * { padding: 0; border: 0 !important; } }
+

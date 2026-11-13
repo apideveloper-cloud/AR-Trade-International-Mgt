@@ -122,8 +122,7 @@ router.get('/vendors', guard(VIEW), wrap(async (req, res) => {
     COALESCE((SELECT SUM(amount) FROM vendor_payments p WHERE p.vendor_id = v.id), 0) paid, ${BAL} balance, (SELECT ${D('MAX(received_on)')} FROM stock_receipts r WHERE r.vendor_id = v.id) last_bill FROM field_vendors v ${where} ORDER BY v.active DESC, v.name`;
   if (!wantsPage(req)) { const [rows] = await pool.query(sel, args); return res.json({ items: rows.map(vOut) }); }
   const { size, offset } = pageOf(req);
-  const [[t]] = await pool.query(`SELECT COUNT(*) n, COALESCE(SUM(${BAL}), 0) payable, COALESCE(SUM(${BAL} > 0), 0) owing FROM field_vendors v ${where}`, args);
-  const [rows] = await pool.query(`${sel} LIMIT ${size} OFFSET ${offset}`, args);
+  const [[[t]], [rows]] = await Promise.all([pool.query(`SELECT COUNT(*) n, COALESCE(SUM(${BAL}), 0) payable, COALESCE(SUM(${BAL} > 0), 0) owing FROM field_vendors v ${where}`, args), pool.query(`${sel} LIMIT ${size} OFFSET ${offset}`, args)]);
   res.json({ total: Number(t.n), rows: rows.map(vOut), totals: { payable: Number(t.payable), owing: Number(t.owing) } });
 }));
 const vendorBody = b => ({ name: text(b.name, 160), vtype: b.vtype === 'Foreign' ? 'Foreign' : 'Local', kind: text(b.kind, 60), contact: text(b.contact, 120), picDesig: text(b.picDesig, 80), picPhone: text(b.picPhone, 30), phone: text(b.phone, 30), email: text(b.email, 160), address: text(b.address, 300), note: text(b.note, 300), opening: Math.round(Number(b.opening) || 0), active: b.active === false ? 0 : 1 });
@@ -165,8 +164,7 @@ router.get('/transactions', guard(VIEW), wrap(async (req, res) => {
   addAmount(cond, args, 'GREATEST(x.credit, x.debit)', req);
   const from = `FROM (${union}) x JOIN field_vendors v ON v.id = x.vendor_id ${whereOf(cond)}`;
   const { size, offset } = pageOf(req);
-  const [rows] = await pool.query(`SELECT x.type, x.ref, x.vendor_id, v.name vendor, ${D('x.d')} d, x.credit, x.debit, x.info, x.at ${from} ORDER BY x.d DESC, x.at DESC LIMIT ${size} OFFSET ${offset}`, args);
-  const [[t]] = await pool.query(`SELECT COUNT(*) n, COALESCE(SUM(x.credit), 0) bills, COALESCE(SUM(IF(x.type = 'Return', x.debit, 0)), 0) returns, COALESCE(SUM(IF(x.type = 'Payment', x.debit, 0)), 0) paid ${from}`, args);
+  const [[rows], [[t]]] = await Promise.all([pool.query(`SELECT x.type, x.ref, x.vendor_id, v.name vendor, ${D('x.d')} d, x.credit, x.debit, x.info, x.at ${from} ORDER BY x.d DESC, x.at DESC LIMIT ${size} OFFSET ${offset}`, args), pool.query(`SELECT COUNT(*) n, COALESCE(SUM(x.credit), 0) bills, COALESCE(SUM(IF(x.type = 'Return', x.debit, 0)), 0) returns, COALESCE(SUM(IF(x.type = 'Payment', x.debit, 0)), 0) paid ${from}`, args)]);
   res.json({ total: Number(t.n), rows: rows.map(r => ({ type: r.type, ref: r.ref, vendorId: r.vendor_id, vendor: r.vendor, date: r.d, bill: Number(r.credit), settled: Number(r.debit), info: r.info || '' })), totals: { bills: Number(t.bills), returns: Number(t.returns), paid: Number(t.paid) } });
 }));
 router.get('/vendors/:id/ledger', guard(VIEW), wrap(async (req, res) => {
@@ -174,9 +172,7 @@ router.get('/vendors/:id/ledger', guard(VIEW), wrap(async (req, res) => {
   const id = parseInt(req.params.id, 10);
   const [[v]] = await pool.query('SELECT * FROM field_vendors WHERE id = ?', [id]);
   if (!v) throw fail(404, 'Vendor not found');
-  const [bills] = await pool.query(`SELECT id, ${D('received_on')} d, invoice_no, total, created_at FROM stock_receipts WHERE vendor_id = ? AND ${BILLED}`, [id]);
-  const [rets] = await pool.query(`SELECT id, ${D('returned_on')} d, reason, total, created_at FROM vendor_returns WHERE vendor_id = ?`, [id]);
-  const [pays] = await pool.query(`SELECT id, ${D('paid_on')} d, method, reference, receipt_id, amount, created_at FROM vendor_payments WHERE vendor_id = ?`, [id]);
+  const [[bills], [rets], [pays]] = await Promise.all([pool.query(`SELECT id, ${D('received_on')} d, invoice_no, total, created_at FROM stock_receipts WHERE vendor_id = ? AND ${BILLED}`, [id]), pool.query(`SELECT id, ${D('returned_on')} d, reason, total, created_at FROM vendor_returns WHERE vendor_id = ?`, [id]), pool.query(`SELECT id, ${D('paid_on')} d, method, reference, receipt_id, amount, created_at FROM vendor_payments WHERE vendor_id = ?`, [id])]);
   const rows = [
     ...bills.map(b => ({ at: b.created_at, d: b.d, ref: b.id, type: 'Bill', text: b.invoice_no ? 'Invoice ' + b.invoice_no : 'Goods received', debit: 0, credit: b.total })),
     ...rets.map(b => ({ at: b.created_at, d: b.d, ref: b.id, type: 'Return', text: b.reason || 'Goods returned', debit: b.total, credit: 0 })),
@@ -230,13 +226,11 @@ router.get('/stock', guard(VIEW), wrap(async (req, res) => {
   const where = whereOf(cond);
   const paged = wantsPage(req);
   const { size, offset } = paged ? pageOf(req) : { size: 300, offset: 0 };
-  const [rows] = await pool.query(`SELECT id, brand, name, price, stock, img, active, (SELECT unit_cost FROM stock_moves m WHERE m.product_id = products.id AND m.kind = 'Purchase' ORDER BY m.id DESC LIMIT 1) last_cost FROM products ${where} ORDER BY stock, name LIMIT ${size} OFFSET ${offset}`, args);
-  const [[t]] = await pool.query(`SELECT COUNT(*) products, COALESCE(SUM(stock), 0) units, COALESCE(SUM(price * stock), 0) value, COALESCE(SUM(stock <= 0 AND active = 1), 0) out_n, COALESCE(SUM(stock BETWEEN 1 AND ${LOW} AND active = 1), 0) low_n FROM products`);
+  const [[rows], [[t]]] = await Promise.all([pool.query(`SELECT id, brand, name, price, stock, img, active, (SELECT unit_cost FROM stock_moves m WHERE m.product_id = products.id AND m.kind = 'Purchase' ORDER BY m.id DESC LIMIT 1) last_cost FROM products ${where} ORDER BY stock, name LIMIT ${size} OFFSET ${offset}`, args), pool.query(`SELECT COUNT(*) products, COALESCE(SUM(stock), 0) units, COALESCE(SUM(price * stock), 0) value, COALESCE(SUM(stock <= 0 AND active = 1), 0) out_n, COALESCE(SUM(stock BETWEEN 1 AND ${LOW} AND active = 1), 0) low_n FROM products`)]);
   const out = rows.map(r => ({ id: r.id, brand: r.brand, name: r.name, price: r.price, stock: r.stock, img: r.img, active: !!r.active, lastCost: r.last_cost }));
   const body = { low: LOW, items: out, totals: { products: Number(t.products), units: Number(t.units), value: Number(t.value), out: Number(t.out_n), lowCount: Number(t.low_n) } };
   if (!paged) return res.json(body);
-  const [[c]] = await pool.query(`SELECT COUNT(*) n FROM products ${where}`, args);
-  const [brands] = await pool.query("SELECT DISTINCT brand FROM products WHERE brand <> '' ORDER BY brand");
+  const [[[c]], [brands]] = await Promise.all([pool.query(`SELECT COUNT(*) n FROM products ${where}`, args), pool.query("SELECT DISTINCT brand FROM products WHERE brand <> '' ORDER BY brand")]);
   res.json({ ...body, total: Number(c.n), rows: out, brands: brands.map(b => b.brand) });
 }));
 router.get('/stock/:id/moves', guard(VIEW), wrap(async (req, res) => {
@@ -286,8 +280,7 @@ router.get('/next-invoice', guard(VIEW), wrap(async (req, res) => {
 router.get('/receipts/:id', guard(VIEW), wrap(async (req, res) => {
   const [[r]] = await pool.query(`SELECT r.*, ${D('r.received_on')} d, v.name vendor, v.code vendor_code FROM stock_receipts r JOIN field_vendors v ON v.id = r.vendor_id WHERE r.id = ?`, [req.params.id]);
   if (!r) throw fail(404, 'Purchase not found');
-  const [lines] = await pool.query('SELECT i.product_id, i.name, i.qty, i.unit_cost, i.discount, i.sale_price, i.remarks, p.price cur_price, p.img FROM stock_receipt_items i LEFT JOIN products p ON p.id = i.product_id WHERE i.receipt_id = ? ORDER BY i.id', [r.id]);
-  const [pays] = await pool.query(`SELECT id, ${D('paid_on')} d, method, reference, amount FROM vendor_payments WHERE receipt_id = ? ORDER BY paid_on`, [r.id]);
+  const [[lines], [pays]] = await Promise.all([pool.query('SELECT i.product_id, i.name, i.qty, i.unit_cost, i.discount, i.sale_price, i.remarks, p.price cur_price, p.img FROM stock_receipt_items i LEFT JOIN products p ON p.id = i.product_id WHERE i.receipt_id = ? ORDER BY i.id', [r.id]), pool.query(`SELECT id, ${D('paid_on')} d, method, reference, amount FROM vendor_payments WHERE receipt_id = ? ORDER BY paid_on`, [r.id])]);
   const paid = pays.reduce((t, p) => t + p.amount, 0);
   res.json({ id: r.id, vendorId: r.vendor_id, vendor: r.vendor, vendorCode: r.vendor_code || '', poId: r.po_id, invoiceNo: r.invoice_no, referenceNo: r.reference_no, createdAt: r.created_at, date: r.d, note: r.note, total: r.total, paid, due: billedOf(r.status) ? Math.max(0, r.total - paid) : 0, by: r.staff_name,
     status: r.status, decidedBy: r.decided_by, decidedAt: r.decided_at, decisionNote: r.decision_note, stockedBy: r.stocked_by, stockedAt: r.stocked_at,
@@ -518,13 +511,7 @@ router.delete('/payments/:id', guard(MANAGE), wrap(async (req, res) => {
 // ---------- overview numbers ----------
 router.get('/summary', guard(VIEW), wrap(async (req, res) => {
   const [from, to] = monthBounds(today().slice(0, 7));
-  const [[a]] = await pool.query(`SELECT COALESCE(SUM(${BAL}), 0) payable, COUNT(*) vendors, COALESCE(SUM(${BAL} > 0), 0) owed_n FROM field_vendors v WHERE v.active = 1`);
-  const [[b]] = await pool.query(`SELECT COALESCE(SUM(total), 0) t, COUNT(*) n FROM stock_receipts WHERE ${BILLED} AND received_on >= ? AND received_on < ?`, [from, to]);
-  const [[c]] = await pool.query("SELECT COALESCE(SUM(amount), 0) t FROM vendor_payments WHERE paid_on >= ? AND paid_on < ?", [from, to]);
-  const [[d]] = await pool.query("SELECT COALESCE(SUM(qty * unit_cost), 0) t, COALESCE(SUM(qty), 0) q FROM stock_damages WHERE damaged_on >= ? AND damaged_on < ?", [from, to]);
-  const [[e]] = await pool.query("SELECT COALESCE(SUM(total), 0) t FROM vendor_returns WHERE returned_on >= ? AND returned_on < ?", [from, to]);
-  const [[pn]] = await pool.query("SELECT COUNT(*) n FROM stock_receipts WHERE status = 'Pending'");
-  const [[sn]] = await pool.query("SELECT COUNT(*) n FROM stock_receipts WHERE status = 'Approved'");
+  const [[[a]], [[b]], [[c]], [[d]], [[e]], [[pn]], [[sn]]] = await Promise.all([pool.query(`SELECT COALESCE(SUM(${BAL}), 0) payable, COUNT(*) vendors, COALESCE(SUM(${BAL} > 0), 0) owed_n FROM field_vendors v WHERE v.active = 1`), pool.query(`SELECT COALESCE(SUM(total), 0) t, COUNT(*) n FROM stock_receipts WHERE ${BILLED} AND received_on >= ? AND received_on < ?`, [from, to]), pool.query("SELECT COALESCE(SUM(amount), 0) t FROM vendor_payments WHERE paid_on >= ? AND paid_on < ?", [from, to]), pool.query("SELECT COALESCE(SUM(qty * unit_cost), 0) t, COALESCE(SUM(qty), 0) q FROM stock_damages WHERE damaged_on >= ? AND damaged_on < ?", [from, to]), pool.query("SELECT COALESCE(SUM(total), 0) t FROM vendor_returns WHERE returned_on >= ? AND returned_on < ?", [from, to]), pool.query("SELECT COUNT(*) n FROM stock_receipts WHERE status = 'Pending'"), pool.query("SELECT COUNT(*) n FROM stock_receipts WHERE status = 'Approved'")]);
   res.json({ pendingApproval: Number(pn.n), awaitingStock: Number(sn.n), payable: Number(a.payable), vendors: Number(a.vendors), owedCount: Number(a.owed_n), purchased: Number(b.t), purchases: Number(b.n), paid: Number(c.t), damageLoss: Number(d.t), damagePcs: Number(d.q), returned: Number(e.t) });
 }));
 

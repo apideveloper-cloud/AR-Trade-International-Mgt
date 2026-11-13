@@ -17,6 +17,7 @@ export function BuyAction({ p, cls = 'add', label = '+ Add' }) {
 export default function ProductCard({ p }) {
   const { wish, toggleWish, compare, toggleCompare } = useStore();
   const [loaded, setLoaded] = useState(false);
+  const [failed, setFailed] = useState(false); // the picture file is missing: show the placeholder, never the browser's broken-image alt text
   const [near, setNear] = useState(false); // lazy loader: the image is requested only when its card is close to the viewport
   const box = useRef(null);
   useEffect(() => {
@@ -31,15 +32,15 @@ export default function ProductCard({ p }) {
   return (
     <article className="pcard">
       <Link to={productPath(p)} className="pc-img" ref={box}>
-        {p.img ? (
+        {p.img && !failed ? (
           <>
             {!loaded && <div className="shimmer" style={{ position: 'absolute', inset: 0 }} />}
-            {near && <img src={p.img} alt={p.name} loading="lazy" decoding="async" onLoad={() => setLoaded(true)} onError={() => setLoaded(true)} style={{ opacity: loaded ? 1 : 0 }} />}
+            {near && <img src={p.img} alt={p.name} loading="lazy" decoding="async" onLoad={() => setLoaded(true)} onError={() => setFailed(true)} style={{ opacity: loaded ? 1 : 0 }} />}
           </>
-        ) : <div className="ph">product photo</div>}
+        ) : <div className="ph">No photo yet</div>}
         <div className="pc-badges">{off > 0 && <span className="b-off">−{off}%</span>}{p.isNew && <span className="b-new">New</span>}</div>
-        <button className={'round cmp' + (c ? ' on' : '')} title="Compare" onClick={e => { e.preventDefault(); e.stopPropagation(); toggleCompare(p.id); }}>⇄</button>
-        <button className={'round wish' + (w ? ' on' : '')} title="Wishlist" onClick={e => { e.preventDefault(); e.stopPropagation(); toggleWish(p.id); }}>{w ? '♥' : '♡'}</button>
+        <button className={'round cmp' + (c ? ' on' : '')} title="Compare" aria-label="Compare" onClick={e => { e.preventDefault(); e.stopPropagation(); toggleCompare(p.id); }}>⇄</button>
+        <button className={'round wish' + (w ? ' on' : '')} title="Wishlist" aria-label="Wishlist" onClick={e => { e.preventDefault(); e.stopPropagation(); toggleWish(p.id); }}>{w ? '♥' : '♡'}</button>
       </Link>
       <div className="pc-body">
         <div className="pc-meta"><span className="brand-k">{p.brand}</span><span className="dot3" /><span className="sp">{p.spec}</span></div>

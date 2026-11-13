@@ -7,7 +7,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { pool } from './db.js';
 import { fail, parseJson, wrap, isLocalImg, localImg } from './util.js';
-import { addRange } from './listing.js';
+import { addRange, whereOf } from './listing.js';
 import { can } from './permissions.js';
 import { like, page } from './adminHelpers.js';
 
@@ -97,7 +97,7 @@ export function contentRouter(guard) {
     if (req.query.q) { cond.push('(title LIKE ? OR category LIKE ? OR author LIKE ?)'); params.push(like(req.query.q), like(req.query.q), like(req.query.q)); }
     if (req.query.status) { cond.push('status = ?'); params.push(req.query.status); }
     addRange(cond, params, 'published', req);
-    const where = cond.length ? 'WHERE ' + cond.join(' AND ') : '';
+    const where = whereOf(cond);
     const [[{ n }]] = await pool.query(`SELECT COUNT(*) n FROM blog_posts ${where}`, params);
     const [rows] = await pool.query(`SELECT id, slug, title, category, cover, excerpt, author, author_id, status, DATE_FORMAT(published, "%Y-%m-%d") AS published, updated_at FROM blog_posts ${where} ORDER BY published DESC, id DESC LIMIT ${size} OFFSET ${offset}`, params);
     const [cats] = await pool.query('SELECT DISTINCT category FROM blog_posts ORDER BY category');

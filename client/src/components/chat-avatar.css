@@ -1,0 +1,10 @@
+.chat .m .brow, .chat > .msgs > .brow { display: flex; align-items: flex-end; gap: 8px; }
+.chat .m.me .brow { justify-content: flex-end; }
+.chat .agent-pic { width: 30px; height: 30px; flex: none; border-radius: 50%; object-fit: cover; background: #fff; box-shadow: 0 1px 3px rgba(13,18,32,.18); }
+.chat .brow .bub { max-width: calc(82% - 38px); }
+.chat .m.me .brow .bub { max-width: 82%; }
+.chat .m .cpcs, .chat .m > small { margin-left: 38px; }
+.chat .m.me > small { margin-left: 0; }
+.chat .brow .typing { margin: 0; }
+.chat-open .avatar img, .chat .hd .avatar img { object-fit: cover; object-position: 50% 18%; }
+.chat .agent-pic { object-position: 50% 18%; }

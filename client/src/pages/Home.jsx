@@ -68,6 +68,7 @@ function Hero() {
     setI(cur => { if (cur !== k) { setPrev(cur); setTick(t => t + 1); } return k; });
   };
   useEffect(() => {
+    if (slides.length < 2) return undefined;
     const t = setInterval(() => { if (!paused.current && !document.hidden) setI(cur => { setPrev(cur); setTick(x => x + 1); return (cur + 1) % slides.length; }); }, (content.slideSecs || 5.5) * 1000);
     return () => clearInterval(t);
   }, [slides.length, content.slideSecs]);
@@ -96,9 +97,9 @@ function Hero() {
           )}
         </div>
       ))}
-      <div className="dots">{slides.map((_, k) => <button key={k} title="Slide" onClick={() => go(k)} style={{ width: k === i ? 26 : 7, background: k === i ? '#fff' : 'rgba(255,255,255,.5)' }} />)}</div>
-      <button className="arr prev" title="Previous" onClick={() => go(i - 1)}>←</button>
-      <button className="arr next" title="Next" onClick={() => go(i + 1)}>→</button>
+      <div className="dots">{slides.map((_, k) => <button key={k} type="button" title="Slide" aria-label={`Go to slide ${k + 1}`} onClick={() => go(k)} style={{ width: k === i ? 26 : 7, background: k === i ? '#fff' : 'rgba(255,255,255,.5)' }} />)}</div>
+      <button className="arr prev" type="button" title="Previous" aria-label="Previous slide" onClick={() => go(i - 1)}>←</button>
+      <button className="arr next" type="button" title="Next" aria-label="Next slide" onClick={() => go(i + 1)}>→</button>
     </div>
   );
 }
@@ -236,7 +237,7 @@ function Fresh() {
       <div className="fresh-tabs">
         {tabs.map(c => (
           <button key={c.id} className={'fresh-tab' + (c.id === nk ? ' on' : '')} onClick={() => setNk(c.id)}>
-            <span className="im">{c.items.find(p => p.img) && <img src={c.items.find(p => p.img).img} alt="" />}</span>{c.t}<span className="n">{c.items.length}</span>
+            <span className="im">{c.items.find(p => p.img) && <img src={c.items.find(p => p.img).img} alt="" loading="lazy" decoding="async" />}</span>{c.t}<span className="n">{c.items.length}</span>
           </button>
         ))}
       </div>
@@ -262,7 +263,7 @@ function Fresh() {
               return (
                 <div className="mini-p" key={q.id}>
                   <div className="row">
-                    <Link to={productPath(q)} className="th">{q.img && <img src={q.img} alt="" />}{o > 0 && <em>−{o}%</em>}</Link>
+                    <Link to={productPath(q)} className="th">{q.img && <img src={q.img} alt="" loading="lazy" decoding="async" />}{o > 0 && <em>−{o}%</em>}</Link>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
                       <span className="brand-k">{q.brand}</span>
                       <Link to={productPath(q)} className="nm clamp2">{q.name}</Link>
@@ -324,8 +325,8 @@ function Services() {
 function Brands() {
   const { content } = useStore();
   const list = content.brands.filter(b => b.n);
-  const row = list.map(b => <Link key={b.n} to={'/shop/all?q=' + encodeURIComponent(b.n)} title={b.n} className="brand-logo"><img src={b.src} alt={b.n} /></Link>);
-  return <section className="sec" style={{ paddingTop: 28 }}><div className="brand-marq"><div>{row}{list.map(b => <Link key={b.n + '2'} to={'/shop/all?q=' + encodeURIComponent(b.n)} title={b.n} className="brand-logo"><img src={b.src} alt={b.n} /></Link>)}</div></div></section>;
+  const row = list.map(b => <Link key={b.n} to={'/shop/all?q=' + encodeURIComponent(b.n)} title={b.n} className="brand-logo"><img src={b.src} alt={b.n} loading="lazy" decoding="async" /></Link>);
+  return <section className="sec" style={{ paddingTop: 28 }}><div className="brand-marq"><div>{row}{list.map(b => <Link key={b.n + '2'} to={'/shop/all?q=' + encodeURIComponent(b.n)} title={b.n} className="brand-logo"><img src={b.src} alt={b.n} loading="lazy" decoding="async" /></Link>)}</div></div></section>;
 }
 
 function PriceAlert() {
@@ -389,7 +390,7 @@ export default function Home() {
           {deal && (
             <div className="deal">
               <div className="row1"><span className="k">Deal of the week</span>{off > 0 && <span className="off">−{off}%</span>}</div>
-              <Link to={productPath(deal)} className="pic"><img src={deal.img} alt={deal.name} /></Link>
+              <Link to={productPath(deal)} className="pic"><img src={deal.img} alt={deal.name} loading="lazy" decoding="async" /></Link>
               <Link to={productPath(deal)}><span className="nm clamp2">{deal.name}</span></Link>
               <div className="foot">
                 <span className="pr"><b>{fmt(deal.price)}</b><s>{fmt(deal.old)}</s></span>

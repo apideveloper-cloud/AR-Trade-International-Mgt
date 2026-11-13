@@ -1,0 +1,10 @@
+/* hero slide transitions (ported from the design's heroGo) */
+@keyframes heroIn { from { clip-path: polygon(100% 0, 140% 0, 120% 100%, 100% 100%); transform: scale(1.08); } to { clip-path: polygon(-20% 0, 140% 0, 120% 100%, -40% 100%); transform: scale(1); } }
+@keyframes heroSweep { from { transform: translateX(-120%) skewX(-18deg); } to { transform: translateX(260%) skewX(-18deg); } }
+.hero .slide { opacity: 0; z-index: 0; pointer-events: none; }
+.hero .slide.on { opacity: 1; z-index: 2; pointer-events: auto; animation: heroIn 1s cubic-bezier(.77, 0, .18, 1) both; clip-path: polygon(-20% 0, 140% 0, 120% 100%, -40% 100%); }
+.hero .slide.was { opacity: 0; z-index: 1; transform: scale(.96) translateX(-3%); transition: transform 1s cubic-bezier(.77, 0, .18, 1), opacity .3s linear 1s; }
+.hero .sweep.go { animation: heroSweep 1.1s cubic-bezier(.77, 0, .18, 1) both; }
+
+/* the storefront is shown at 90%; fixed overlays live outside this wrapper so they stay anchored to the real viewport */
+.site { zoom: .9; min-height: calc(100vh / .9); display: flex; flex-direction: column; }

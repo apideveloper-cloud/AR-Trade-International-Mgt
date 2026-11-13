@@ -8,6 +8,7 @@ import Reviews, { Stars } from '../components/Reviews.jsx';
 import BestSellers from '../components/BestSellers.jsx';
 import { useStore } from '../store.jsx';
 import { NotFound } from './Info.jsx';
+import Lightbox from '../components/Lightbox.jsx';
 
 const HOW = [
   'উপরের মেনু বার থেকে আপনার কাংখিত প্রোডাক্টটির ক্যাটাগরি সিলেক্ট করুন।',
@@ -17,6 +18,7 @@ const HOW = [
   'আপনার সম্পর্কিত তথ্য পূরণ করুন কিংবা পূর্ববর্তী একাউন্টে লগইন করুন এবং “Place Order” বাটনে ক্লিক করুন।'
 ];
 
+const NAMES = { f: 'Facebook', X: 'X', in: 'LinkedIn', W: 'WhatsApp', '@': 'email' };
 const SPEC_ICON = { Brand: '★', 'Part no.': '#', Technology: '⚡', 'Printing colour': '◐', 'Page yield / capacity': '≡', 'Compatible printers': '⎙', Warranty: '✓' };
 
 function specs(p) {
@@ -92,9 +94,23 @@ export default function Product() {
     io.observe(el);
     return () => io.disconnect();
   }, [id, p]);
-  useEffect(() => { setFull(null); api.get('/products/' + id).then(setFull).catch(() => setFull(null)); }, [id]);
-  const loadRv = () => api.get(`/products/${id}/reviews`).then(setRv).catch(() => setRv(null));
-  useEffect(() => { setRv(null); loadRv(); }, [id, user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  // the address holds words (hp-05a-…); the server's detail and review routes are keyed by the product's number
+  const pid = p?.id;
+  useEffect(() => {
+    setFull(null);
+    if (!pid) return undefined;
+    let live = true;
+    api.get('/products/' + pid).then(d => { if (live) setFull(d); }).catch(() => { if (live) setFull(null); });
+    return () => { live = false; };
+  }, [pid]);
+  const loadRv = () => (pid ? api.get(`/products/${pid}/reviews`).then(setRv).catch(() => setRv(null)) : null);
+  useEffect(() => {
+    setRv(null);
+    if (!pid) return undefined;
+    let live = true;
+    api.get(`/products/${pid}/reviews`).then(d => { if (live) setRv(d); }).catch(() => { if (live) setRv(null); });
+    return () => { live = false; };
+  }, [pid, user?.id]);
   if (!p) return <NotFound />;
   const photos = full && full.gallery && full.gallery.length > 1 ? full.gallery : null;
   const views = photos
@@ -166,7 +182,7 @@ export default function Product() {
         <div className="pdp2-info">
           <div className="pd-top">
             <div className="pd-tags"><span className="pd-tag">{cat ? cat.t : 'Shop'}</span><span className="mono" style={{ fontSize: 11, letterSpacing: '.06em', textTransform: 'uppercase', color: '#8a8f9b' }}>SKU · {p.id}</span></div>
-            <div className="pd-nav"><Link to={productPath(prev)} title="Previous product">‹</Link><Link to={productPath(next)} title="Next product">›</Link></div>
+            <div className="pd-nav"><Link to={productPath(prev)} title="Previous product" aria-label="Previous product">‹</Link><Link to={productPath(next)} title="Next product" aria-label="Next product">›</Link></div>
           </div>
           <h1>{p.name}</h1>
           <div className="pd-rate"><a href="#reviews" className="rate-link"><Stars value={rv ? rv.avg : 0} size={15} /><b>{rv && rv.count ? rv.avg.toFixed(1) : ''}</b><span>{rv && rv.count ? `(${rv.count} review${rv.count > 1 ? 's' : ''})` : 'No reviews yet'}</span></a><span>Genuine product · Official warranty</span><span className="chip2">✓ Cash on delivery</span></div>
@@ -198,11 +214,11 @@ export default function Product() {
           <div className="buybox" ref={buyRef}>
             {buyable ? (
               <div className="line">
-                <div className="qty3"><button onClick={() => setQty(q => Math.max(1, q - 1))}>−</button><span>{qty}</span><button onClick={() => setQty(q => Math.min(q + 1, p.stock))}>+</button></div>
+                <div className="qty3"><button type="button" aria-label="Decrease quantity" onClick={() => setQty(q => Math.max(1, q - 1))}>−</button><span>{qty}</span><button type="button" aria-label="Increase quantity" onClick={() => setQty(q => Math.min(q + 1, p.stock))}>+</button></div>
                 <button className="cta add" onClick={() => addToCart(p, qty)}><span className="ic"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M3 4h2.2l2.1 10.2a1.5 1.5 0 0 0 1.5 1.2h8.1a1.5 1.5 0 0 0 1.5-1.1L20 8H6.2"/><circle cx="9.5" cy="19.5" r="1.3"/><circle cx="17" cy="19.5" r="1.3"/></svg></span>Add to cart</button>
                 <button className="cta buy" onClick={() => { addToCart(p, qty); nav('/checkout'); }}>Buy now <span className="ar">→</span></button>
-                <button className={'sqbtn' + (wish.includes(p.id) ? ' on' : '')} title="Wishlist" onClick={() => toggleWish(p.id)}>{wish.includes(p.id) ? '♥' : '♡'}</button>
-                <button className={'sqbtn' + (compare.includes(p.id) ? ' on' : '')} style={compare.includes(p.id) ? { color: '#fff', background: 'var(--navy)', borderColor: 'var(--navy)' } : undefined} title="Compare" onClick={() => toggleCompare(p.id)}>⇄</button>
+                <button className={'sqbtn' + (wish.includes(p.id) ? ' on' : '')} title="Wishlist" aria-label="Wishlist" onClick={() => toggleWish(p.id)}>{wish.includes(p.id) ? '♥' : '♡'}</button>
+                <button className={'sqbtn' + (compare.includes(p.id) ? ' on' : '')} style={compare.includes(p.id) ? { color: '#fff', background: 'var(--navy)', borderColor: 'var(--navy)' } : undefined} title="Compare" aria-label="Compare" onClick={() => toggleCompare(p.id)}>⇄</button>
               </div>
             ) : (
               <a href={wa} target="_blank" rel="noreferrer" className="cta buy" style={{ display: 'grid', placeItems: 'center' }}>{p.price ? 'Out of stock — notify me on WhatsApp' : 'Call for price — ask on WhatsApp'}</a>
@@ -241,7 +257,7 @@ export default function Product() {
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span className="mono" style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: '#7a8296' }}>Share</span>
-            <div style={{ display: 'flex', gap: 6 }}>{shares.map(([i, bg, href]) => <a key={i} className="share" href={href} target="_blank" rel="noreferrer" style={{ background: bg }}>{i}</a>)}</div>
+            <div style={{ display: 'flex', gap: 6 }}>{shares.map(([i, bg, href]) => <a key={i} className="share" href={href} target="_blank" rel="noreferrer" aria-label={'Share via ' + NAMES[i]} style={{ background: bg }}>{i}</a>)}</div>
           </div>
         </div>
       </div>
@@ -250,7 +266,7 @@ export default function Product() {
       <div className="pd-lower">
         <div className="pd-left">
         <div className="ptabs2">
-          <div className="bar2">{[...(full && (full.description || full.short) ? [['desc', 'Description']] : []), ['spec', 'Specification'], ['ship', 'Delivery & warranty']].map(([k, l]) => <button key={k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{l}</button>)}</div>
+          <div className="bar2">{[...(full && (full.description || full.short) ? [['desc', 'Description']] : []), ['spec', 'Specification'], ['ship', 'Delivery & warranty']].map(([k, l]) => <button key={k} type="button" className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{l}</button>)}</div>
           <div className="body" key={tab}>
             {tab === 'desc' && full && <div className="bp-body pd-desc" dangerouslySetInnerHTML={{ __html: (full.short && !full.description.includes(full.short.slice(0, 40)) ? full.short : '') + full.description }} />}
             {tab === 'spec' && (
@@ -330,52 +346,5 @@ export default function Product() {
         </div>, document.body
       )}
     </section>
-  );
-}
-
-/** Full-screen viewer: wheel / buttons zoom, drag to pan, arrow keys switch views, Esc closes. */
-function Lightbox({ img, name, views, start, onClose, onView }) {
-  const [i, setI] = useState(start);
-  const [z, setZ] = useState(1);
-  const [pos, setPos] = useState({ x: 0, y: 0 });
-  const drag = useRef(null);
-  const reset = () => { setZ(1); setPos({ x: 0, y: 0 }); };
-  const go = d => { setI(v => { const n = (v + d + views.length) % views.length; onView(n); return n; }); reset(); };
-  const zoomBy = d => setZ(v => { const n = Math.max(1, Math.min(5, +(v + d).toFixed(2))); if (n === 1) setPos({ x: 0, y: 0 }); return n; });
-  useEffect(() => {
-    const key = e => { if (e.key === 'Escape') onClose(); else if (e.key === 'ArrowRight') go(1); else if (e.key === 'ArrowLeft') go(-1); else if (e.key === '+' || e.key === '=') zoomBy(.5); else if (e.key === '-') zoomBy(-.5); };
-    window.addEventListener('keydown', key);
-    const prev = document.body.style.overflow; document.body.style.overflow = 'hidden';
-    return () => { window.removeEventListener('keydown', key); document.body.style.overflow = prev; };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  const v = views[i];
-  return (
-    <div className="lbx" onClick={onClose} role="dialog" aria-label={name}>
-      <div className="lbx-top" onClick={e => e.stopPropagation()}>
-        <b>{name}</b><span>{v.k} · {i + 1}/{views.length}</span>
-        <div className="lbx-tools">
-          <button onClick={() => zoomBy(-.5)} title="Zoom out">−</button><em>{Math.round(z * 100)}%</em><button onClick={() => zoomBy(.5)} title="Zoom in">+</button>
-          <button onClick={reset} title="Reset">⟲</button><button onClick={onClose} title="Close (Esc)">✕</button>
-        </div>
-      </div>
-      <button className="lbx-nav l" onClick={e => { e.stopPropagation(); go(-1); }}>‹</button>
-      <button className="lbx-nav r" onClick={e => { e.stopPropagation(); go(1); }}>›</button>
-      <div className={'lbx-stage' + (z > 1 ? ' pan' : '')} onClick={e => e.stopPropagation()}
-        onWheel={e => zoomBy(e.deltaY < 0 ? .3 : -.3)}
-        onDoubleClick={() => (z > 1 ? reset() : setZ(2.5))}
-        onPointerDown={e => { if (z > 1) { drag.current = { x: e.clientX - pos.x, y: e.clientY - pos.y }; e.currentTarget.setPointerCapture(e.pointerId); } }}
-        onPointerMove={e => { if (drag.current) setPos({ x: e.clientX - drag.current.x, y: e.clientY - drag.current.y }); }}
-        onPointerUp={() => { drag.current = null; }}>
-        <div className="lbx-img" style={{ backgroundImage: `url('${v.img || img}')`, transform: `translate(${pos.x}px,${pos.y}px) scale(${z * v.s})`, transformOrigin: v.o }} />
-      </div>
-      <div className="lbx-strip" onClick={e => e.stopPropagation()}>
-        {views.map((x, n) => (
-          <button key={x.k} className={n === i ? 'on' : ''} onClick={() => { setI(n); onView(n); reset(); }}>
-            <span style={{ backgroundImage: `url('${x.img || img}')`, backgroundSize: x.img ? 'contain' : `${x.s * 100}%`, backgroundPosition: x.img ? 'center' : x.o }} />
-          </button>
-        ))}
-      </div>
-      <span className="lbx-hint">Scroll to zoom · drag to pan · double-click to toggle · ← → to switch</span>
-    </div>
   );
 }

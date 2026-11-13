@@ -3,11 +3,19 @@ import { productPath } from '../slug.js';
 import { Link } from 'react-router-dom';
 import { api, fmt } from '../api.js';
 import { useStore } from '../store.jsx';
+import ChatStart from './ChatStart.jsx';
+import './chat-avatar.css';
+
+// the support agent's photo (client/public/agent.png); the round AR logo is the fallback
+const AGENT_PIC = '/agent.png', LOGO_PIC = '/ar-icon-round.png';
+const AgentPic = ({ className = '' }) => <img className={className} src={AGENT_PIC} alt="AR Support" onError={e => { if (!e.currentTarget.src.endsWith(LOGO_PIC)) e.currentTarget.src = LOGO_PIC; }} />;
 
 export const openChat = () => window.dispatchEvent(new Event('ar:openchat'));
 
 const time = t => new Date(t).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-const WELCOME = 'Assalamu alaikum! 👋 Welcome to AR Trade International. How can we help you today?';
+const welcome = name => `Assalamu alaikum${name ? ', ' + name.split(' ')[0] : ''}! 👋 Welcome to AR Trade International. How can we help you today?`;
+const LEAD_KEY = 'ar_chat_lead';
+const readLead = () => { try { const l = JSON.parse(localStorage.getItem(LEAD_KEY)); return l?.token ? l : null; } catch { return null; } };
 const QUICK = ['Find toner for my printer', 'Delivery charges', 'Book printer servicing', 'Track my order'];
 
 // words that say what the visitor wants, not which product: they are ignored when matching product names
@@ -35,7 +43,8 @@ export function findProducts(text, products) {
 }
 
 export default function Chat() {
-  const { site, products } = useStore();
+  const { site, products, user } = useStore();
+  const [lead, setLead] = useState(readLead);
   const [open, setOpen] = useState(false);
   const [msgs, setMsgs] = useState([]);
   const [text, setText] = useState('');
@@ -91,24 +100,32 @@ export default function Chat() {
     return { text: canned(t) };
   };
 
+  const ctxRef = useRef({});
   const send = t => {
     t = (t || '').trim();
     if (!t) return;
+    const history = msgs.slice(-8).map(m => ({ from: m.from, text: m.text }));
     setMsgs(m => [...m, { from: 'me', text: t, at: Date.now() }]);
     setText(''); setTyping(true);
-    api.post('/chat', { text: t }).catch(() => {});
     clearTimeout(timer.current);
-    timer.current = setTimeout(() => { const r = reply(t); setMsgs(m => [...m, { from: 'agent', text: r.text, items: r.items, at: Date.now() }]); setTyping(false); }, 1300);
+    const started = Date.now();
+    const show = r => {
+      // never answer faster than a person would type; the shop's own answer comes from the server, the built-in one is the fallback
+      timer.current = setTimeout(() => { setMsgs(m => [...m, { from: 'agent', text: r.text, items: r.items, at: Date.now() }]); setTyping(false); }, Math.max(0, 900 - (Date.now() - started)));
+    };
+    api.post('/chat', { text: t, ctx: ctxRef.current, history, lead: lead?.token })
+      .then(res => { if (res?.reply?.text) { ctxRef.current = res.reply.ctx || {}; show(res.reply); } else show(reply(t)); })
+      .catch(() => show(reply(t)));
   };
 
   const agentN = msgs.filter(m => m.from === 'agent').length;
   const unread = !open ? Math.max(0, agentN - seen) : 0;
-  const all = [{ from: 'agent', text: WELCOME, at: msgs[0]?.at || Date.now() }, ...msgs];
+  const all = [{ from: 'agent', text: welcome(lead?.name), at: msgs[0]?.at || Date.now() }, ...msgs];
 
   if (!open) {
     return (
       <button className="chat-open" onClick={() => { setOpen(true); setSeen(agentN); }}>
-        <span className="avatar"><img src="/ar-icon-round.png" alt="AR Trade" /></span>
+        <span className="avatar"><AgentPic /></span>
         <span className="tx"><b>Chat with us</b><small>Replies in a few minutes</small></span>
         {unread > 0 && <span className="un">{unread}</span>}
       </button>
@@ -118,7 +135,7 @@ export default function Chat() {
     <div className="chat">
       <div className="hd">
         <div className="row">
-          <div className="who"><span className="avatar"><img src="/ar-icon-round.png" alt="AR Trade" /></span><div><b>AR Trade Support</b><small>Online · Sat–Thu, 10:00–20:00</small></div></div>
+          <div className="who"><span className="avatar"><AgentPic /></span><div><b>AR Trade Support</b><small>Online · Sat–Thu, 10:00–20:00</small></div></div>
           <button className="min" onClick={() => { setOpen(false); setSeen(agentN); }} title="Minimise">✕</button>
         </div>
         <div className="links">
@@ -127,10 +144,17 @@ export default function Chat() {
           <a href="/track">Track order</a>
         </div>
       </div>
+      {!lead ? (
+        <ChatStart user={user} onDone={l => { try { localStorage.setItem(LEAD_KEY, JSON.stringify(l)); } catch { /* storage unavailable: the chat still works for this visit */ } setLead(l); }} />
+      ) : (
+        <>
       <div className="msgs" ref={box}>
         {all.map((m, i) => (
           <div key={i} className={'m ' + (m.from === 'me' ? 'me' : '')}>
-            <div className="bub">{m.text}</div>
+            <div className="brow">
+              {m.from !== 'me' && <AgentPic className="agent-pic" />}
+              <div className="bub">{m.text}</div>
+            </div>
             {m.items?.length > 0 && (
               <div className="cpcs">
                 {m.items.map(p => (
@@ -144,13 +168,15 @@ export default function Chat() {
             <small>{m.from === 'me' ? 'You' : 'AR Support'} · {time(m.at)}</small>
           </div>
         ))}
-        {typing && <div className="typing"><i /><i /><i /></div>}
+        {typing && <div className="brow"><AgentPic className="agent-pic" /><div className="typing"><i /><i /><i /></div></div>}
         {msgs.length < 2 && !typing && <div className="quick">{QUICK.map(q => <button key={q} onClick={() => send(q)}>{q}</button>)}</div>}
       </div>
       <form onSubmit={e => { e.preventDefault(); send(text); }}>
         <input value={text} onChange={e => setText(e.target.value)} placeholder="Type your message… (বাংলাতেও লিখতে পারেন)" />
         <button type="submit">Send</button>
       </form>
+        </>
+      )}
     </div>
   );
 }

@@ -97,8 +97,7 @@ router.get('/', guard(VIEW), wrap(async (req, res) => {
   if (CUSTOMER_TYPES.includes(req.query.ctype)) { cond.push('q.cust_type = ?'); args.push(req.query.ctype); }
   const where = whereOf(cond);
   const { size, offset } = pageOf(req);
-  const [rows] = await pool.query(`SELECT q.*, ${D('q.quote_date')} d, (SELECT COUNT(*) FROM quotation_items i WHERE i.quote_id = q.id) n FROM quotations q ${where} ORDER BY q.quote_date DESC, q.created_at DESC LIMIT ${size} OFFSET ${offset}`, args);
-  const [[t]] = await pool.query(`SELECT COUNT(*) n, COALESCE(SUM(q.net), 0) net, COALESCE(SUM(q.status = 'Draft'), 0) draft, COALESCE(SUM(q.status = 'Sent'), 0) sent, COALESCE(SUM(q.status = 'Accepted'), 0) won, COALESCE(SUM(IF(q.status = 'Accepted', q.net, 0)), 0) won_net FROM quotations q ${where}`, args);
+  const [[rows], [[t]]] = await Promise.all([pool.query(`SELECT q.*, ${D('q.quote_date')} d, (SELECT COUNT(*) FROM quotation_items i WHERE i.quote_id = q.id) n FROM quotations q ${where} ORDER BY q.quote_date DESC, q.created_at DESC LIMIT ${size} OFFSET ${offset}`, args), pool.query(`SELECT COUNT(*) n, COALESCE(SUM(q.net), 0) net, COALESCE(SUM(q.status = 'Draft'), 0) draft, COALESCE(SUM(q.status = 'Sent'), 0) sent, COALESCE(SUM(q.status = 'Accepted'), 0) won, COALESCE(SUM(IF(q.status = 'Accepted', q.net, 0)), 0) won_net FROM quotations q ${where}`, args)]);
   const items = rows.map(r => ({ ...qOut(r), items: Number(r.n) }));
   res.json({ total: Number(t.n), rows: items, totals: { net: Number(t.net), draft: Number(t.draft), sent: Number(t.sent), accepted: Number(t.won), acceptedNet: Number(t.won_net) } });
 }));
@@ -377,7 +376,6 @@ router.post('/:id/email', guard(MANAGE), wrap(async (req, res) => {
   const bcc = addressList(req.body?.bcc, 'BCC').filter(a => a !== to && !cc.includes(a));
   if (!mailReady('quote')) throw fail(409, 'Email sending is not set up yet. ' + mailSetupHint('quote'));
   const site = await siteInfo();
-  const money = n => '\u09f3 ' + Math.round(Number(n) || 0).toLocaleString('en-US');
   const note = String(req.body?.message || '').trim().slice(0, 1000);
   const pdf = await buildQuotePdf(q, site);
   await sendMail({

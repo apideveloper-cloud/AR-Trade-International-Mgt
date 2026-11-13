@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { adm, dateTimeF } from '../adminApi.js';
 import { ROLE_HUE, confirmBox } from '../ui.jsx';
+import { saveTextFile } from '../hooks/download.js';
 
 const hue = r => ROLE_HUE[r] ?? 250;
 const GROUP_ICON = { Overview: '📊', Sales: '🧾', Catalog: '📦', Delivery: '🚚', Engage: '📣', 'Field & mobile app': '📍', System: '⚙️' };
@@ -50,8 +51,7 @@ export function Roles() {
   const csv = () => {
     const rows = [['Group', 'Permission', ...roles.map(r => r.name)], ...data.perms.map(p => [p.group, p.label, ...roles.map(r => (r.locked || draft[r.name]?.has(p.key) ? 'Yes' : '')) ])];
     const text = rows.map(r => r.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(',')).join('\r\n');
-    const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob(['﻿' + text], { type: 'text/csv' })), download: 'ar-trade-role-matrix.csv' });
-    document.body.appendChild(a); a.click(); a.remove();
+    saveTextFile('ar-trade-role-matrix.csv', '﻿' + text);
   };
 
   const th = { padding: '10px 6px', textAlign: 'center', verticalAlign: 'bottom' };

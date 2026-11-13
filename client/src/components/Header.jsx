@@ -197,7 +197,7 @@ export default function Header() {
           </aside>
         </div>
       )}
-      <button className="fab-cart" onClick={() => setCartOpen(o => !o)} title="Cart">
+      <button className="fab-cart" onClick={() => setCartOpen(o => !o)} title="Cart" aria-label="Cart">
         <span className="ic">⌂<b>{cartCount}</b></span><small>Cart</small><span>{fmt(cartSubtotal)}</span>
       </button>
     </>

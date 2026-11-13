@@ -6,6 +6,7 @@ export const INDEXES = [
   // catalogue: storefront list (active + category), price/sort filters, popular/featured rails, import re-matching
   ['products', 'idx_active_cat_price', 'active, category_id, price'],
   ['products', 'idx_active_flags', 'active, popular, featured, is_new'],
+  ['products', 'idx_active_id', 'active, id'], // the storefront list is ordered by id: read backwards from this index, no sort step
   ['products', 'idx_part', 'part'],
   ['products', 'idx_source', 'source_url(120)'],
   // orders: admin list/filters (status, flow, date), hub board (branch, rider), track by courier, customer history

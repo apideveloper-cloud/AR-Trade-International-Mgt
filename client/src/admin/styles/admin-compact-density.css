@@ -1,0 +1,161 @@
+/* ================= compact density: slimmer left menu, tighter pages and components ================= */
+.adm { font-size: 12.5px; }
+.adm input, .adm select, .adm textarea { font-size: 12.5px; }
+/* left menu */
+.adm-side { flex-basis: 206px; max-width: 218px; padding: 12px 10px; gap: 10px; }
+.adm-brand { gap: 9px; padding: 2px 4px 10px; }
+.adm-brand img { width: 32px; height: 32px; }
+.adm-brand b { font-size: 15px; }
+.adm-brand small { font-size: 8.5px; letter-spacing: .14em; }
+.adm-nav { gap: 6px; margin: 0 -10px; padding: 0 10px; }
+.adm-nav h6 { font-size: 8.5px; padding: 0 8px 1px; }
+.adm-nav a { gap: 8px; padding: 4px 8px; border-radius: 9px; font-size: 12.5px; }
+.adm-nav a .ic { width: 22px; height: 22px; border-radius: 7px; font-size: 10.5px; }
+.adm-nav a.on::before { left: -10px; top: 6px; bottom: 6px; }
+.adm-user { padding: 7px 8px; gap: 8px; border-radius: 12px; }
+.adm-user .av { width: 30px; height: 30px; font-size: 12px; }
+.adm-user b { font-size: 12px; }
+.adm-user small { font-size: 10px; }
+.adm-user button { width: 28px; height: 28px; }
+/* page frame */
+.adm-main { padding: 0 20px 0; gap: 14px; }
+.adm-body { gap: 14px; padding-bottom: 20px; }
+.adm-top { margin: 0 -20px; padding: 8px 20px; gap: 10px; }
+.adm-top h1, .adm-main h1 { font-size: 20px; margin-top: 0; }
+.crumb { font-size: 9.5px; }
+.adm-top .tools { gap: 8px; }
+.srch { height: 34px; min-width: 200px; border-radius: 10px; }
+.tbtns { gap: 6px; }
+.tb { height: 34px; padding: 0 10px; border-radius: 10px; font-size: 12px; }
+.tb.icon { width: 34px; }
+.me { height: 34px; }
+.me .av { width: 26px; height: 26px; font-size: 12px; }
+.me .who b { font-size: 12px; }
+.pop { border-radius: 14px; }
+.pop button, .pop > a { padding: 7px 9px; font-size: 12.5px; }
+.adm-foot { margin: auto -20px 0; padding: 7px 20px; font-size: 11.5px; }
+/* cards, tiles, tables */
+.a-card { padding: 14px; gap: 9px; border-radius: 14px; }
+.a-card h3 { font-size: 14px; }
+.a-box { padding: 10px; border-radius: 11px; font-size: 12.5px; }
+.kpis { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+.kpi { padding: 12px 14px 12px; border-radius: 14px; gap: 2px; }
+.kpi small { font-size: 10px; }
+.kpi b, .kpi b { font-size: 22px; margin-top: 0; }
+.kpi span { font-size: 11.5px; }
+.kpi .kic { top: 11px; right: 11px; width: 32px; height: 32px; border-radius: 10px; }
+.kpi .kic svg { width: 18px; height: 18px; }
+.dash-hero { padding: 16px 20px; border-radius: 16px; gap: 12px; }
+.dash-hero h2 { font-size: 21px; margin: 2px 0 2px; }
+.dash-hero p { font-size: 12.5px; }
+.dash-hero small { font-size: 10px; }
+.dash-hero .qa button { padding: 6px 11px; font-size: 11.5px; }
+.grid2 { gap: 12px; }
+.rev { height: 160px; gap: 8px; background: repeating-linear-gradient(to top, transparent 0, transparent 31px, #eef2f8 31px, #eef2f8 32px); }
+.ro { padding: 8px 6px; font-size: 12.5px; gap: 10px; }
+.recent { padding-bottom: 4px; }
+.a-bar { padding: 7px 9px; gap: 6px; border-radius: 12px; }
+.a-bar .q, .a-bar select, .a-bar .clr { height: 32px; }
+.a-chip { padding: 5px 10px; font-size: 11.5px; }
+.a-table { border-radius: 14px; }
+.a-table .head, .a-table .row { padding: 8px 14px; gap: 10px; }
+.a-table .row { font-size: 12.5px; }
+.a-table .head { font-size: 9.5px; }
+.a-pill { font-size: 10.5px; padding: 3px 8px; }
+.a-pager button { min-width: 30px; height: 30px; padding: 0 10px; font-size: 12px; }
+.a-btn { padding: 8px 14px; font-size: 12.5px; }
+.a-btn.sm { padding: 6px 10px; font-size: 11.5px; }
+.a-input { padding: 7px 10px; border-radius: 9px; }
+.a-fields { gap: 10px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+.a-lbl { gap: 4px; font-size: 11.5px; }
+.a-thumb { width: 36px; height: 36px; }
+.a-drawer .hd { padding: 14px 18px; }
+.a-drawer .bd { padding: 14px 18px; gap: 12px; }
+.a-modal { border-radius: 16px; }
+.a-modal .hd { padding: 13px 18px; }
+.a-modal .hd b { font-size: 18px; }
+.a-modal .bd { padding: 14px 18px; }
+.a-modal .ft { padding: 10px 18px; }
+.a-stage > div { padding: 7px 11px; border-radius: 11px; }
+.a-save { padding: 6px 6px 6px 16px; }
+.a-msg { padding: 8px 12px; font-size: 12.5px; }
+.a-empty { padding: 16px; font-size: 12.5px; }
+.chip { font-size: 10.5px; padding: 3px 8px; }
+@media (max-width: 900px) {
+  .adm-side { max-width: none; flex-basis: 100%; padding: 8px 10px; gap: 6px; }
+  .adm-nav { margin: 0 -10px; padding: 0 10px 3px; }
+  .adm-main { padding: 0 12px; }
+  .adm-top { margin: 0 -12px; padding: 8px 12px; }
+  .adm-foot { margin: auto -12px 0; padding: 7px 12px; }
+}
+
+/* sidebar brand: the full logo with the company name, like the sign-in page */
+.adm-brand.logo { flex-direction: column; align-items: flex-start; gap: 5px; padding: 2px 4px 10px; }
+.adm-brand.logo img { width: 100%; max-width: 186px; height: auto; border-radius: 0; background: none; box-shadow: none; display: block; }
+.adm-brand.logo small { font-size: 8.5px; letter-spacing: .24em; padding-left: 2px; }
+@media (max-width: 900px) { .adm-brand.logo { flex-direction: row; align-items: center; gap: 12px; padding: 0 2px 6px; } .adm-brand.logo img { width: 190px; } }
+
+/* left menu background: same look as the dashboard banner (navy to royal blue, soft blue glow, faint rings) */
+.adm-side { overflow: hidden; background: radial-gradient(300px 240px at 100% 0%, oklch(0.7 0.14 235 / .5), transparent 70%), radial-gradient(260px 260px at 0% 105%, oklch(0.6 0.16 270 / .4), transparent 70%), linear-gradient(160deg, #0b1631 0%, #12295a 55%, #13306b 100%); border-right-color: rgba(255, 255, 255, .08); }
+.adm-side::after { content: ""; position: absolute; right: -90px; top: -90px; width: 220px; height: 220px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .14); box-shadow: 0 0 0 36px rgba(255, 255, 255, .03), 0 0 0 76px rgba(255, 255, 255, .02); pointer-events: none; }
+.adm-side > * { position: relative; z-index: 1; }
+
+/* left menu, bottom section (account card): the same navy-to-blue banner look as the dashboard hero */
+.adm-user { position: relative; overflow: hidden; border: 1px solid rgba(255, 255, 255, .16); background: radial-gradient(150px 90px at 100% 0%, oklch(0.7 0.14 235 / .55), transparent 70%), radial-gradient(130px 90px at 0% 120%, oklch(0.6 0.16 270 / .4), transparent 70%), linear-gradient(120deg, #0b1631, #13306b); }
+.adm-user::after { content: ""; position: absolute; right: -34px; top: -42px; width: 100px; height: 100px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .16); box-shadow: 0 0 0 18px rgba(255, 255, 255, .03), 0 0 0 38px rgba(255, 255, 255, .02); pointer-events: none; }
+.adm-user > * { position: relative; z-index: 1; }
+.adm-user .av::after { border-color: #0b1631; }
+
+/* header: deep navy background (same family as the left menu and the dashboard banner), light text, glass buttons */
+.adm-top { overflow: visible; background: radial-gradient(380px 110px at 96% 0%, oklch(0.7 0.14 235 / .42), transparent 70%), linear-gradient(120deg, #0a1430 0%, #0f2350 55%, #13306b 100%); border-bottom: 1px solid rgba(255, 255, 255, .1); -webkit-backdrop-filter: none; backdrop-filter: none; }
+.adm-top h1 { color: #fff; }
+.crumb, .crumb a, .crumb span { color: #8fa3cc; }
+.crumb a:hover { color: #fff; }
+.crumb b { color: #7cc0ff; }
+.adm-top .srch, .adm-top .tb, .adm-top .me { background: rgba(255, 255, 255, .09); border-color: rgba(255, 255, 255, .22); color: #e6edfb; }
+.adm-top .tb:hover, .adm-top .tb.on, .adm-top .me:hover, .adm-top .me.on { background: rgba(255, 255, 255, .18); border-color: rgba(255, 255, 255, .4); color: #fff; }
+.adm-top .srch:focus-within { border-color: oklch(0.75 0.12 235); box-shadow: 0 0 0 3px oklch(0.7 0.14 235 / .25); }
+.adm-top .srch input { color: #fff; }
+.adm-top .srch input::placeholder { color: #9db1da; }
+.adm-top .srch kbd { background: rgba(255, 255, 255, .1); border-color: rgba(255, 255, 255, .25); color: #c7d5f2; }
+.adm-top .tb em { border-color: #0f2350; }
+.adm-top .me .who b { color: #fff; }
+.adm-top .me .who small, .adm-top .me i { color: #a8bbe2; }
+
+/* header: brand blue (the same blue as the active menu item) */
+.adm-top { background: radial-gradient(340px 120px at 96% 0%, rgba(255, 255, 255, .22), transparent 70%), linear-gradient(135deg, oklch(0.62 0.14 240), oklch(0.5 0.17 256)); border-bottom: 1px solid rgba(255, 255, 255, .22); }
+.crumb, .crumb a, .crumb span { color: #d3e5ff; }
+.crumb b { color: #fff; }
+.adm-top .srch, .adm-top .tb, .adm-top .me { background: rgba(255, 255, 255, .16); border-color: rgba(255, 255, 255, .34); color: #fff; }
+.adm-top .tb:hover, .adm-top .tb.on, .adm-top .me:hover, .adm-top .me.on { background: rgba(255, 255, 255, .28); border-color: rgba(255, 255, 255, .55); }
+.adm-top .srch input::placeholder { color: #d3e5ff; }
+.adm-top .srch kbd { background: rgba(255, 255, 255, .16); border-color: rgba(255, 255, 255, .36); color: #fff; }
+.adm-top .tb em { border-color: oklch(0.55 0.16 248); }
+.adm-top .me .who small, .adm-top .me i { color: #d3e5ff; }
+.adm-top .me .av { background: linear-gradient(135deg, #fff, #cfe2ff); color: oklch(0.45 0.16 252); }
+
+/* summary cards at the top of list pages */
+.kpi.tone-red { --tb: oklch(0.96 0.04 25); --tc: oklch(0.55 0.2 25); }
+.kpis.sum { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+.kpi b.txt { font-size: 15px; line-height: 1.3; margin-top: 4px; padding-right: 40px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kpis.sum .kpi small { padding-right: 40px; }
+
+/* serial number (SL) column in data grids */
+.sl { font-family: var(--mono); font-size: 11px; font-weight: 600; color: #8a93a8; }
+.a-table .head > span:first-child:not(:empty) { white-space: nowrap; }
+
+/* summary cards: keep long values clear of the corner icon */
+.kpis.sum .kpi .kic { width: 28px; height: 28px; border-radius: 9px; top: 10px; right: 10px; }
+.kpis.sum .kpi .kic svg { width: 16px; height: 16px; }
+.kpis.sum .kpi b { font-size: 19px; padding-right: 36px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kpis.sum .kpi b.txt { font-size: 15px; margin-top: 3px; }
+.kpis.sum .kpi small { padding-right: 34px; }
+.kpis.sum .kpi .kic { top: 8px; right: 8px; }
+.kpis.sum .kpi b, .kpis.sum .kpi b.txt { padding-right: 0; }
+
+/* category picture tile in Admin > Categories */
+.cat-pic { width: 64px; height: 64px; border-radius: 14px; border: 1px dashed #b9c4da; background: #f3f6fb center / cover no-repeat; display: grid; place-items: center; cursor: pointer; color: #6b7388; overflow: hidden; transition: border-color .15s, background-color .15s; }
+.cat-pic:hover { border-color: oklch(0.6 0.14 245); background-color: #eaf1fb; }
+.cat-pic span { display: flex; flex-direction: column; align-items: center; font-size: 18px; line-height: 1; font-weight: 700; }
+.cat-pic small { font-size: 10px; font-weight: 700; margin-top: 2px; }
+

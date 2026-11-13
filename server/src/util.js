@@ -103,6 +103,8 @@ export const monthBounds = ym => {
 export const today = () => new Date(Date.now() + 6 * 3600e3).toISOString().slice(0, 10);
 /** A whole, non-negative number between 0 and `max` (anything else becomes 0). */
 export const int = (v, max = 100000000) => Math.min(max, Math.max(0, Math.round(Number(v) || 0)));
+/** A taka amount for people to read: ৳ 12,500 (rounded to whole taka). */
+export const money = n => '৳ ' + Math.round(Number(n) || 0).toLocaleString('en-US');
 /** Trimmed text, cut to `n` characters. */
 export const text = (v, n) => String(v ?? '').trim().slice(0, n);
 /** Runs `fn(conn)` inside one transaction: commits when it finishes, rolls everything back when it throws. */

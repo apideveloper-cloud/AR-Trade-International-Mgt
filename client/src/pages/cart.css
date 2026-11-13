@@ -1,0 +1,100 @@
+/* Classes that used to be inline style={{ }} attributes in Cart.jsx (cart, checkout and order-success pages); same values, one class per distinct set.
+   !important keeps each one exactly as strong as the inline style it replaces (an inline style beats every normal rule). */
+
+/* shared */
+.ct-page { padding: 24px 28px 40px !important; }
+.ct-h1 { margin-bottom: 24px !important; }
+.ct-col3 { display: flex !important; flex-direction: column !important; gap: 3px !important; }
+.ct-col8 { display: flex !important; flex-direction: column !important; gap: 8px !important; }
+.ct-wrap8 { display: flex !important; gap: 8px !important; flex-wrap: wrap !important; }
+.ct-fs13 { font-size: 13px !important; }
+.ct-fs14 { font-size: 14px !important; }
+.ct-label13 { font-size: 13px !important; font-weight: 700 !important; }
+.ct-note { font-size: 12px !important; color: #6b7080 !important; }
+.ct-tot-l { font-family: inherit !important; font-size: 16px !important; }
+.ct-center { text-align: center !important; }
+.ct-green { color: oklch(0.45 0.15 150) !important; }
+.ct-link-bold { font-weight: 700 !important; text-decoration: underline !important; }
+
+/* cart */
+.ct-coupon-ok { font-size: 13px !important; color: oklch(0.45 0.15 150) !important; font-weight: 700 !important; }
+.ct-empty-t { font-family: var(--disp) !important; font-weight: 700 !important; font-size: 24px !important; }
+.ct-btn-start { padding: 13px 22px !important; }
+.ct-line-col { display: flex !important; flex-direction: column !important; gap: 6px !important; min-width: 0 !important; }
+.ct-line-name { font-weight: 600 !important; font-size: 15px !important; line-height: 1.35 !important; }
+.ct-line-each { font-size: 13px !important; color: #5d6270 !important; }
+.ct-line-short { font-size: 12.5px !important; color: oklch(0.5 0.15 60) !important; font-weight: 700 !important; }
+.ct-line-actions { display: flex !important; gap: 12px !important; align-items: center !important; }
+.ct-line-remove { border: 0 !important; background: transparent !important; color: #5d6270 !important; font-size: 13px !important; font-weight: 600 !important; text-decoration: underline !important; }
+.ct-line-total { font-family: var(--disp) !important; font-weight: 800 !important; font-size: 20px !important; }
+.ct-sum-t { font-family: var(--disp) !important; font-weight: 700 !important; font-size: 22px !important; }
+.ct-save { color: oklch(0.5 0.2 350) !important; }
+.ct-more { text-align: center !important; font-size: 13px !important; font-weight: 600 !important; color: #3d424d !important; }
+
+/* checkout: left column and notices */
+.ct-co-main { flex: 999 1 520px !important; display: flex !important; flex-direction: column !important; gap: 18px !important; }
+.ct-warn-top { display: flex !important; gap: 12px !important; align-items: flex-start !important; }
+.ct-warn-t { font-size: 15px !important; color: #0b1631 !important; }
+.ct-warn-d { font-size: 13px !important; color: #56607a !important; }
+.ct-two-190 { grid-template-columns: repeat(auto-fit,minmax(190px,1fr)) !important; gap: 8px !important; }
+.ct-two-180 { grid-template-columns: repeat(auto-fit,minmax(180px,1fr)) !important; gap: 10px !important; }
+.ct-two-200 { grid-template-columns: repeat(auto-fit,minmax(200px,1fr)) !important; gap: 10px !important; }
+.ct-opt-t { font-size: 13.5px !important; }
+.ct-hold-t { font-size: 14px !important; color: #0b1631 !important; }
+.ct-hold-d { font-size: 12.5px !important; color: #56607a !important; line-height: 1.5 !important; }
+.ct-zone-t { font-weight: 700 !important; font-size: 14px !important; }
+
+/* checkout: delivery */
+.ct-express-col { flex: 1 !important; display: flex !important; flex-direction: column !important; gap: 2px !important; }
+.ct-express-d { font-size: 12.5px !important; color: #5d6270 !important; }
+.ct-sw { width: 44px !important; height: 26px !important; }
+.ct-resize { resize: vertical !important; }
+
+/* checkout: payment */
+.ct-pay-grid { display: grid !important; grid-template-columns: repeat(auto-fill,minmax(min(100%,250px),1fr)) !important; gap: 10px !important; }
+.ct-pay-col { display: flex !important; flex-direction: column !important; gap: 2px !important; min-width: 0 !important; flex: 1 !important; }
+.ct-gw-sub { font-weight: 500 !important; color: #6b7080 !important; }
+.ct-gw-btn { padding: 9px 16px !important; font-size: 13px !important; font-weight: 800 !important; }
+.ct-gap10 { gap: 10px !important; }
+.ct-vat-lbl { display: flex !important; gap: 10px !important; align-items: center !important; font-size: 14px !important; font-weight: 700 !important; cursor: pointer !important; }
+.ct-chk16 { width: 16px !important; height: 16px !important; }
+.ct-pad18 { padding: 18px 24px !important; }
+.ct-mkt-lbl { display: flex !important; gap: 10px !important; align-items: flex-start !important; font-size: 13px !important; line-height: 1.45 !important; color: #3a3f4b !important; cursor: pointer !important; }
+.ct-mkt-chk { margin-top: 3px !important; width: 16px !important; height: 16px !important; flex-shrink: 0 !important; }
+.ct-mkt-opt { color: #7a8090 !important; }
+
+/* checkout: summary */
+.ct-sum-row { display: grid !important; grid-template-columns: 48px minmax(0,1fr) auto !important; gap: 10px !important; align-items: center !important; font-size: 13px !important; }
+.ct-sum-img { background-size: 118% !important; background-repeat: no-repeat !important; background-position: center !important; width: 48px !important; height: 48px !important; }
+.ct-sum-name { line-height: 1.3 !important; }
+.ct-member { text-align: left !important; border: 1px dashed oklch(0.7 0.1 250) !important; background: oklch(0.97 0.02 250) !important; border-radius: 12px !important; padding: 10px 12px !important; font-size: 12.5px !important; color: #0b1631 !important; }
+.ct-sub-r { border-top: 1px solid #e4e2dc !important; padding-top: 12px !important; }
+.ct-incl { font-size: 12.5px !important; color: #6b7080 !important; }
+.ct-vat-note { font-size: 12px !important; color: #6b7080 !important; text-align: right !important; margin-top: -8px !important; }
+.ct-call { font-size: 12px !important; color: #5d6270 !important; text-align: center !important; }
+
+/* checkout: payment popup */
+.ct-pay-hero-t { font-size: 12px !important; font-weight: 700 !important; opacity: .85 !important; }
+.ct-pay-row { display: flex !important; justify-content: space-between !important; align-items: baseline !important; }
+.ct-pay-co { color: #56607a !important; font-size: 14px !important; }
+.ct-pay-amt { font-family: var(--disp) !important; font-size: 26px !important; }
+.ct-pay-demo { font-size: 12.5px !important; color: #6b7080 !important; line-height: 1.5 !important; }
+.ct-pad14 { padding: 14px !important; }
+.ct-cancel { border: 0 !important; background: transparent !important; color: #56607a !important; font-size: 13px !important; font-weight: 700 !important; }
+
+/* order success */
+.ct-pad14-24 { padding: 14px 24px !important; }
+.ct-flex { display: flex !important; }
+.ct-dot { width: 44px !important; height: 44px !important; border-radius: 50% !important; }
+.ct-dot-1 { background: oklch(0.72 0.13 220) !important; }
+.ct-dot-2 { background: oklch(0.6 0.2 350) !important; margin-left: -14px !important; }
+.ct-dot-3 { background: oklch(0.82 0.13 85) !important; margin-left: -14px !important; }
+.ct-succ-p { margin: 0 !important; color: #3d424d !important; font-size: 16px !important; line-height: 1.6 !important; max-width: 520px !important; }
+.ct-succ-note { border: 1px solid !important; border-radius: 14px !important; padding: 12px 16px !important; font-size: 13.5px !important; color: #0b1631 !important; max-width: 560px !important; }
+.ct-succ-hold { background: oklch(0.97 0.02 250) !important; border-color: oklch(0.86 0.05 250) !important; }
+.ct-succ-back { background: oklch(0.98 0.02 85) !important; border-color: oklch(0.85 0.08 75) !important; }
+.ct-succ-info { display: flex !important; gap: 8px !important; flex-wrap: wrap !important; justify-content: center !important; font-size: 13px !important; color: #56607a !important; }
+.ct-succ-btns { display: flex !important; gap: 10px !important; flex-wrap: wrap !important; justify-content: center !important; }
+.ct-btn-inv { background: linear-gradient(135deg,oklch(0.6 0.14 240),oklch(0.46 0.16 256)) !important; padding: 13px 20px !important; }
+.ct-pad13-20 { padding: 13px 20px !important; }
+.ct-btn-cont { padding: 14px 24px !important; border-color: #16181d !important; }

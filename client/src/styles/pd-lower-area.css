@@ -1,0 +1,30 @@
+/* lower area: tabs on the left, "How to order" as its own block on the right */
+.pd-lower { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 22px; align-items: start; margin-top: 40px; }
+.pd-lower .ptabs2 { margin-top: 0; }
+.howblock { position: relative; border-radius: 24px; background: #fff; border: 1px solid #e0e8f4; box-shadow: 0 30px 60px -44px rgba(11,22,49,.5); padding: 14px; overflow: hidden; }
+.howblock .howto { gap: 12px; }
+.howblock .howto-hd { flex-direction: column; align-items: stretch; padding: 16px; gap: 12px; }
+.howblock .howto-hd h3 { font-size: 18px; }
+.howblock .howto-side { min-width: 0; }
+.howblock .howto-steps { display: block; padding-top: 6px; }
+.howblock .howto-steps::before { left: 17px; margin-left: -1.5px; bottom: 60px; }
+.howblock .howto-steps > li:nth-child(n), .howblock .howto-steps > li.done { width: auto; max-width: none; margin: 0 0 14px 46px !important; align-self: auto; }
+.howblock .howto-steps > li::before, .howblock .howto-steps > li:nth-child(odd)::before, .howblock .howto-steps > li:nth-child(even)::before { left: -29px; right: auto; width: 29px; }
+.howblock .howto-steps > li::after, .howblock .howto-steps > li:nth-child(odd)::after, .howblock .howto-steps > li:nth-child(even)::after { left: -43px; right: auto; }
+.howblock .howto-steps > li.done::before { display: none; }
+.howblock .howto-steps > li:nth-child(odd), .howblock .howto-steps > li:nth-child(even) { animation-name: trInR; }
+@media (max-width: 1100px) { .pd-lower { grid-template-columns: 1fr; } .howblock { order: -1; } }
+
+/* "How to order" block animates when it scrolls into view */
+.howblock:not(.in), .howblock:not(.in) *, .howblock:not(.in) *::before, .howblock:not(.in) *::after { animation-play-state: paused !important; }
+@keyframes trFloat { 50% { transform: translateY(-5px); } }
+@keyframes trShine { from { transform: translateX(-120%) skewX(-18deg); } to { transform: translateX(320%) skewX(-18deg); } }
+@keyframes trRingPulse { 0% { box-shadow: 0 0 0 0 rgba(47, 125, 225, .5); } 100% { box-shadow: 0 0 0 14px rgba(47, 125, 225, 0); } }
+.howblock.in .howto-steps > li img { animation: trFloat 4.2s ease-in-out 2.4s infinite; }
+.howblock.in .howto-steps > li:nth-child(even) img { animation-delay: 3.1s; }
+.howblock .howto-hd { position: relative; overflow: hidden; animation: trUp .6s ease-out both; }
+.howblock .howto-hd::after { content: ''; position: absolute; top: 0; bottom: 0; left: 0; width: 28%; background: linear-gradient(90deg, transparent, rgba(255,255,255,.18), transparent); animation: trShine 3.6s ease-in-out 1s infinite; pointer-events: none; }
+.howblock .howto-call span { animation: trRingPulse 2s ease-out infinite; }
+.howblock .howto-steps > li.done .fin i { animation: trPop .6s cubic-bezier(.3, 1.5, .5, 1) 2.1s both, trRingPulse 2.2s ease-out 2.8s infinite; }
+@media (prefers-reduced-motion: reduce) { .howblock *, .howblock *::before, .howblock *::after { animation: none !important; } }
+

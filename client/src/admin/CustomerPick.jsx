@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useDebounced } from './fieldKit.jsx';
+import { useDebounced } from './hooks/useDebounced.js';
 
 /** Search the field app's customers (Existing or Upcoming) and hand the chosen one back.
  *  `load(type, query)` returns { items }: each screen passes the API it is allowed to call (quotations or orders).

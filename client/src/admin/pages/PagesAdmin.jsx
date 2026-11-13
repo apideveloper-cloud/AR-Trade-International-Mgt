@@ -3,16 +3,18 @@ import { adm, can } from '../adminApi.js';
 import { confirmBox } from '../ui.jsx';
 import { IconBtn } from '../IconBtn.jsx';
 import { SeoPanel } from '../SeoPanel.jsx';
+import { StackField as Field } from '../components/StackField.jsx';
+import { readFileAsDataUrl as readFile } from '../hooks/download.js';
+import { useApiData } from '../hooks/useApiData.js';
+import { withAlert } from '../hooks/withAlert.js';
 
 const GROUPS = [['servicing', 'Servicing details', 'Shown on the Servicing page'], ['clients', 'Corporate clients', 'Shown on the About page'], ['company', 'Company profile', 'Profile, mission and vision']];
 const GROUP_LOOK = { servicing: ['🛠', 215], clients: ['🏢', 160], company: ['📘', 45] };
-const readFile = f => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(f); });
 const TOOLS = [
   ['B', 'Bold', c => c('bold'), { fontWeight: 800 }], ['I', 'Italic', c => c('italic'), { fontStyle: 'italic' }],
   ['H2', 'Heading', c => c('formatBlock', 'h2')], ['H3', 'Sub-heading', c => c('formatBlock', 'h3')], ['¶', 'Paragraph', c => c('formatBlock', 'p')],
   ['• List', 'Bullet list', c => c('insertUnorderedList')], ['1. List', 'Numbered list', c => c('insertOrderedList')], ['Clear', 'Clear formatting', c => c('removeFormat')]
 ];
-const Field = ({ label, children }) => <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12.5, fontWeight: 700, color: '#3a3f4b' }}><span>{label}</span>{children}</label>;
 
 function PageEditor({ id, group, onDone }) {
   const [f, setF] = useState({ title: '', slug: '', excerpt: '', cover: '', status: 'Published', order: 0, metaTitle: '', metaDesc: '', metaKeywords: '', noindex: false });
@@ -92,13 +94,12 @@ function PageEditor({ id, group, onDone }) {
 
 /** Servicing details, corporate clients and the company profile — editable by Admin and Content writer. */
 export function PagesAdmin({ staff }) {
-  const [rows, setRows] = useState(null);
+  const pagesQ = useApiData(() => adm.get('/pages').catch(() => []));
+  const rows = pagesQ.data, load = pagesQ.reload;
   const [edit, setEdit] = useState(null); // null | { id } | { group } for new
   const [tab, setTab] = useState(GROUPS[0][0]);
   const [q, setQ] = useState('');
-  const load = () => adm.get('/pages').then(setRows).catch(() => setRows([]));
-  useEffect(() => { load(); }, []);
-  const del = async r => { if (await confirmBox(`Delete “${r.title}”?`, { danger: true, confirmLabel: 'Delete' })) { await adm.del('/pages/' + r.id); load(); } };
+  const del = withAlert(async r => { if (await confirmBox(`Delete “${r.title}”?`, { danger: true, confirmLabel: 'Delete' })) { await adm.del('/pages/' + r.id); load(); } });
   if (edit) return <PageEditor id={edit.id} group={edit.group || rows.find(r => r.id === edit.id)?.group} onDone={id => { setEdit(id ? { id } : null); load(); }} />;
   if (!rows) return <div className="a-card">Loading…</div>;
   const isAdmin = can(staff, 'pages.delete');

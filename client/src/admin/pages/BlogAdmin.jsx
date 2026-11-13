@@ -4,15 +4,10 @@ import { Empty, Pager, Pill, Toolbar, ViewToggle, alertBox, confirmBox, useView 
 import { ListFilter } from '../ListFilter.jsx';
 import { IconBtn } from '../IconBtn.jsx';
 import { SeoPanel } from '../SeoPanel.jsx';
+import { StackField as Field } from '../components/StackField.jsx';
+import { readFileAsDataUrl as readFile } from '../hooks/download.js';
 
 const today = () => new Date().toISOString().slice(0, 10);
-const readFile = f => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(f); });
-const Field = ({ label, hint, children, style }) => (
-  <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12.5, fontWeight: 700, color: '#3a3f4b', ...style }}>
-    <span>{label}{hint && <em style={{ fontStyle: 'normal', fontWeight: 500, color: '#8a8f9b', marginLeft: 8 }}>{hint}</em>}</span>{children}
-  </label>
-);
-
 const TOOLS = [
   ['B', 'Bold', c => c('bold'), { fontWeight: 800 }], ['I', 'Italic', c => c('italic'), { fontStyle: 'italic' }],
   ['H2', 'Heading', c => c('formatBlock', 'h2')], ['H3', 'Sub-heading', c => c('formatBlock', 'h3')], ['¶', 'Paragraph', c => c('formatBlock', 'p')],

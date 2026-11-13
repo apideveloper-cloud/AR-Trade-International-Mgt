@@ -6,6 +6,7 @@ import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import PDFDocument from 'pdfkit';
 import QRCode from 'qrcode';
+import { money } from './util.js';
 
 const require = createRequire(import.meta.url);
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -48,7 +49,7 @@ export function drawHeader(doc, { title, number, date, site = {}, qr, caption = 
 }
 
 export const invoiceNo = id => 'INV-' + String(id).replace(/^\D+/, '');
-export const money = n => '৳ ' + Math.round(Number(n) || 0).toLocaleString('en-US');
+export { money };
 export const when = (d, time = true) => {
   const x = new Date(d);
   if (isNaN(x)) return '';

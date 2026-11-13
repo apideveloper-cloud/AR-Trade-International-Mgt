@@ -71,51 +71,59 @@ export function StoreProvider({ children }) {
   const dismissToast = useCallback(() => { clearTimeout(timer.current); setToast(null); }, []);
 
   const byId = useMemo(() => new Map((data?.products || []).map(p => [p.id, p])), [data]);
-  const find = id => byId.get(Number(id));
+  const find = useCallback(id => byId.get(Number(id)), [byId]);
 
-  const addToCart = (p, n = 1) => {
+  const addToCart = useCallback((p, n = 1) => {
     if (!p.price) return say('This product needs a quotation — ask us on WhatsApp');
     setCart(c => ({ ...c, [p.id]: (c[p.id] || 0) + n }));
     say('Added: ' + p.name, '/cart');
-  };
-  const setQty = (id, n) => setCart(c => { const x = { ...c }; if (n <= 0) delete x[id]; else x[id] = n; return x; });
-  const clearCart = () => setCart({});
-  const toggleWish = id => setWish(w => (w.includes(id) ? w.filter(x => x !== id) : [...w, id]));
-  const toggleCompare = id => {
+  }, [say, setCart]);
+  const setQty = useCallback((id, n) => setCart(c => { const x = { ...c }; if (n <= 0) delete x[id]; else x[id] = n; return x; }), [setCart]);
+  const clearCart = useCallback(() => setCart({}), [setCart]);
+  const toggleWish = useCallback(id => setWish(w => (w.includes(id) ? w.filter(x => x !== id) : [...w, id])), [setWish]);
+  const toggleCompare = useCallback(id => {
     if (compare.includes(id)) return setCompare(compare.filter(x => x !== id));
     if (compare.length >= 3) return say('Compare holds up to 3 products');
     setCompare([...compare, id]);
-  };
+  }, [compare, say, setCompare]);
 
-  const cartLines = Object.entries(cart).map(([id, qty]) => ({ p: find(id), qty })).filter(l => l.p);
-  const cartCount = cartLines.reduce((a, l) => a + l.qty, 0);
-  const cartSubtotal = cartLines.reduce((a, l) => a + l.p.price * l.qty, 0);
+  const cartLines = useMemo(() => Object.entries(cart).map(([id, qty]) => ({ p: find(id), qty })).filter(l => l.p), [cart, find]);
+  const cartCount = useMemo(() => cartLines.reduce((a, l) => a + l.qty, 0), [cartLines]);
+  const cartSubtotal = useMemo(() => cartLines.reduce((a, l) => a + l.p.price * l.qty, 0), [cartLines]);
 
-  const auth = async (path, body) => {
+  const auth = useCallback(async (path, body) => {
     const r = await api.post('/auth/' + path, body);
     setToken(true); setUser(r.user);
     return r.user;
-  };
-  const logout = () => { setToken(null); setUser(null); api.post('/auth/logout').catch(() => {}); };
+  }, []);
+  const login = useCallback(b => auth('login', b), [auth]);
+  const register = useCallback(b => auth('register', b), [auth]);
+  const social = useCallback(b => auth('social', b), [auth]);
+  const logout = useCallback(() => { setToken(null); setUser(null); api.post('/auth/logout').catch(() => {}); }, []);
 
   /** Starts the double opt-in flow: the confirmation link is emailed, and the subscription only counts once it is clicked. */
-  const optIn = async (email, source) => {
+  const optIn = useCallback(async (email, source) => {
     const r = await api.post('/optin', { email, source });
     if (r.status === 'Confirmed') { setSubscribed(true); say('You are already subscribed'); return r; }
     setOptMail({ email: r.email });
     setSubscribed(true);
     return r;
-  };
+  }, [say]);
 
-  const value = {
-    data, error, cats: data?.cats || [], products: data?.products || [], site: data?.site, content: data?.content, find,
+  const site = data?.site;
+  const totals = useCallback(opts => computeTotals(cartLines, site, { member: !!user, ...opts }), [cartLines, site, user]);
+  const tkSite = useCallback(s => tk(s, site || {}), [site]);
+
+  // One stable object per real change, so consumers only re-render when something they can see actually changed.
+  const value = useMemo(() => ({
+    data, error, cats: data?.cats || [], products: data?.products || [], site, content: data?.content, find,
     cart, cartLines, cartCount, cartSubtotal, addToCart, setQty, clearCart,
     wish, toggleWish, compare, setCompare, toggleCompare,
-    user, setUser, login: b => auth('login', b), register: b => auth('register', b), social: b => auth('social', b), logout,
+    user, setUser, login, register, social, logout,
     toast, say, dismissToast, cartOpen, setCartOpen, loginOpen, setLoginOpen,
     optMail, setOptMail, optIn, subscribed,
-    totals: opts => computeTotals(cartLines, data.site, { member: !!user, ...opts }),
-    tk: s => tk(s, data?.site || {})
-  };
+    totals, tk: tkSite
+  }), [data, error, site, find, cart, cartLines, cartCount, cartSubtotal, addToCart, setQty, clearCart, wish, toggleWish, compare, setCompare, toggleCompare,
+    user, login, register, social, logout, toast, say, dismissToast, cartOpen, loginOpen, optMail, optIn, subscribed, totals, tkSite]);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

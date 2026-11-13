@@ -1,4 +1,4 @@
-import { Fragment, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import './filterCard.css';
 
 // One filter card for every list: search box, any number of drop-downs, a date period (quick ranges + from / to) and an optional amount range.
@@ -12,8 +12,9 @@ import './filterCard.css';
 // plural is for nouns that do not take a plain s (noun="delivery" plural="deliveries").
 // range.def is the period the list opens on: 'all' (default), 'today', 'd7', 'month' or 'd30'. Reset returns to it.
 
-const ymd = d => new Date(d.getTime() + 6 * 3600e3).toISOString().slice(0, 10);
-const daysAgo = n => ymd(new Date(Date.now() - n * 864e5));
+/** Dhaka calendar day (YYYY-MM-DD) of a date. */
+export const ymd = d => new Date(d.getTime() + 6 * 3600e3).toISOString().slice(0, 10);
+export const daysAgo = n => ymd(new Date(Date.now() - n * 864e5));
 /** The five quick periods, in Dhaka time. */
 export function periods() {
   const now = new Date(), t = ymd(now);
@@ -44,6 +45,8 @@ export function ListFilter({ t, title = 'Search & filter', noun = 'record', plur
   const searchRow = !!search && !search.span && selects.length > 0 && selects.length + (range ? 2 : 0) + (amount ? 1 : 0) >= 4;
   const [open, setOpen] = useState(true);
   const timers = useRef({});
+  const stopTyping = () => Object.values(timers.current).forEach(clearTimeout);
+  useEffect(() => stopTyping, []); // eslint-disable-line react-hooks/exhaustive-deps
   const defKey = range?.def || 'all';
   const dflt = useRef(range ? periodOf(defKey) : {});
   const textKeys = [search && 'q', amount && 'min', amount && 'max'].filter(Boolean);
@@ -51,7 +54,7 @@ export function ListFilter({ t, title = 'Search & filter', noun = 'record', plur
   const typed = (k, v) => { clearTimeout(timers.current[k]); timers.current[k] = setTimeout(() => t.set({ [k]: v }), 350); };
   const isDefaultRange = !range || (p.from || '') === dflt.current.from && (p.to || '') === dflt.current.to;
   const active = keys.filter(k => p[k] && !(range && (k === 'from' || k === 'to') && isDefaultRange)).length;
-  const reset = () => t.set({ ...Object.fromEntries(keys.map(k => [k, ''])), ...(range ? dflt.current : {}) });
+  const reset = () => { stopTyping(); t.set({ ...Object.fromEntries(keys.map(k => [k, ''])), ...(range ? dflt.current : {}) }); };
   const quick = range ? periods() : [];
   const current = (quick.find(r => r[2] === (p.from || '') && r[3] === (p.to || '')) || [])[0];
   const found = t.loading ? 'Searching…' : `${t.data.total} ${t.data.total === 1 ? noun : plural || noun + 's'} found`;

@@ -1,0 +1,26 @@
+/* buttons */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 0; border-radius: 10px; padding: 11px 16px; font-weight: 800; font-size: 14px; background: var(--navy); color: #fff; white-space: nowrap; transition: background .2s, filter .2s; }
+.btn:hover { background: oklch(0.5 0.15 248); color: #fff; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn-grad { background: var(--grad); box-shadow: 0 10px 22px -12px oklch(0.5 0.15 252 / .9); }
+.btn-grad:hover { background: var(--grad); filter: brightness(1.08); }
+.btn-pill { border-radius: 999px; }
+.btn-ghost { background: #fff; color: var(--navy); border: 1px solid #d6dce7; }
+.btn-ghost:hover { background: #f3f6fb; color: var(--navy); }
+.btn-dark { background: var(--ink); }
+.btn-dark:hover { background: #000; }
+.btn-blue { background: var(--blue); border-radius: 999px; padding: 16px; font-size: 15px; font-weight: 700; }
+.btn-blue:hover { background: oklch(0.45 0.19 258); }
+
+.field { border: 1px solid #cfccc4; border-radius: 12px; padding: 12px 14px; outline: 0; background: var(--bg); width: 100%; }
+.field2 { border: 1px solid #d3d8e3; border-radius: 12px; padding: 12px 14px; outline: 0; background: #f7f8fb; width: 100%; }
+.field:focus, .field2:focus { border-color: var(--navy); background: #fff; }
+.lbl { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600; min-width: 0; }
+.cardbox { background: #fff; border: 1px solid var(--line3); border-radius: 20px; padding: 24px; display: flex; flex-direction: column; gap: 14px; }
+.cardbox2 { background: #fff; border: 1px solid #e3e8f2; border-radius: 20px; padding: 24px; display: flex; flex-direction: column; gap: 14px; box-shadow: 0 1px 2px rgba(11,22,49,.04), 0 10px 24px -20px rgba(11,22,49,.3); }
+.opt { text-align: left; border: 1.5px solid #e3e8f2; background: #fff; border-radius: 14px; padding: 13px 15px; display: flex; flex-direction: column; gap: 3px; cursor: pointer; }
+.opt.on { border-color: oklch(0.5 0.16 254); background: oklch(0.97 0.02 250); }
+.opt small { font-size: 12.5px; color: var(--muted); }
+.err { background: oklch(0.96 0.03 25); color: oklch(0.48 0.17 25); border-radius: 12px; padding: 12px 14px; font-size: 14px; font-weight: 600; }
+.empty { background: #fff; border: 1px dashed #cfccc4; border-radius: 20px; padding: 56px; text-align: center; display: flex; flex-direction: column; gap: 14px; align-items: center; }
+

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { adm, can, dateF, fmtMoney, slNo, useTable } from '../adminApi.js';
 import { Empty, Modal, Pager, Pill, Summary, Toolbar, alertBox, hueOf } from '../ui.jsx';
 import { STATUSES, AREA } from './sales/constants.js';
@@ -11,6 +11,8 @@ import { CustomerDrawer, KEY_ICON, LOCK_ICON } from './sales/CustomerDrawer.jsx'
 import { SetPasswordModal } from './sales/SetPasswordModal.jsx';
 import { OrderSearch, monthRange } from './sales/OrderSearch.jsx';
 import { ListFilter } from '../ListFilter.jsx';
+import { useApiData } from '../hooks/useApiData.js';
+import { withAlert } from '../hooks/withAlert.js';
 import './sales/orders.css';
 
 export function Orders({ staff }) {
@@ -115,14 +117,14 @@ export function Deliveries() {
 
 export function Customers() {
   const t = useTable('/customers', { from: '', to: '' });
-  const [reqs, setReqs] = useState([]);
+  const resets = useApiData(() => adm.get('/password-resets').catch(() => []), [], []);
+  const reqs = resets.data, loadReqs = resets.reload;
   const [link, setLink] = useState(null); // { name, url, phone }
   const [copied, setCopied] = useState(false);
-  const loadReqs = () => adm.get('/password-resets').then(setReqs).catch(() => {});
-  useEffect(() => { loadReqs(); }, []);
   const makeLink = async c => {
     try { const r = await adm.post(`/customers/${c.userId}/reset-link`); setLink({ name: c.name, phone: c.phone, url: window.location.origin + r.path, hours: r.hours }); loadReqs(); } catch (e) { alertBox(e.message); }
   };
+  const dismiss = withAlert(async id => { await adm.del('/password-resets/' + id); loadReqs(); });
   const [pwFor, setPwFor] = useState(null);
   const setPw = c => setPwFor(c);
   const [view, setView] = useState(null); // the customer whose details are open
@@ -137,7 +139,7 @@ export function Customers() {
             <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '6px 0', borderTop: '1px solid oklch(0.9 0.05 85)' }}>
               <span style={{ flex: 1, minWidth: 200 }}><b>{r.name}</b> · {r.phone} · {r.email}<br /><small style={{ color: '#6b7080' }}>asked {dateF(r.created)}</small></span>
               <button className="a-btn sm" onClick={() => makeLink({ userId: r.userId, name: r.name, phone: r.phone })}>Create reset link</button>
-              <button className="a-btn ghost sm" onClick={async () => { await adm.del('/password-resets/' + r.id); loadReqs(); }}>Dismiss</button>
+              <button className="a-btn ghost sm" onClick={() => dismiss(r.id)}>Dismiss</button>
             </div>
           ))}
         </div>
@@ -145,7 +147,7 @@ export function Customers() {
       {link && (
         <Modal kicker="Password reset" title={'Reset link for ' + link.name} onClose={() => setLink(null)}
           footer={<>
-            <button type="button" className="a-btn sm" onClick={() => { navigator.clipboard?.writeText(link.url); setCopied(true); setTimeout(() => setCopied(false), 2000); }}>{copied ? 'Copied ✓' : 'Copy link'}</button>
+            <button type="button" className="a-btn sm" onClick={() => { navigator.clipboard?.writeText(link.url)?.catch(() => {}); setCopied(true); setTimeout(() => setCopied(false), 2000); }}>{copied ? 'Copied ✓' : 'Copy link'}</button>
             <a className="a-btn ghost sm" target="_blank" rel="noreferrer" href={`https://wa.me/88${String(link.phone || '').replace(/\D/g, '')}?text=${encodeURIComponent('AR Trade: set a new password here (valid 24 hours): ' + link.url)}`}>Send on WhatsApp</a>
             <button type="button" className="a-btn ghost sm" onClick={() => setLink(null)}>Close</button>
           </>}>

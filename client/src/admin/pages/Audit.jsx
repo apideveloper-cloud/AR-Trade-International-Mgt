@@ -1,19 +1,18 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { adm, dateTimeF, useTable } from '../adminApi.js';
 import { Drawer, Empty, Pager, Summary, alertBox, hueOf } from '../ui.jsx';
-import { Chip, Fact, Notice, Skeleton, downloadCsv } from '../fieldKit.jsx';
+import { Chip, Fact, Notice, Skeleton, downloadCsv, initials } from '../fieldKit.jsx';
+import { daysAgo, ymd } from '../ListFilter.jsx';
+import { useApiData } from '../hooks/useApiData.js';
+import { useDebouncedCallback } from '../hooks/useDebouncedCallback.js';
 import '../filterCard.css';
 import './audit/audit.css';
 
-const ymd = d => new Date(d.getTime() + 6 * 3600e3).toISOString().slice(0, 10);
-const daysAgo = n => ymd(new Date(Date.now() - n * 864e5));
-const initials = n => String(n || '?').split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
 const methodTone = m => (m === 'DELETE' ? 'bad' : m === 'POST' ? 'ok' : m === 'GET' ? 'blue' : m === 'SYS' ? 'violet' : 'amber');
 
 function EntryDrawer({ id, onClose }) {
-  const [d, setD] = useState(null);
-  const [err, setErr] = useState('');
-  useEffect(() => { adm.get('/audit/' + id).then(setD).catch(e => setErr(e.message)); }, [id]);
+  const q = useApiData(() => adm.get('/audit/' + id), [id]);
+  const d = q.data, err = q.error;
   return (
     <Drawer title={d ? d.action : 'Log entry'} sub={d ? `${d.entity}${d.entityId ? ' ' + d.entityId : ''} · ${dateTimeF(d.at)}` : 'Loading…'} onClose={onClose}>
       <Notice err={err} />
@@ -39,7 +38,7 @@ export function Audit() {
   const t = useTable('/audit', { q: '', staff: '', module: '', result: '', from: daysAgo(6), to: ymd(new Date()), size: 25 });
   const [open, setOpen] = useState(null);
   const [busy, setBusy] = useState(false);
-  const timer = useRef();
+  const typeSearch = useDebouncedCallback(v => t.set({ q: v }), 350);
   const p = t.params, dt = t.data;
   const s = dt.summary || {};
   const ranges = [['today', 'Today', ymd(new Date()), ymd(new Date())], ['d7', 'Last 7 days', daysAgo(6), ymd(new Date())], ['d30', 'Last 30 days', daysAgo(29), ymd(new Date())], ['all', 'All time', '', '']];
@@ -77,7 +76,7 @@ export function Audit() {
           <div className="os-grid">
             <label className="os-f os-s c4">Search
               <span className="os-in"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5" /><path d="m20 20-4-4" /></svg>
-                <input key={'q' + (p.q === '' ? '-e' : '')} defaultValue={p.q} placeholder="Staff, action, order no., details…" onChange={e => { const v = e.target.value; clearTimeout(timer.current); timer.current = setTimeout(() => t.set({ q: v }), 350); }} /></span>
+                <input key={'q' + (p.q === '' ? '-e' : '')} defaultValue={p.q} placeholder="Staff, action, order no., details…" onChange={e => typeSearch(e.target.value)} /></span>
             </label>
             <label className="os-f c3">Staff<span className="os-in os-sel"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.4" /><path d="M5 20c.7-3.6 3.6-5.6 7-5.6s6.3 2 7 5.6" /></svg><select value={p.staff} onChange={e => t.set({ staff: e.target.value })}><option value="">All staff</option>{(dt.staff || []).map(x => <option key={x.id} value={x.id}>{x.name}</option>)}</select></span></label>
             <label className="os-f c3">Module<span className="os-in os-sel"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="2" /><rect x="13" y="3" width="8" height="8" rx="2" /><rect x="3" y="13" width="8" height="8" rx="2" /><rect x="13" y="13" width="8" height="8" rx="2" /></svg><select value={p.module} onChange={e => t.set({ module: e.target.value })}><option value="">All modules</option>{(dt.modules || []).map(m => <option key={m}>{m}</option>)}</select></span></label>

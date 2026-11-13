@@ -1,0 +1,32 @@
+/* product card */
+.pcard { position: relative; height: 100%; background: #fff; border: 1px solid rgba(22,24,29,.07); border-radius: 22px; padding: 10px; display: flex; flex-direction: column; gap: 14px; box-shadow: 0 1px 2px rgba(11,22,49,.06), 0 8px 24px -16px rgba(11,22,49,.25); transition: transform .35s cubic-bezier(.2,.8,.2,1), box-shadow .35s, border-color .35s; }
+.pcard:hover { transform: translateY(-6px); border-color: oklch(0.62 0.17 258 / .45); box-shadow: 0 0 0 4px oklch(0.62 0.17 258 / .10), 0 18px 30px -18px oklch(0.4 0.18 262 / .45); }
+.pc-img { position: relative; aspect-ratio: 1 / .92; border-radius: 16px; display: grid; place-items: center; overflow: hidden; background: linear-gradient(180deg, #fff 0%, #f4f7fc 100%); isolation: isolate; }
+.pc-img img { width: 100%; height: 100%; object-fit: contain; transform: scale(1.18); mix-blend-mode: multiply; transition: opacity .4s, transform .5s cubic-bezier(.2,.8,.2,1); }
+.pcard:hover .pc-img img { transform: scale(1.28) rotate(-1.5deg); }
+.pc-img .ph, .ph { width: 100%; height: 100%; background: repeating-linear-gradient(135deg, #f3f1ec 0 8px, #ebe8e1 8px 16px); display: grid; place-items: center; font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.pc-badges { position: absolute; top: 10px; left: 10px; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; z-index: 2; }
+.b-off { background: var(--pink); color: #fff; font-size: 12px; font-weight: 800; padding: 5px 10px; border-radius: 999px; box-shadow: 0 6px 14px -6px oklch(0.55 0.22 350 / .7); }
+.b-new { background: oklch(0.84 0.14 85); color: var(--ink); font-size: 11px; font-weight: 800; padding: 4px 9px; border-radius: 999px; }
+.round { position: absolute; right: 10px; width: 36px; height: 36px; border-radius: 50%; border: 0; box-shadow: 0 4px 12px -4px rgba(11,22,49,.3); font-size: 15px; transition: transform .2s; z-index: 2; }
+.round:hover { transform: scale(1.12); }
+.round.wish { top: 10px; background: rgba(255,255,255,.9); color: #5d6270; }
+.round.wish.on { color: oklch(0.55 0.2 350); }
+.round.cmp { top: 52px; font-weight: 800; background: rgba(255,255,255,.9); color: var(--navy); }
+.round.cmp.on { background: var(--navy); color: #fff; }
+.pc-body { display: flex; flex-direction: column; gap: 6px; flex: 1; padding: 0 6px; }
+.pc-meta { display: flex; align-items: center; gap: 8px; }
+.brand-k { font-family: var(--mono); font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: oklch(0.48 0.17 258); }
+.dot3 { width: 3px; height: 3px; border-radius: 50%; background: #c4c7cf; }
+.pc-meta .sp { font-size: 12px; color: #6b7080; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pc-name { margin: 0; font-family: Manrope, sans-serif; font-size: 15px; font-weight: 600; line-height: 1.35; min-height: 40px; color: var(--ink); text-wrap: pretty; }
+.pc-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 6px 4px; border-top: 1px dashed #e6e8ee; }
+.pc-price { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; }
+.pc-price b { font-family: var(--disp); font-size: 20px; font-weight: 800; letter-spacing: -.015em; white-space: nowrap; color: var(--navy); }
+.pc-price s { font-size: 12px; color: #8a8f9b; }
+.add { display: flex; align-items: center; gap: 6px; border: 0; background: linear-gradient(135deg, #16213f, #0b1631); color: #fff; border-radius: 999px; padding: 10px 16px; font-size: 13px; font-weight: 700; box-shadow: 0 8px 18px -8px rgba(11,22,49,.6); transition: all .25s; white-space: nowrap; }
+.add:hover { background: linear-gradient(135deg, oklch(0.58 0.2 258), oklch(0.48 0.2 268)); box-shadow: 0 10px 22px -8px oklch(0.55 0.2 260 / .8); }
+.incart { border: 1px solid oklch(0.52 0.19 258); background: oklch(0.95 0.03 258); color: oklch(0.42 0.19 258); border-radius: 999px; padding: 9px 12px; font-size: 13px; font-weight: 700; white-space: nowrap; }
+.ask { border: 1px solid var(--navy); color: var(--navy); border-radius: 999px; padding: 9px 13px; font-size: 13px; font-weight: 700; white-space: nowrap; }
+.oos { font-size: 12px; font-weight: 700; color: #8a8f9b; padding: 9px 4px; }
+

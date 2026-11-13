@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { adm } from '../adminApi.js';
+import { readFileAsDataUrl as readFile } from '../hooks/download.js';
+import { useApiData } from '../hooks/useApiData.js';
 import { DEFAULT_ABOUT, DEFAULT_FOOTER, DEFAULT_MENUS, withDefaults } from '../../data.js';
 
-const readFile = f => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(f); });
 const lbl = { display: 'flex', flexDirection: 'column', gap: 5, fontSize: 12, fontWeight: 700, color: '#3a3f4b', minWidth: 0 };
 
 /** Image field: preview + upload into uploads/site/<folder>/ (or paste a link). */
@@ -135,18 +136,16 @@ const TABS = [
 
 /** Storefront content manager: everything on the public pages that is not a product, blog post or setting. */
 export function ContentAdmin() {
-  const [data, setData] = useState(null);
+  const q = useApiData(() => adm.get('/content').then(d => ({
+    ...d,
+    about: withDefaults(DEFAULT_ABOUT, d.about), footer: withDefaults(DEFAULT_FOOTER, d.footer),
+    menus: Object.fromEntries(['hot', 'services', 'blog', 'about'].map(k => [k, d.menus && d.menus[k] && d.menus[k].length ? d.menus[k] : DEFAULT_MENUS[k]]))
+  })));
+  const data = q.data, setData = q.setData;
   const [tab, setTab] = useState('slides');
   const [msg, setMsg] = useState(null);
   const [busy, setBusy] = useState(false);
-  useEffect(() => {
-    adm.get('/content').then(d => setData({
-      ...d,
-      about: withDefaults(DEFAULT_ABOUT, d.about), footer: withDefaults(DEFAULT_FOOTER, d.footer),
-      menus: Object.fromEntries(['hot', 'services', 'blog', 'about'].map(k => [k, d.menus && d.menus[k] && d.menus[k].length ? d.menus[k] : DEFAULT_MENUS[k]]))
-    })).catch(e => setMsg({ err: true, t: e.message }));
-  }, []);
-  if (!data) return msg ? <div className="a-msg err">{msg.t}</div> : <span className="spin" />;
+  if (!data) return q.error ? <div className="a-msg err">{q.error}</div> : <span className="spin" />;
   const set = (k, fn) => setData(d => ({ ...d, [k]: typeof fn === 'function' ? fn(d[k]) : fn }));
   const save = async keys => {
     setBusy(true); setMsg(null);
@@ -154,7 +153,7 @@ export function ContentAdmin() {
     catch (e) { setMsg({ err: true, t: e.message }); }
     setBusy(false);
   };
-  const SaveBar = ({ keys }) => (
+  const saveBar = keys => (
     <div className="cx-save">
       <span>{msg ? <b style={{ color: msg.err ? '#ffb4ab' : '#9be7b4' }}>{msg.err ? '⚠ ' : '✓ '}{msg.t}</b> : 'Changes go live on the website as soon as you save.'}</span>
       <button type="button" className="a-btn" disabled={busy} onClick={() => save(keys)}>{busy ? 'Saving…' : 'Save changes'}</button>
@@ -179,31 +178,31 @@ export function ContentAdmin() {
             <label style={{ ...lbl, maxWidth: 200, marginLeft: 'auto' }}>Seconds per slide<input className="a-input" type="number" min="2" max="30" step="0.5" value={data.slideSecs ?? 5.5} onChange={e => set('slideSecs', e.target.value)} /></label>
           </div>
           <ListEditor items={data.slides} setItems={fn => set('slides', fn)} fields={SLIDE_FIELDS} max={12} title={(s, i) => `Slide ${i + 1} · ${s.type === 'image' ? (s.alt || 'banner') : (s.title || 'text slide')}`} blank={() => ({ on: true, type: 'image', img: '', alt: '', href: '#/shop/all' })} />
-          <SaveBar keys={['slides', 'slideSecs']} />
+          {saveBar(['slides', 'slideSecs'])}
         </>}
 
         {tab === 'brands' && <>
           <ListEditor tiles items={data.brands} setItems={fn => set('brands', fn)} max={40} title={b => b.n || 'New brand'} blank={{ n: '', src: '' }}
             fields={[{ k: 'n', label: 'Brand name' }, { k: 'src', type: 'image', label: 'Logo', folder: 'brands' }]} />
-          <SaveBar keys={['brands']} />
+          {saveBar(['brands'])}
         </>}
 
         {tab === 'clients' && <>
           <ListEditor tiles items={(data.clients || []).map(c => ({ src: c }))} setItems={fn => set('clients', a => fn(a.map(c => ({ src: c }))).map(x => x.src))} max={80} title={(c, i) => `Client logo ${i + 1}`} blank={{ src: '' }}
             fields={[{ k: 'src', type: 'image', label: 'Logo', folder: 'clients' }]} />
-          <SaveBar keys={['clients']} />
+          {saveBar(['clients'])}
         </>}
 
         {tab === 'perks' && <>
           <ListEditor items={data.perks} setItems={fn => set('perks', fn)} max={8} title={p => p.t || 'Highlight'} blank={{ ic: '✓', t: '', d: '' }}
             fields={[{ k: 'ic', label: 'Icon (a symbol)' }, { k: 't', label: 'Title' }, { k: 'd', label: 'Description', wide: true }]} />
-          <SaveBar keys={['perks']} />
+          {saveBar(['perks'])}
         </>}
 
         {tab === 'faqs' && <>
           <ListEditor items={data.faqs} setItems={fn => set('faqs', fn)} max={40} title={f => f.q || 'New question'} blank={{ q: '', a: '' }}
             fields={[{ k: 'q', label: 'Question', wide: true }, { k: 'a', type: 'area', label: 'Answer (you can use {phone} for the store phone)', rows: 3 }]} />
-          <SaveBar keys={['faqs']} />
+          {saveBar(['faqs'])}
         </>}
 
         {tab === 'policies' && <>
@@ -216,7 +215,7 @@ export function ContentAdmin() {
                 fields={[{ k: 'h', label: 'Heading', wide: true }, { k: 'p', type: 'area', label: 'Text', rows: 3 }]} />
             </div>
           ))}
-          <SaveBar keys={['policies']} />
+          {saveBar(['policies'])}
         </>}
 
         {tab === 'about' && <>
@@ -230,7 +229,7 @@ export function ContentAdmin() {
           <ListEditor items={data.stats} setItems={fn => set('stats', fn)} max={8} title={s => `${s.v} ${s.t}`} blank={{ v: '', t: '' }} fields={[{ k: 'v', label: 'Number (e.g. 2011)' }, { k: 't', label: 'Caption' }]} />
           <h4 className="cx-h">Why choose us</h4>
           <ListEditor items={data.whys} setItems={fn => set('whys', fn)} max={12} title={w => w.t || 'New card'} blank={{ t: '', d: '' }} fields={[{ k: 't', label: 'Title' }, { k: 'd', type: 'area', label: 'Description', rows: 2 }]} />
-          <SaveBar keys={['about', 'stats', 'whys']} />
+          {saveBar(['about', 'stats', 'whys'])}
         </>}
 
         {tab === 'menus' && <>
@@ -246,7 +245,7 @@ export function ContentAdmin() {
           <div style={{ display: 'grid', gap: 10 }}>
             {[['tagline', 'Footer description'], ['hours', 'Opening hours'], ['mobileBanking', 'Contact page: mobile banking line'], ['email2', 'Contact page: second email']].map(([k, l]) => <label key={k} style={lbl}>{l}<input className="a-input" value={data.footer[k] || ''} onChange={e => set('footer', f => ({ ...f, [k]: e.target.value }))} /></label>)}
           </div>
-          <SaveBar keys={['menus', 'footer']} />
+          {saveBar(['menus', 'footer'])}
         </>}
 
         {tab === 'general' && <>
@@ -263,7 +262,7 @@ export function ContentAdmin() {
             {Object.keys(data.sections || {}).map(k => <label key={k} style={{ display: 'flex', gap: 6, alignItems: 'center', fontWeight: 600 }}><input type="checkbox" checked={!!data.sections[k]} onChange={e => set('sections', s => ({ ...s, [k]: e.target.checked }))} />{k}</label>)}
           </div>
           <label style={lbl}>Search-box typing hints (one per line)<textarea className="a-input" rows={5} value={(data.words || []).join('\n')} onChange={e => set('words', e.target.value.split('\n'))} /></label>
-          <SaveBar keys={['social', 'labels', 'sections', 'words']} />
+          {saveBar(['social', 'labels', 'sections', 'words'])}
         </>}
       </div>
     </div>

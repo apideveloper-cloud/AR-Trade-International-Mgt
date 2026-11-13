@@ -2,7 +2,7 @@
 // Everything is computed from the application's own transactions (orders, items, stock, customers, expenses). Nothing is invented:
 // the forecast is the average of each weekday over the last 8 weeks, scaled by the recent trend, and every guide line says what it is based on.
 import { can } from './permissions.js';
-import { fail } from './util.js';
+import { fail, money } from './util.js';
 
 const DAY = 864e5;
 /** Periods the dashboard can be sorted by: days -> wording used in the text. */
@@ -13,7 +13,6 @@ const parse = s => new Date(s + 'T00:00:00Z');
 const addDays = (s, n) => ymd(new Date(parse(s).getTime() + n * DAY));
 const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const WD_LONG = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-const money = n => '৳ ' + Math.round(Number(n) || 0).toLocaleString('en-US');
 const pct = (a, b) => (b ? Math.round((a - b) / b * 100) : null);
 const sum = (a, f = x => x) => a.reduce((t, x) => t + f(x), 0);
 const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x));

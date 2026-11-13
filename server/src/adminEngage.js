@@ -5,7 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { pool } from './db.js';
 import { fail, parseJson, wrap } from './util.js';
-import { addRange } from './listing.js';
+import { addRange, whereOf } from './listing.js';
 import { like, page } from './adminHelpers.js';
 
 const CV_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../uploads/cv');
@@ -18,7 +18,7 @@ export function mountEngageRoutes(router, guard) {
     if (req.query.q) { cond.push('(r.name LIKE ? OR r.body LIKE ? OR p.name LIKE ?)'); params.push(like(req.query.q), like(req.query.q), like(req.query.q)); }
     if (req.query.status) { cond.push('r.status = ?'); params.push(req.query.status); }
     addRange(cond, params, 'r.created_at', req);
-    const where = cond.length ? 'WHERE ' + cond.join(' AND ') : '';
+    const where = whereOf(cond);
     const from = 'FROM reviews r LEFT JOIN products p ON p.id = r.product_id';
     const [[{ n }]] = await pool.query(`SELECT COUNT(*) n ${from} ${where}`, params);
     const [rows] = await pool.query(`SELECT r.*, p.name AS product ${from} ${where} ORDER BY (r.status = 'Pending') DESC, r.created_at DESC LIMIT ${size} OFFSET ${offset}`, params);
@@ -34,7 +34,7 @@ export function mountEngageRoutes(router, guard) {
 
   router.get('/messages', guard('messages.manage'), wrap(async (req, res) => {
     const [rows] = await pool.query('SELECT * FROM messages ORDER BY created_at DESC LIMIT 200');
-    res.json({ chat: rows.filter(m => m.subject === 'Live chat').map(m => ({ id: m.id, text: m.body, at: m.created_at })), contact: rows.filter(m => m.subject !== 'Live chat').map(m => ({ id: m.id, name: m.name, contact: m.contact, company: m.company, subject: m.subject, body: m.body, at: m.created_at, status: m.status || 'New', note: m.note || '', handledBy: m.handled_by || '', handledAt: m.handled_at })) });
+    res.json({ chat: rows.filter(m => m.subject === 'Live chat').map(m => ({ id: m.id, text: m.body, name: m.name === 'Live chat visitor' ? '' : m.name, contact: m.contact || '', at: m.created_at })), contact: rows.filter(m => m.subject !== 'Live chat').map(m => ({ id: m.id, name: m.name, contact: m.contact, company: m.company, subject: m.subject, body: m.body, at: m.created_at, status: m.status || 'New', note: m.note || '', handledBy: m.handled_by || '', handledAt: m.handled_at })) });
   }));
   // work a message: its status (New, Read, Replied, Closed) and a private note for the team
   router.put('/messages/:id', guard('messages.manage'), wrap(async (req, res) => {
@@ -58,7 +58,7 @@ export function mountEngageRoutes(router, guard) {
     const cond = [], params = [];
     if (req.query.q) { cond.push('email LIKE ?'); params.push(like(req.query.q)); }
     addRange(cond, params, 'created_at', req);
-    const q = cond.length ? 'WHERE ' + cond.join(' AND ') : '';
+    const q = whereOf(cond);
     const [[{ n }]] = await pool.query(`SELECT COUNT(*) n FROM subscribers ${q}`, params);
     const [rows] = await pool.query(`SELECT email, created_at FROM subscribers ${q} ORDER BY created_at DESC LIMIT ${size} OFFSET ${offset}`, params);
     res.json({ total: n, rows });
@@ -80,7 +80,7 @@ export function mountEngageRoutes(router, guard) {
     if (req.query.q) { cond.push('(email LIKE ? OR source LIKE ?)'); params.push(like(req.query.q), like(req.query.q)); }
     if (req.query.status) { cond.push('status = ?'); params.push(req.query.status); }
     addRange(cond, params, 'created_at', req);
-    const where = cond.length ? 'WHERE ' + cond.join(' AND ') : '';
+    const where = whereOf(cond);
     const [[{ n }]] = await pool.query(`SELECT COUNT(*) n FROM consents ${where}`, params);
     const [rows] = await pool.query(`SELECT * FROM consents ${where} ORDER BY created_at DESC LIMIT ${size} OFFSET ${offset}`, params);
     res.json({ total: n, rows: rows.map(c => ({ id: c.id, email: c.email, source: c.source, token: c.token, status: c.status, ip: c.ip, at: c.created_at, confirmedAt: c.confirmed_at })) });

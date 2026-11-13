@@ -6,7 +6,7 @@ import { Router } from 'express';
 import { pool } from './db.js';
 import { guard } from './admin.js';
 import { fail, wrap } from './util.js';
-import { day } from './listing.js';
+import { addRange, pageOf } from './listing.js';
 
 export const RETENTION_DAYS = Number(process.env.AUDIT_KEEP_DAYS || 365);
 const PREFIX = /^\/api\/(admin|inv|quotes|mkt|hub|field)(\/|$)/;
@@ -151,8 +151,7 @@ export function startAuditPrune() {
 const router = Router();
 
 router.get('/', guard('audit.view'), wrap(async (req, res) => {
-  const size = Math.min(5000, Math.max(1, parseInt(req.query.size, 10) || 25));
-  const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+  const { size, offset } = pageOf(req, { def: 25, max: 5000 });
   const cond = [], args = [];
   const q = String(req.query.q || '').trim().slice(0, 80);
   if (q) { const l = `%${q}%`; cond.push('(staff_name LIKE ? OR action LIKE ? OR entity LIKE ? OR entity_id LIKE ? OR summary LIKE ? OR path LIKE ?)'); args.push(l, l, l, l, l, l); }
@@ -160,17 +159,18 @@ router.get('/', guard('audit.view'), wrap(async (req, res) => {
   if (req.query.module) { cond.push('module = ?'); args.push(String(req.query.module).slice(0, 40)); }
   if (req.query.result === 'ok') cond.push('ok = 1');
   if (req.query.result === 'failed') cond.push('ok = 0');
-  if (day(req.query.from)) { cond.push('at >= ?'); args.push(day(req.query.from) + ' 00:00:00'); }
-  if (day(req.query.to)) { cond.push('at < DATE_ADD(?, INTERVAL 1 DAY)'); args.push(day(req.query.to)); }
+  addRange(cond, args, 'at', req);
   const where = cond.length ? 'WHERE ' + cond.join(' AND ') : '';
-  const [[{ n }]] = await pool.query(`SELECT COUNT(*) n FROM audit_log ${where}`, args);
-  const [rows] = await pool.query(`SELECT id, at, staff_id, staff_name, staff_role, module, action, entity, entity_id, method, status, ok, error, summary, ip FROM audit_log ${where} ORDER BY id DESC LIMIT ${size} OFFSET ${(page - 1) * size}`, args);
-  const [[s]] = await pool.query(`SELECT COALESCE(SUM(DATE(at) = CURDATE()), 0) today, COALESCE(SUM(DATE(at) = CURDATE() AND ok = 0), 0) failed,
-    COUNT(DISTINCT CASE WHEN DATE(at) = CURDATE() THEN staff_id END) staff_today, COALESCE(SUM(at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)), 0) week FROM audit_log WHERE at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)`); // today and failed-today lie inside the week, so only the last 7 days are read (idx_at)
-  // one row per staff member who appears in the log: the distinct ids come from idx_staff, the name is the latest one used (no scan of the whole log)
-  const [staff] = await pool.query(`SELECT x.staff_id id, COALESCE((SELECT a.staff_name FROM audit_log a WHERE a.staff_id = x.staff_id ORDER BY a.at DESC, a.id DESC LIMIT 1), '') name
-    FROM (SELECT DISTINCT staff_id FROM audit_log WHERE staff_id IS NOT NULL) x ORDER BY name`);
-  const [modules] = await pool.query('SELECT DISTINCT module FROM audit_log ORDER BY module');
+  // the five reads are independent: run them side by side
+  const [[[{ n }]], [rows], [[s]], [staff], [modules]] = await Promise.all([
+    pool.query(`SELECT COUNT(*) n FROM audit_log ${where}`, args),
+    pool.query(`SELECT id, at, staff_id, staff_name, staff_role, module, action, entity, entity_id, method, status, ok, error, summary, ip FROM audit_log ${where} ORDER BY id DESC LIMIT ${size} OFFSET ${offset}`, args),
+    pool.query(`SELECT COALESCE(SUM(DATE(at) = CURDATE()), 0) today, COALESCE(SUM(DATE(at) = CURDATE() AND ok = 0), 0) failed,
+    COUNT(DISTINCT CASE WHEN DATE(at) = CURDATE() THEN staff_id END) staff_today, COALESCE(SUM(at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)), 0) week FROM audit_log WHERE at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)`),
+    pool.query(`SELECT x.staff_id id, COALESCE((SELECT a.staff_name FROM audit_log a WHERE a.staff_id = x.staff_id ORDER BY a.at DESC, a.id DESC LIMIT 1), '') name
+    FROM (SELECT DISTINCT staff_id FROM audit_log WHERE staff_id IS NOT NULL) x ORDER BY name`),
+    pool.query('SELECT DISTINCT module FROM audit_log ORDER BY module')
+  ]);
   res.json({
     total: Number(n), keepDays: RETENTION_DAYS,
     summary: { today: Number(s.today), failed: Number(s.failed), staffToday: Number(s.staff_today), week: Number(s.week) },

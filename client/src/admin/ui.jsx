@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { STATUS_COLORS } from './adminApi.js';
+import { useDebouncedCallback } from './hooks/useDebouncedCallback.js';
 
 export function Pill({ s, label }) {
   const [bg, fg] = STATUS_COLORS[s] || ['#eef2f8', '#2b3550'];
@@ -9,12 +10,13 @@ export function Pill({ s, label }) {
 /** Search box + optional filter selects + page size, like the design's grid toolbar. */
 export function Toolbar({ t, search = true, filters = [], sizes = [10, 25, 50, 100], children }) {
   const { params, set, data, loading } = t;
+  const typed = useDebouncedCallback(v => set({ q: v }), 300);
   const dirty = params.q || filters.some(f => params[f.key]);
   const from = data.total ? (params.page - 1) * params.size + 1 : 0;
   const to = Math.min(params.page * params.size, data.total);
   return (
     <div className={'a-bar' + (search ? '' : ' slim')}>
-      {search && <label className="q"><span style={{ color: '#8a8f9b' }}>⌕</span><input defaultValue={params.q} key={params.q === '' ? 'empty' : 'q'} onChange={e => { const v = e.target.value; clearTimeout(Toolbar._t); Toolbar._t = setTimeout(() => set({ q: v }), 300); }} placeholder="Search…" /></label>}
+      {search && <label className="q"><span style={{ color: '#8a8f9b' }}>⌕</span><input defaultValue={params.q} key={params.q === '' ? 'empty' : 'q'} onChange={e => typed(e.target.value)} placeholder="Search…" /></label>}
       {filters.map(f => (
         <select key={f.key} title={f.label} value={params[f.key] || ''} onChange={e => set({ [f.key]: e.target.value })}>
           <option value="">{f.label}</option>{f.options.map(o => <option key={o.v ?? o} value={o.v ?? o}>{o.t ?? o}</option>)}

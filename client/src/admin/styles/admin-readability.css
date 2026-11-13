@@ -1,0 +1,144 @@
+/* ================= readability: compact spacing, but text you can read comfortably ================= */
+.adm { font-size: 14px; }
+.adm input, .adm select, .adm textarea { font-size: 14px; }
+.adm-brand small { font-size: 10px; }
+.adm-nav h6 { font-size: 10px; }
+.adm-nav a { font-size: 14px; }
+.adm-nav a .ic { font-size: 12px; width: 24px; height: 24px; }
+.adm-user b { font-size: 13.5px; }
+.adm-user small { font-size: 11.5px; }
+.crumb { font-size: 11px; }
+.adm-top h1, .adm-main h1 { font-size: 22px; }
+.srch input { font-size: 14px; }
+.tb { font-size: 13px; }
+.me .who b { font-size: 13px; }
+.me .who small { font-size: 11px; }
+.pop button, .pop > a { font-size: 13.5px; }
+.pop.list small, .pop.alerts > b { font-size: 10.5px; }
+.adm-foot { font-size: 12.5px; }
+.a-card h3, .mk-hd b { font-size: 15.5px; }
+.a-box { font-size: 13.5px; }
+.kpi small { font-size: 11px; }
+.kpi span { font-size: 12.5px; }
+.kpi b, .kpis.sum .kpi b { font-size: 21px; }
+.kpis.sum .kpi b.txt { font-size: 16px; }
+.dash-hero small { font-size: 11px; }
+.dash-hero h2 { font-size: 23px; }
+.dash-hero p { font-size: 14px; }
+.dash-hero .qa button { font-size: 12.5px; padding: 7px 13px; }
+.ro, .a-table .row { font-size: 13.5px; }
+.a-table .head { font-size: 10.5px; }
+.a-pill { font-size: 11.5px; }
+.a-chip, .vt button { font-size: 12.5px; }
+.a-btn { font-size: 13.5px; }
+.a-btn.sm { font-size: 12.5px; }
+.a-lbl { font-size: 12.5px; }
+.a-mini, .a-input { font-size: 13.5px; }
+.sl { font-size: 12px; }
+.chip { font-size: 11.5px; }
+.legend { font-size: 13px; }
+.muted { font-size: 13.5px; }
+table.dt { font-size: 13.5px; }
+table.dt th { font-size: 10.5px; }
+.pg-name { font-size: 13.5px; }
+.pg-meta { font-size: 12px; }
+.pg-nums small { font-size: 10.5px; }
+.mk-camp span:not(.mk-dot), .mk-hero span:not(.mk-hero-ic) { font-size: 13px; }
+.tm-who b { font-size: 14px; }
+.tm-who span { font-size: 12.5px; }
+.tm-role { font-size: 11.5px; }
+.cx-tab { font-size: 13px; }
+.cx-item-hd b { font-size: 14px; }
+.cx-hero b { font-size: 18px; }
+.cx-hero span:not(.cx-hero-ic) { font-size: 13px; }
+.cx-toggle, .cx-add { font-size: 13px; }
+.pv-btn { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); border: 1px solid #c8d6ec; background: #fff; color: oklch(0.46 0.16 254); border-radius: 9px; padding: 4px 9px; font-size: 12px; font-weight: 800; cursor: pointer; white-space: nowrap; transition: background .15s, border-color .15s; }
+.pv-btn:hover { background: #eaf1fb; border-color: oklch(0.6 0.14 245); }
+.pv-note { margin: 0 0 12px; font-size: 13.5px; color: #4b5263; line-height: 1.5; }
+.pv-frame { border: 1px solid #dbe3ef; border-radius: 14px; overflow: hidden; background: #fff; }
+.pv-ticker.big { border-radius: 0; font-size: 14.5px; padding: 11px 0; }
+.pv-fake { display: flex; gap: 14px; align-items: center; padding: 18px; }
+.pv-fake i { height: 14px; border-radius: 7px; background: #e9eef6; display: block; }
+.pv-hero.big, .pv-offer.big { min-height: 200px; padding: 30px 32px; gap: 10px; border-radius: 20px; }
+.pv-hero.big b, .pv-offer.big b { font-size: clamp(26px, 4vw, 38px); line-height: 1.05; }
+.pv-hero.big span, .pv-offer.big span { font-size: 15.5px; max-width: 520px; }
+.pv-btns { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; position: relative; z-index: 1; }
+.pv-btns i { font-style: normal; font-weight: 700; font-size: 13.5px; padding: 10px 18px; border-radius: 999px; background: #fff; color: #0b1631; }
+.pv-btns i + i { background: rgba(255,255,255,.14); color: #fff; border: 1px solid rgba(255,255,255,.35); }
+
+/* Active | Inactive switch */
+.act { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.act-l { font-size: 13px; font-weight: 700; color: #3a3f4b; }
+.vt button.on.ok { background: linear-gradient(135deg, oklch(0.62 0.16 155), oklch(0.5 0.14 160)); }
+.vt button.on.off { background: linear-gradient(135deg, #8a93a8, #66708a); }
+
+/* left menu: tighter rows so the whole menu fits on a laptop screen (text stays readable) */
+.adm-side { padding-top: 10px; padding-bottom: 10px; gap: 8px; }
+.adm-brand.logo { padding-bottom: 6px; }
+.adm-nav { gap: 2px; }
+.adm-nav > div { gap: 1px !important; }
+.adm-nav h6 { padding: 6px 8px 1px; font-size: 9.5px; }
+.adm-nav a { padding: 2px 8px 2px 4px; gap: 8px; font-size: 13.5px; border-radius: 9px; }
+.adm-nav a .ic { width: 22px; height: 22px; font-size: 11px; border-radius: 7px; }
+.adm-user { padding: 6px 8px; }
+
+/* search box at the top of the left menu */
+.nav-search { display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 8px 0 11px; border-radius: 11px; color: #9db1da; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.16); transition: border-color .15s, background .15s; }
+.nav-search:focus-within { background: rgba(255,255,255,.14); border-color: rgba(255,255,255,.5); color: #fff; }
+.nav-search input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: #fff; font-size: 13.5px; }
+.nav-search input::placeholder { color: #9db1da; }
+.nav-search button { border: 0; background: rgba(255,255,255,.14); color: #dbe6fb; width: 20px; height: 20px; border-radius: 50%; font-size: 10px; cursor: pointer; }
+.nav-search button:hover { background: rgba(255,255,255,.28); }
+.nav-none { padding: 10px 8px; font-size: 12.5px; color: #9db1da; }
+@media (max-width: 900px) { .nav-search { display: none; } }
+
+/* order drawer: invoice card; dialogs opened from inside the drawer stay on top of it */
+.inv-card { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; border-radius: 14px; color: #fff; background: radial-gradient(220px 120px at 100% 0%, oklch(0.7 0.14 235 / .5), transparent 70%), linear-gradient(120deg, #0b1631, #13306b); }
+.inv-t { display: flex; align-items: center; gap: 10px; }
+.inv-t > div { display: flex; flex-direction: column; line-height: 1.3; }
+.inv-t b { font-family: var(--disp); font-size: 15px; }
+.inv-t small { color: #bcd0f2; font-size: 12px; }
+.inv-ic { width: 34px; height: 34px; border-radius: 11px; display: grid; place-items: center; font-size: 17px; background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.22); }
+.inv-act { display: flex; gap: 8px; flex-wrap: wrap; }
+.inv-act .a-btn { background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.3); color: #fff; }
+.inv-act .a-btn.grad { background: linear-gradient(135deg, oklch(0.82 0.13 85), oklch(0.74 0.16 70)); color: #16181d; border-color: transparent; }
+.a-drawer .a-scrim { z-index: 59; }
+.a-drawer .a-modal { z-index: 60; }
+
+/* fixes: link colour inside the Email Center banner, Add button, role chip colours */
+.adm .mk-hero, .adm .mk-hero:hover, .adm .mk-hero b { color: #fff; }
+.mk-add .a-btn { flex: none; white-space: nowrap; }
+.tm-row .tm-role { margin-left: auto; }
+
+/* Storefront content: one box per object (ticker, hero, offer banner), one Preview button each */
+.obj { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; border: 1px solid #e1e7f0; border-left: 4px solid oklch(0.62 0.14 240); border-radius: 14px; background: #fbfcff; }
+.obj-hd { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.obj-hd b { font-family: var(--disp); font-size: 15px; }
+.obj-hd .sp { flex: 1; }
+.obj-hd .pv-btn { position: static; transform: none; padding: 6px 12px; font-size: 12.5px; }
+.obj-hd .act { gap: 0; }
+.obj-hd .act-l:empty { display: none; }
+
+/* payment methods: logo + name + checkbox */
+.pm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 10px; }
+.pm { position: relative; display: grid; grid-template-columns: auto 74px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 10px 12px; border: 1.5px solid #dbe3ef; border-radius: 14px; background: #fff; cursor: pointer; transition: border-color .15s, background .15s, opacity .15s; }
+.pm:hover { border-color: #b9c8e3; }
+.pm.on { border-color: oklch(0.7 0.12 155); background: linear-gradient(180deg, oklch(0.985 0.02 155), #fff); }
+.pm:not(.on) { opacity: .7; }
+.pm input { width: 18px; height: 18px; accent-color: oklch(0.55 0.16 155); cursor: pointer; }
+.pm-logo { width: 74px; height: 44px; border-radius: 10px; display: grid; place-items: center; background: #f3f6fb; border: 1px solid #e4eaf3; font-weight: 800; letter-spacing: .02em; overflow: hidden; }
+.pm-logo img { max-width: 100%; max-height: 100%; object-fit: contain; padding: 4px; }
+.pm-t { display: flex; flex-direction: column; min-width: 0; line-height: 1.3; }
+.pm-t b { font-size: 14px; }
+.pm-t small { font-size: 12px; color: #6b7388; }
+.pm-st { font-size: 11.5px; font-weight: 800; padding: 3px 9px; border-radius: 999px; background: #eef1f6; color: #6b7388; }
+.pm.on .pm-st { background: oklch(0.94 0.06 155); color: oklch(0.4 0.13 155); }
+
+/* column headings of the data grids and of the role matrix stay on screen under the top bar while the page scrolls */
+:root { --adm-top-h: 57px; }
+.a-table { overflow: clip; }
+.a-table .head { position: sticky; top: var(--adm-top-h); z-index: 4; background: #f5f8fc; }
+.a-table.mx thead th { position: sticky; top: var(--adm-top-h); z-index: 5; }
+.a-table.mx thead th:first-child { z-index: 6 !important; }
+@media (max-width: 1100px) { .a-table { overflow-x: auto; } .a-table .head { position: static; } .a-table.mx thead th { position: static; } .a-table.mx thead th:first-child { position: sticky; left: 0; } }
+

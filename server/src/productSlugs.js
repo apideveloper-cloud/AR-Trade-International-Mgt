@@ -30,6 +30,11 @@ export async function ensureProductSlugs(pool) {
     await pool.query('ALTER TABLE products ADD COLUMN slug VARCHAR(120) NULL, ADD UNIQUE KEY uq_products_slug (slug)');
     console.log('Added products.slug (words-only product addresses)');
   }
+  if (!t.some(r => r.c === 'merged_into')) {
+    // set on a listing that was removed as a duplicate of a differently named one: its old address then redirects to that one
+    await pool.query('ALTER TABLE products ADD COLUMN merged_into INT NULL');
+    console.log('Added products.merged_into (removed duplicates redirect to the listing that stays)');
+  }
   const [rows] = await pool.query('SELECT id, name, part FROM products WHERE slug IS NULL ORDER BY active DESC, price > 0 DESC, id');
   if (!rows.length) return;
   const used = new Set((await pool.query('SELECT slug FROM products WHERE slug IS NOT NULL'))[0].map(r => r.slug));

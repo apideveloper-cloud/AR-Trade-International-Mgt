@@ -7,16 +7,24 @@ export const setToken = on => { try { on ? localStorage.setItem(FLAG, '1') : loc
 
 async function call(method, url, body) {
   const headers = { 'Content-Type': 'application/json' };
-  const res = await fetch('/api' + url, { method, headers, credentials: 'same-origin', body: body ? JSON.stringify(body) : undefined });
+  let res;
+  try {
+    res = await fetch('/api' + url, { method, headers, credentials: 'same-origin', body: body ? JSON.stringify(body) : undefined });
+  } catch (e) {
+    throw Object.assign(e instanceof Error ? e : new Error('Network error'), { status: 0 }); // offline / DNS / CORS: same shape as an HTTP error
+  }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw Object.assign(new Error(data.error || 'Something went wrong'), { status: res.status });
   return data;
 }
 
+const get = url => call('GET', url);
+const write = (method, url, body) => call(method, url, body);
+
 export const api = {
-  get: url => call('GET', url),
-  post: (url, body) => call('POST', url, body),
-  put: (url, body) => call('PUT', url, body)
+  get,
+  post: (url, body) => write('POST', url, body),
+  put: (url, body) => write('PUT', url, body)
 };
 
 export const fmt = n => '৳ ' + Math.round(n || 0).toLocaleString('en-US');

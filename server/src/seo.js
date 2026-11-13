@@ -1,5 +1,6 @@
 // Search-engine support: robots.txt, sitemap.xml and per-page <title>/meta/JSON-LD injected into the HTML shell,
 // so crawlers (and link previews) see the real product data without having to run the React app.
+import { hasPicture, published } from './productImages.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { pool } from './db.js';
@@ -70,7 +71,8 @@ export function mountSeo(app, dist) {
   app.get('/sitemap.xml', wrap(async (req, res) => {
     const base = baseUrl(req);
     const [cats] = await pool.query('SELECT id FROM categories WHERE hidden = 0');
-    const [prods] = await pool.query('SELECT id, name, slug, img FROM products WHERE active = 1 ORDER BY id DESC');
+    const [allProds] = await pool.query('SELECT id, name, slug, img FROM products WHERE active = 1 ORDER BY id DESC');
+    const prods = published(allProds); // a product whose picture is missing is not published, so it is not offered to search engines either
     const [posts] = await pool.query('SELECT slug, DATE_FORMAT(COALESCE(updated_at, published), "%Y-%m-%d") d FROM blog_posts WHERE status = "Published" AND noindex = 0');
     const [pages] = await pool.query('SELECT slug FROM site_pages WHERE status = "Published" AND grp = "servicing" AND noindex = 0');
     const u = (loc, pri, extra = '') => `<url><loc>${esc(base + loc)}</loc><priority>${pri}</priority>${extra}</url>`;
@@ -112,6 +114,7 @@ export function mountSeo(app, dist) {
     if ((r = p.match(/^\/product\/([^/]+)$/))) {
       // the stored words-only address; the old ones (/product/21554, /product/hp-230a-toner-21554) are looked up by their id and sent to it
       let [[x]] = await pool.query('SELECT * FROM products WHERE slug = ? AND active = 1', [r[1]]);
+      if (x && !hasPicture(x.img)) x = undefined; // not published without a picture: the page is a 404 until one is added
       let old = null;
       if (!x && productIdOf(r[1])) {
         [[old]] = await pool.query('SELECT * FROM products WHERE id = ?', [productIdOf(r[1])]);
@@ -119,10 +122,12 @@ export function mountSeo(app, dist) {
         if (old && !(r[1] === String(old.id) || r[1] === legacySlug(old) || r[1].split('-')[0] === productSlug(old.name).split('-')[0])) old = null;
         if (old?.active) x = old;
       }
+      if (!x && !old) [[old]] = await pool.query('SELECT * FROM products WHERE slug = ? AND active = 0', [r[1]]); // a removed duplicate's own words-only address
       if (x && productPath(x) !== p) return res.redirect(301, encodeURI(productPath(x)) + search(req));
       if (!x && old) {
         // a product that was removed as a duplicate of another listing sends its old address to the one that stays
-        const [[twin]] = await pool.query('SELECT k.id, k.name, k.slug FROM products k WHERE k.active = 1 AND LOWER(TRIM(k.name)) = LOWER(TRIM(?)) ORDER BY k.price > 0 DESC, k.id LIMIT 1', [old.name]);
+        // (merged_into names the kept listing when the two had different names; otherwise the same name finds it)
+        const [[twin]] = await pool.query('SELECT k.id, k.name, k.slug FROM products k WHERE k.active = 1 AND (k.id = ? OR LOWER(TRIM(k.name)) = LOWER(TRIM(?))) ORDER BY k.id = ? DESC, k.price > 0 DESC, k.id LIMIT 1', [old.merged_into || 0, old.name, old.merged_into || 0]);
         if (twin) return res.redirect(301, encodeURI(productPath(twin)) + search(req));
       }
       if (!x) { status = 404; m = { path: p, title: 'Product not found | ' + NAME, desc: 'This product is no longer available.', noindex: true }; } else {

@@ -121,11 +121,7 @@ export async function onSubscribed(email) {
 
 // ---------- staff: reports ----------
 staff.get('/reports', guard('marketing.manage'), wrap(async (req, res) => {
-  const [camps] = await pool.query('SELECT * FROM mkt_campaigns WHERE status = "Sent" ORDER BY send_at DESC');
-  const [autos] = await pool.query('SELECT * FROM mkt_automations ORDER BY sort_order');
-  const [queued] = await pool.query('SELECT automation_id, COUNT(*) n FROM mkt_outbox WHERE status = "Queued" GROUP BY automation_id');
-  const [[subs]] = await pool.query('SELECT COUNT(*) n FROM subscribers');
-  const [[unsub]] = await pool.query('SELECT COUNT(*) n FROM mkt_log WHERE what LIKE "Unsubscribed%"');
+  const [[camps], [autos], [queued], [[subs]], [[unsub]]] = await Promise.all([pool.query('SELECT * FROM mkt_campaigns WHERE status = "Sent" ORDER BY send_at DESC'), pool.query('SELECT * FROM mkt_automations ORDER BY sort_order'), pool.query('SELECT automation_id, COUNT(*) n FROM mkt_outbox WHERE status = "Queued" GROUP BY automation_id'), pool.query('SELECT COUNT(*) n FROM subscribers'), pool.query('SELECT COUNT(*) n FROM mkt_log WHERE what LIKE "Unsubscribed%"')]);
   const cfg = await getCfg();
   const rows = [
     ...camps.map(c => ({ name: c.name, kind: 'Campaign · ' + c.tag, when: c.send_at, sent: c.sent, opens: c.opens, clicks: c.clicks, unsubs: c.unsubs, revenue: c.revenue })),
@@ -141,8 +137,7 @@ staff.get('/reports', guard('marketing.manage'), wrap(async (req, res) => {
 
 // ---------- automations ----------
 staff.get('/automations', guard('marketing.manage'), wrap(async (req, res) => {
-  const [rows] = await pool.query('SELECT * FROM mkt_automations ORDER BY sort_order');
-  const [queued] = await pool.query('SELECT automation_id, COUNT(*) n FROM mkt_outbox WHERE status = "Queued" GROUP BY automation_id');
+  const [[rows], [queued]] = await Promise.all([pool.query('SELECT * FROM mkt_automations ORDER BY sort_order'), pool.query('SELECT automation_id, COUNT(*) n FROM mkt_outbox WHERE status = "Queued" GROUP BY automation_id')]);
   res.json(rows.map(a => ({ id: a.id, name: a.name, trigger: a.trigger_text, steps: parseJson(a.steps), active: !!a.active, queued: queued.find(q => q.automation_id === a.id)?.n || 0, live: a.id === 'welcome', sent: a.sent, opens: a.opens, clicks: a.clicks, revenue: a.revenue })));
 }));
 staff.put('/automations/:id', guard('marketing.manage'), wrap(async (req, res) => {
@@ -217,8 +212,7 @@ staff.put('/campaigns/:id/results', guard('marketing.manage'), wrap(async (req, 
 
 // ---------- audience, preferences, log ----------
 staff.get('/audience', guard('marketing.manage'), wrap(async (req, res) => {
-  const [rows] = await pool.query('SELECT s.email, s.created_at, p.offers, p.festivals, p.tips, p.refill, (SELECT token FROM consents c WHERE c.email = s.email AND c.status <> "Unsubscribed" ORDER BY c.id DESC LIMIT 1) token FROM subscribers s LEFT JOIN mkt_prefs p ON p.email = s.email ORDER BY s.created_at DESC');
-  const [log] = await pool.query('SELECT * FROM mkt_log ORDER BY id DESC LIMIT 40');
+  const [[rows], [log]] = await Promise.all([pool.query('SELECT s.email, s.created_at, p.offers, p.festivals, p.tips, p.refill, (SELECT token FROM consents c WHERE c.email = s.email AND c.status <> "Unsubscribed" ORDER BY c.id DESC LIMIT 1) token FROM subscribers s LEFT JOIN mkt_prefs p ON p.email = s.email ORDER BY s.created_at DESC'), pool.query('SELECT * FROM mkt_log ORDER BY id DESC LIMIT 40')]);
   res.json({ subscribers: rows.map(r => ({ email: r.email, since: r.created_at, token: r.token, prefs: prefsOf(r) })), log: log.map(l => ({ email: l.email, what: l.what, at: l.at })) });
 }));
 staff.delete('/audience/:email', guard('marketing.manage'), wrap(async (req, res) => {

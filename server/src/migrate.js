@@ -6,6 +6,7 @@ import { ensureQuotes } from './quotation.js';
 import { ensureAudit } from './audit.js';
 import { ensureIndexes } from './indexes.js';
 import { ensureProductSlugs } from './productSlugs.js';
+import { ensureChatLeads } from './chatLeads.js';
 
 const STAFF_COLS = [['nid', 'VARCHAR(20)'], ['present_address', 'VARCHAR(300)'], ['contact_address', 'VARCHAR(300)'], ['ref_name', 'VARCHAR(120)'], ['ref_phone', 'VARCHAR(20)']];
 
@@ -30,6 +31,7 @@ export async function ensureSchema() {
     }
   }
   await ensureAudit();
+  await ensureChatLeads().catch(e => console.error('Chat leads table was not created (the chat still works without saving visitors):', e.message));
   await ensureProductSlugs(pool).catch(e => console.error('Product addresses were not stored (the old id addresses keep working):', e.message));
   const [sc] = await pool.query("SELECT COLUMN_NAME c FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'staff'");
   if (sc.length) {

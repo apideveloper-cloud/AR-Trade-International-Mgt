@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { fetchBlobUrl, fld } from './adminApi.js';
 import { Modal, Pager, hueOf } from './ui.jsx';
+import { saveTextFile } from './hooks/download.js';
+import { useDebounced } from './hooks/useDebounced.js';
 import './field.css';
 
 // Small shared pieces for the web views of the field app (sales, accounts, reports).
@@ -62,11 +64,7 @@ export function useFld(path) {
   return { ...st, reload: useCallback(() => setN(x => x + 1), []) };
 }
 
-export function useDebounced(v, ms = 300) {
-  const [d, setD] = useState(v);
-  useEffect(() => { const t = setTimeout(() => setD(v), ms); return () => clearTimeout(t); }, [v, ms]);
-  return d;
-}
+export { useDebounced };
 
 /** Pill tabs: items = [[key, label, count?]]. */
 export function Tabs({ items, value, onChange }) {
@@ -140,8 +138,7 @@ export function Grid({ cols, head, rows, onRow, empty = 'Nothing here yet.', sea
 export function downloadCsv(name, columns, rows) {
   const esc = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
   const csv = [columns.map(esc).join(','), ...rows.map(r => r.map(esc).join(','))].join('\n');
-  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv' })), download: name });
-  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  saveTextFile(name, '﻿' + csv);
 }
 
 /** A labelled value inside detail drawers. */

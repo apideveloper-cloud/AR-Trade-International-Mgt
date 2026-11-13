@@ -41,7 +41,7 @@ export function CompareBar() {
       <b style={{ fontSize: 13 }}>Compare</b>
       <div style={{ display: 'flex', gap: 6 }}>{items.map(p => <span className="th" key={p.id}>{p.img && <img src={p.img} alt="" />}</span>)}</div>
       <Link to="/compare" className="go">Compare {items.length} →</Link>
-      <button className="x" title="Clear" onClick={() => setCompare([])}>×</button>
+      <button className="x" title="Clear" aria-label="Clear compare list" onClick={() => setCompare([])}>×</button>
     </div>
   );
 }
@@ -59,7 +59,7 @@ export function CartDrawer() {
             <span className="ic">⌂</span>
             <div><b>My cart</b><small>{cartCount} items · {fmt(cartSubtotal)}</small></div>
           </div>
-          <button className="x" onClick={close} title="Close">×</button>
+          <button className="x" onClick={close} title="Close" aria-label="Close">×</button>
         </div>
         <div className="list">
           {!cartLines.length && (
@@ -75,11 +75,11 @@ export function CartDrawer() {
               <div className="mid">
                 <Link to={productPath(p)} onClick={close} className="nm clamp2">{p.name}</Link>
                 <div className="row2">
-                  <div className="q"><button onClick={() => setQty(p.id, qty - 1)}>−</button><span>{qty}</span><button onClick={() => setQty(p.id, qty + 1)}>+</button></div>
+                  <div className="q"><button type="button" aria-label="Decrease quantity" onClick={() => setQty(p.id, qty - 1)}>−</button><span>{qty}</span><button type="button" aria-label="Increase quantity" onClick={() => setQty(p.id, qty + 1)}>+</button></div>
                   <b>{fmt(p.price * qty)}</b>
                 </div>
               </div>
-              <button className="rm" onClick={() => setQty(p.id, 0)} title="Remove">×</button>
+              <button className="rm" onClick={() => setQty(p.id, 0)} title="Remove" aria-label="Remove item">×</button>
             </div>
           ))}
         </div>
@@ -149,7 +149,7 @@ export function LoginModal() {
           <ul className="lg-perks"><li><i>৳</i><span><b>5% off online orders</b><small>and 10% on your next one</small></span></li><li><i>⚑</i><span><b>Live order tracking</b><small>from packing to your door</small></span></li><li><i>♡</i><span><b>Saved printer models &amp; wishlist</b><small>re-order toner in one tap</small></span></li></ul>
         </div>
         <div className="r">
-          <button className="x" onClick={close} title="Close">✕</button>
+          <button className="x" onClick={close} title="Close" aria-label="Close">✕</button>
           <div className="ltabs">
             <button className={mode === 'login' ? 'on' : ''} onClick={() => setMode('login')}>Sign in</button>
             <button className={reg ? 'on' : ''} onClick={() => setMode('register')}>Register</button>
@@ -208,7 +208,7 @@ export function PromoPopup() {
   return (
     <div className="pop-bg" onClick={close}>
       <div className="promo-pop" onClick={e => e.stopPropagation()}>
-        <button className="x" onClick={close} title="Close">×</button>
+        <button className="x" onClick={close} title="Close" aria-label="Close">×</button>
         <div className="promo-card">
           <span className="rays" /><span className="glow" />
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
@@ -285,7 +285,7 @@ export function NewsletterPopup() {
   return (
     <div className="pop-bg" style={{ zIndex: 90, background: 'rgba(8,14,32,.62)' }} onClick={() => setMode(null)}>
       <div className="nl" onClick={e => e.stopPropagation()}>
-        <button className="x" onClick={() => setMode(null)} title="Close">×</button>
+        <button className="x" onClick={() => setMode(null)} title="Close" aria-label="Close">×</button>
         <div className="l">
           <img src="/ar-icon-round.png" alt="AR Trade" style={{ width: 48, height: 48, borderRadius: '50%' }} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, position: 'relative' }}>

@@ -1,19 +1,28 @@
 import { useEffect, useState } from 'react';
 import { adm, can, fmtMoney, invApi, slNo, useTable } from '../adminApi.js';
 import { CategoryForm } from './catalog/CategoryForm.jsx';
+import { FlagChips, LiveSwitch } from './catalog/ProductControls.jsx';
 import './catalog/productForm.css';
 import { ListFilter } from '../ListFilter.jsx';
 import { IconBtn } from '../IconBtn.jsx';
 import { Empty, Modal, Pager, Summary, Switch, Toolbar, ViewToggle, alertBox, confirmBox, useView } from '../ui.jsx';
+import { readFileAsDataUrl as readFile } from '../hooks/download.js';
+import { useApiData } from '../hooks/useApiData.js';
 
 const BLANK = { name: '', brand: '', cat: '', price: '', old: '', stock: 10, img: '', part: '', tech: '', color: '', yield: '', compat: '', spec: '', description: '', gallery: [], metaTitle: '', metaDesc: '', metaKeywords: '' };
-const readFile = f => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(f); });
+/** "Name: value" lines -> [{ name, value }] (lines without a colon are dropped). */
+const parseSpecs = text => text.split('\n').map(l => { const i = l.indexOf(':'); return i > 0 ? { name: l.slice(0, i), value: l.slice(i + 1) } : null; }).filter(Boolean);
 
 /** The product form. `purchase`: used from a purchase entry to create a product (saved through the purchasing API; price and stock come from the purchase, so they are not shown). */
 export function Editor({ product, cats, onClose, onSaved, purchase = false, initial }) {
   const [f, setF] = useState({ ...BLANK, cat: cats[0]?.id || '', ...initial, ...product });
   const [specText, setSpecText] = useState('');
-  useEffect(() => { if (product) adm.get(`/products/${product.id}/full`).then(r => setSpecText((r.specs || []).map(s => `${s.name}: ${s.value}`).join('\n'))).catch(() => {}); }, [product]);
+  useEffect(() => {
+    if (!product) return undefined;
+    let stale = false;
+    adm.get(`/products/${product.id}/full`).then(r => { if (!stale) setSpecText((r.specs || []).map(s => `${s.name}: ${s.value}`).join('\n')); }).catch(() => {});
+    return () => { stale = true; };
+  }, [product]);
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
   const on = k => e => setF(s => ({ ...s, [k]: e.target.value }));
@@ -21,15 +30,16 @@ export function Editor({ product, cats, onClose, onSaved, purchase = false, init
   const off = f.old > f.price && f.price ? Math.round((1 - f.price / f.old) * 100) : 0;
 
   const submit = async e => {
-    e.preventDefault(); setErr(''); setBusy(true);
+    e.preventDefault();
+    if (busy) return; // already saving or uploading
+    setErr(''); setBusy(true);
     try {
       if (purchase) {
-        const specs = specText.split('\n').map(l => { const i = l.indexOf(':'); return i > 0 ? { name: l.slice(0, i), value: l.slice(i + 1) } : null; }).filter(Boolean);
-        onSaved(await invApi.post('/products', { ...f, specs })); return;
+        onSaved(await invApi.post('/products', { ...f, specs: parseSpecs(specText) })); return;
       }
       const saved = isNew ? await adm.post('/products', f) : await adm.put('/products/' + product.id, f);
       if (isNew && (f.metaTitle || f.metaDesc || f.metaKeywords)) await adm.put('/products/' + saved.id, { metaTitle: f.metaTitle, metaDesc: f.metaDesc, metaKeywords: f.metaKeywords });
-      const specs = specText.split('\n').map(l => { const i = l.indexOf(':'); return i > 0 ? { name: l.slice(0, i), value: l.slice(i + 1) } : null; }).filter(Boolean);
+      const specs = parseSpecs(specText);
       if (specs.length || !isNew) await adm.put(`/products/${isNew ? saved.id : product.id}/specs`, { specs });
       onSaved(); onClose();
     } catch (er) { setErr(er.message); setBusy(false); }
@@ -144,10 +154,8 @@ function ProductCards({ t, patch, catName, setEdit, canWrite }) {
             ))}
           </div>
           <div className="pg-foot">
-            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-              {[['popular', 'Popular'], ['isNew', 'New']].filter(([k]) => canWrite || p[k]).map(([k, l]) => <button key={k} type="button" className="a-chip" disabled={!canWrite} style={{ padding: '3px 8px', fontSize: 11, background: p[k] ? 'oklch(0.95 0.04 150)' : '#fff', cursor: canWrite ? 'pointer' : 'default' }} onClick={() => patch(p, { [k]: !p[k] })}>{l}</button>)}
-            </div>
-            {canWrite ? <Switch on={p.active} onChange={v => patch(p, { active: v })} title="Visible on the store" /> : <span className={'ro-live ' + (p.active ? 'on' : '')}>{p.active ? 'Live' : 'Hidden'}</span>}
+            <FlagChips p={p} canWrite={canWrite} patch={patch} />
+            <LiveSwitch p={p} canWrite={canWrite} patch={patch} />
           </div>
         </div>
       ))}
@@ -193,10 +201,8 @@ export function Products({ cats, staff }) {
               <button disabled={!canWrite} onClick={() => setEdit(p)} style={{ textAlign: 'left', border: 0, background: 'transparent', padding: 0, display: 'flex', flexDirection: 'column', gap: 2, cursor: canWrite ? 'pointer' : 'default', color: 'inherit' }}><b>{p.name}</b><span style={{ color: '#5d6270', fontSize: 12 }}>{p.brand} · #{p.id} · Edit</span></button>
               <span style={{ color: '#5d6270' }}>{catName(p.cat)}</span>
               {['price', 'old', 'stock'].map(k => !canWrite || k === 'stock' ? <span key={k} className="ro-val" style={k === 'stock' && p.price && p.stock <= 5 ? { color: 'oklch(0.55 0.2 350)', fontWeight: 800 } : undefined}>{p[k]}</span> : <input key={k} className="a-mini" type="number" min="0" defaultValue={p[k]} style={k === 'stock' && p.price && p.stock <= 5 ? { borderColor: 'oklch(0.6 0.2 350)' } : undefined} onBlur={e => { if (+e.target.value !== p[k]) patch(p, { [k]: +e.target.value }); }} />)}
-              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                {[['popular', 'Popular'], ['isNew', 'New']].filter(([k]) => canWrite || p[k]).map(([k, l]) => <button key={k} className="a-chip" disabled={!canWrite} style={{ padding: '3px 8px', fontSize: 11, background: p[k] ? 'oklch(0.95 0.04 150)' : '#fff', cursor: canWrite ? 'pointer' : 'default' }} onClick={() => patch(p, { [k]: !p[k] })}>{l}</button>)}
-              </div>
-              {canWrite ? <Switch on={p.active} onChange={v => patch(p, { active: v })} title="Visible on the store" /> : <span className={'ro-live ' + (p.active ? 'on' : '')}>{p.active ? 'Live' : 'Hidden'}</span>}
+              <FlagChips p={p} canWrite={canWrite} patch={patch} />
+              <LiveSwitch p={p} canWrite={canWrite} patch={patch} />
             </div>
           ))}
         </div>
@@ -208,14 +214,16 @@ export function Products({ cats, staff }) {
 }
 
 export function Categories({ onChanged }) {
-  const [rows, setRows] = useState([]);
+  const list = useApiData(() => adm.get('/categories'), [], []);
+  const rows = list.data, load = list.reload;
   const [view, setView] = useView('categories', 'grid');
   const [busy, setBusy] = useState('');
-  const [err, setErr] = useState('');
+  const [actionErr, setErr] = useState('');
+  const err = actionErr || list.error;
   const [form, setForm] = useState(null); // 'new', or the category being edited
-  const load = () => adm.get('/categories').then(setRows).catch(e => setErr(e.message));
-  useEffect(() => { load(); }, []);
-  const toggle = async c => { await adm.put('/categories/' + c.id, { hidden: !c.hidden }); await load(); onChanged?.(); };
+  const toggle = async c => {
+    try { await adm.put('/categories/' + c.id, { hidden: !c.hidden }); await load(); onChanged?.(); } catch (e) { setErr(e.message); }
+  };
   const pick = async (c, file) => {
     if (!file) return;
     setErr(''); setBusy(c.id);

@@ -1,0 +1,113 @@
+/* how to order as a tree: central trunk, steps branch off alternately left/right */
+.howto-steps { display: block; position: relative; padding: 8px 0 0; }
+.howto-steps::before { content: ''; position: absolute; left: 50%; top: 0; bottom: 30px; width: 4px; margin-left: -2px; border-radius: 4px; background: linear-gradient(180deg, oklch(0.66 0.14 238), oklch(0.5 0.16 255) 70%, oklch(0.58 0.15 150)); }
+.howto-steps > li { width: calc(50% - 44px); margin-bottom: 26px; flex-direction: row; align-items: stretch; }
+.howto-steps > li:nth-child(odd) { margin-right: auto; }
+.howto-steps > li:nth-child(even) { margin-left: auto; }
+.howto-steps > li:hover { transform: none; }
+.howto-steps > li { overflow: visible; }
+.howto-steps .pic { flex: 0 0 46%; aspect-ratio: 600 / 380; align-self: flex-start; border-radius: 20px 0 0 20px; background-size: 100% auto; }
+.howto-steps .tx { flex: 1; align-items: center; padding: 14px 16px; }
+/* branch from the trunk to each card + node on the trunk */
+.howto-steps > li::before { content: ''; position: absolute; top: 50%; height: 3px; width: 44px; background: oklch(0.66 0.14 238); }
+.howto-steps > li:nth-child(odd)::before { left: 100%; }
+.howto-steps > li:nth-child(even)::before { right: 100%; }
+.howto-steps > li::after { content: attr(data-n); position: absolute; top: 50%; margin-top: -17px; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 14px; color: #fff; background: oklch(0.52 0.16 252); box-shadow: 0 0 0 6px #fff, 0 10px 18px -8px oklch(0.5 0.16 255); }
+.howto-steps > li:nth-child(odd)::after { left: calc(100% + 44px - 17px + 2px); }
+.howto-steps > li:nth-child(even)::after { right: calc(100% + 44px - 17px + 2px); }
+.howto-steps > li.done { margin: 0 auto; width: min(360px, 100%); }
+.howto-steps > li.done::before { right: auto; left: 50%; top: auto; bottom: 100%; width: 3px; height: 26px; margin-left: -1px; background: oklch(0.58 0.15 150); }
+.howto-steps > li.done::after { display: none; }
+.howto-steps .tx i { display: none; }
+@media (max-width: 760px) {
+  .howto-steps::before { left: 17px; margin-left: -2px; }
+  .howto-steps > li, .howto-steps > li.done { width: auto; margin-left: 52px !important; margin-right: 0 !important; flex-direction: column; }
+  .howto-steps > li::before, .howto-steps > li:nth-child(odd)::before, .howto-steps > li:nth-child(even)::before { left: -35px; right: auto; width: 35px; }
+  .howto-steps > li::after, .howto-steps > li:nth-child(odd)::after, .howto-steps > li:nth-child(even)::after { left: -52px; right: auto; }
+  .howto-steps .pic { flex: none; aspect-ratio: 600 / 380; min-height: 0; background-size: 100% auto; }
+  .howto-steps > li.done::before { display: none; }
+}
+
+/* tree animation: trunk grows down, branches draw out, cards slide in from their side, nodes pop */
+@keyframes trGrow { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+@keyframes trDraw { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes trInL { from { opacity: 0; transform: translateX(-46px); } to { opacity: 1; transform: none; } }
+@keyframes trInR { from { opacity: 0; transform: translateX(46px); } to { opacity: 1; transform: none; } }
+@keyframes trUp { from { opacity: 0; transform: translateY(24px) scale(.96); } to { opacity: 1; transform: none; } }
+@keyframes trPop { 0% { transform: scale(0); } 70% { transform: scale(1.25); } 100% { transform: scale(1); } }
+@keyframes trRing { 0% { box-shadow: 0 0 0 6px #fff, 0 0 0 6px oklch(0.66 0.14 238 / .5); } 100% { box-shadow: 0 0 0 6px #fff, 0 0 0 20px oklch(0.66 0.14 238 / 0); } }
+.howto-steps::before { transform-origin: top; animation: trGrow 1.9s ease-out both; }
+.howto-steps > li { --d: 0s; }
+.howto-steps > li:nth-child(1) { --d: .2s; } .howto-steps > li:nth-child(2) { --d: .55s; } .howto-steps > li:nth-child(3) { --d: .9s; }
+.howto-steps > li:nth-child(4) { --d: 1.25s; } .howto-steps > li:nth-child(5) { --d: 1.6s; } .howto-steps > li:nth-child(6) { --d: 1.95s; }
+.howto-steps > li:nth-child(odd) { animation: trInL .7s ease-out var(--d) both; }
+.howto-steps > li:nth-child(even) { animation: trInR .7s ease-out var(--d) both; }
+.howto-steps > li.done { animation: trUp .7s ease-out var(--d) both; }
+.howto-steps > li:nth-child(odd)::before { transform-origin: left; animation: trDraw .45s ease-out var(--d) both; }
+.howto-steps > li:nth-child(even)::before { transform-origin: right; animation: trDraw .45s ease-out var(--d) both; }
+.howto-steps > li::after { animation: trPop .5s cubic-bezier(.3, 1.5, .5, 1) var(--d) both, trRing 2.4s ease-out calc(var(--d) + .6s) infinite; }
+.howto-steps > li.done .fin i { animation: trPop .6s cubic-bezier(.3, 1.5, .5, 1) 2.1s both; }
+@media (prefers-reduced-motion: reduce) { .howto-steps::before, .howto-steps > li, .howto-steps > li::before, .howto-steps > li::after, .howto-steps > li.done .fin i { animation: none !important; } }
+
+/* compact tree */
+.howto { gap: 14px; }
+.howto-hd { padding: 14px 18px; gap: 14px; border-radius: 16px; }
+.howto-hd h3 { font-size: 20px; margin-bottom: 4px; }
+.howto-hd h3 span { width: 36px; height: 36px; border-radius: 11px; font-size: 17px; }
+.howto-hd p { font-size: 13px; line-height: 1.55; }
+.howto-side { min-width: 250px; gap: 8px; }
+.howto-hd .hl-off { padding: 7px 12px; font-size: 12.5px; }
+.howto-call { padding: 7px 14px 7px 54px; border-radius: 12px; }
+.howto-call span { width: 30px; height: 30px; left: 12px; }
+.howto-call b { font-size: 16px; }
+.howto-steps { padding-top: 2px; }
+.howto-steps::before { bottom: 18px; width: 3px; margin-left: -1.5px; }
+.howto-steps > li { width: calc(50% - 34px); margin-bottom: 12px; border-radius: 16px; }
+.howto-steps > li:nth-child(even) { margin-top: -54px; }
+.howto-steps > li:nth-child(n+3) { margin-top: -54px; }
+.howto-steps > li:nth-child(odd):nth-child(n+3) { margin-top: -54px; }
+.howto-steps > li:nth-child(1) { margin-top: 0; }
+.howto-steps .pic { flex: 0 0 38%; aspect-ratio: 600 / 300; border-radius: 16px 0 0 16px; }
+.howto-steps .tx { padding: 8px 12px; font-size: 12.5px; line-height: 1.5; }
+.howto-steps > li::before { width: 34px; height: 2px; }
+.howto-steps > li::after { width: 28px; height: 28px; margin-top: -14px; font-size: 12.5px; box-shadow: 0 0 0 4px #fff, 0 8px 14px -8px oklch(0.5 0.16 255); }
+.howto-steps > li:nth-child(odd)::after { left: calc(100% + 34px - 14px + 1.5px); }
+.howto-steps > li:nth-child(even)::after { right: calc(100% + 34px - 14px + 1.5px); }
+.howto-steps > li.done { margin-top: 6px !important; width: min(300px, 100%); }
+.howto-steps > li.done::before { height: 12px; top: auto; bottom: 100%; width: 3px; }
+.howto-steps .fin { padding: 14px 16px; gap: 5px; }
+.howto-steps .fin i { width: 40px; height: 40px; font-size: 19px; }
+.howto-steps .fin b { font-size: 15px; }
+.howto-steps .fin span { font-size: 12px; line-height: 1.5; }
+@media (max-width: 760px) {
+  .howto-steps > li, .howto-steps > li.done { margin-top: 0 !important; margin-bottom: 10px; }
+  .howto-steps > li { margin-left: 46px !important; }
+  .howto-steps .pic { flex: none; aspect-ratio: 600 / 300; border-radius: 16px 16px 0 0; }
+  .howto-steps > li::before, .howto-steps > li:nth-child(odd)::before, .howto-steps > li:nth-child(even)::before { left: -29px; width: 29px; }
+  .howto-steps > li::after, .howto-steps > li:nth-child(odd)::after, .howto-steps > li:nth-child(even)::after { left: -43px; right: auto; }
+  .howto-steps::before { left: 17px; }
+}
+
+/* step pictures: show each illustration whole (no clipping) */
+.howto-steps .pic { flex: 0 0 34%; aspect-ratio: 600 / 409; align-self: stretch; height: auto; background-size: 100% auto; background-color: #f1f6fd; }
+.howto-steps > li:nth-child(even), .howto-steps > li:nth-child(n+3) { margin-top: -70px; }
+.howto-steps > li:nth-child(1) { margin-top: 0; }
+@media (max-width: 760px) { .howto-steps .pic { flex: none; aspect-ratio: 600 / 409; } }
+
+/* tree with the supplied step illustrations (each already carries its number + text) */
+.howto-steps { display: grid; grid-template-columns: 1fr 1fr; column-gap: 68px; grid-auto-rows: 76px; padding: 4px 0 0; }
+.howto-steps > li, .howto-steps > li:nth-child(n) { grid-row: var(--r); margin: 0 !important; width: min(100%, 370px); align-self: center; background: #fff; }
+.howto-steps > li:nth-child(odd) { grid-column: 1; justify-self: end; }
+.howto-steps > li:nth-child(even) { grid-column: 2; justify-self: start; }
+.howto-steps > li.done { grid-column: 1 / -1; justify-self: center; width: min(300px, 100%); align-self: start; margin-top: 4px !important; }
+.howto-steps > li img { display: block; width: 100%; height: auto; border-radius: 16px; }
+.howto-steps > li:not(.done) { padding: 0; }
+.howto-steps::before { bottom: 80px; }
+@media (max-width: 760px) {
+  .howto-steps { display: block; }
+  .howto-steps > li:nth-child(n), .howto-steps > li.done { width: auto; max-width: 420px; margin: 0 0 12px 46px !important; }
+}
+.howto-steps { grid-template-rows: repeat(12, 64px) auto; grid-auto-rows: auto; }
+.howto-steps::before { bottom: 56px; }
+.howto-steps > li.done { margin-top: 14px !important; }
+
