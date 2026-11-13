@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { api, fmt } from '../api.js';
 import { NotFound } from './Info.jsx';
 import { useStore } from '../store.jsx';
+import { cleanHtml } from '../sanitize.js';
 
 const TYPES = ['Printer servicing', 'Photocopier servicing', 'Computer servicing', 'Installation & networking'];
 
@@ -19,7 +20,7 @@ export function ServiceDetail() {
       <div className="crumbs" style={{ marginBottom: 18 }}><Link to="/">Home</Link><span>/</span><Link to="/services">Servicing</Link><span>/</span><span style={{ color: '#16181d' }}>{pg.title}</span></div>
       <header className="bp-hd"><h1>{pg.title}</h1></header>
       {pg.cover && <img className="svc-cover" src={pg.cover} alt={pg.title} />}
-      <div className="bp-body" dangerouslySetInnerHTML={{ __html: pg.body }} />
+      <div className="bp-body" dangerouslySetInnerHTML={{ __html: cleanHtml(pg.body) }} />
       <div className="bp-cta"><div><b>Need a technician?</b><span>Book a visit — we reply within working hours.</span></div><Link to="/services"><button>Book servicing →</button></Link></div>
     </section>
   );

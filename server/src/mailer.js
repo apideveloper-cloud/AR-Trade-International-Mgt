@@ -55,7 +55,7 @@ export async function verifyMail(channel) {
 // contact-form notification to the shop + a thank-you copy to the customer when they gave an email address
 export async function mailContact({ name, contact, company, msg, subject }, shopEmail) {
   const to = process.env.CONTACT_TO || shopEmail;
-  const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact || '');
+  const isEmail = /^[^\s,;<>"()@]+@[^\s,;<>"()@]+\.[^\s,;<>"()@]+$/.test(contact || '') && String(contact).length <= 160; // one plain address: a list would turn the thank-you mail into a relay
   const rows = [['Name', name], ['Contact', contact], ['Company', company], ['Subject', subject]].filter(r => r[1]);
   const jobs = [];
   if (to) {

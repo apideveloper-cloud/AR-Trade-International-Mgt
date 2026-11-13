@@ -99,7 +99,7 @@ export function CampaignForm({ tpls, onDone }) {
       </form>
       <div style={{ ...card, flex: '999 1 420px', minWidth: 0, padding: 14, position: 'sticky', top: 12 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 4px 10px' }}><b style={{ fontSize: 14, color: '#0b1631' }}>Live preview</b><span style={{ fontSize: 12, color: '#7a8090' }}>{f.subjA || 'Subject line appears here'}</span></div>
-        <iframe title="Email preview" srcDoc={html} style={{ width: '100%', height: 640, border: '1px solid #e6e9f0', borderRadius: 12, background: '#f1f3f8' }} />
+        <iframe title="Email preview" sandbox="allow-popups" srcDoc={html} style={{ width: '100%', height: 640, border: '1px solid #e6e9f0', borderRadius: 12, background: '#f1f3f8' }} />
       </div>
     </div>
   );

@@ -5,7 +5,7 @@ import { card, dash } from './emailShared.js';
 
 export default function Automations() {
   const [rows, setRows] = useState(null);
-  const load = () => api.get('/automations').then(setRows);
+  const load = () => api.get('/automations').then(setRows).catch(() => {});
   useEffect(() => { load(); }, []);
   const toggle = async a => { await api.put('/automations/' + a.id, { active: !a.active }); load(); };
   if (!rows) return <span className="spin" />;

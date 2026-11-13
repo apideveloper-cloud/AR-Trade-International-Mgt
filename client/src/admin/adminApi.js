@@ -143,7 +143,7 @@ export function useTable(path, initial = {}, deps = [], api = adm) {
 
 /** Serial number (SL) of row `i` on the current page of a server-paged grid: continues across pages. */
 export const slNo = (t, i) => (t.params.page - 1) * t.params.size + i + 1;
-export const fmtMoney = n => '৳ ' + Math.round(n || 0).toLocaleString('en-US');
+export const fmtMoney = n => '৳ ' + Math.round(Number(n) || 0).toLocaleString('en-US');
 export const dateF = t => (t ? new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—');
 export const dateTimeF = t => (t ? new Date(t).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—');
 export const STATUS_COLORS = {

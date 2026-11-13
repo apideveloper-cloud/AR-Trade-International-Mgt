@@ -9,6 +9,7 @@ import BestSellers from '../components/BestSellers.jsx';
 import { useStore } from '../store.jsx';
 import { NotFound } from './Info.jsx';
 import Lightbox from '../components/Lightbox.jsx';
+import { cleanHtml } from '../sanitize.js';
 
 const HOW = [
   'উপরের মেনু বার থেকে আপনার কাংখিত প্রোডাক্টটির ক্যাটাগরি সিলেক্ট করুন।',
@@ -268,7 +269,7 @@ export default function Product() {
         <div className="ptabs2">
           <div className="bar2">{[...(full && (full.description || full.short) ? [['desc', 'Description']] : []), ['spec', 'Specification'], ['ship', 'Delivery & warranty']].map(([k, l]) => <button key={k} type="button" className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{l}</button>)}</div>
           <div className="body" key={tab}>
-            {tab === 'desc' && full && <div className="bp-body pd-desc" dangerouslySetInnerHTML={{ __html: (full.short && !full.description.includes(full.short.slice(0, 40)) ? full.short : '') + full.description }} />}
+            {tab === 'desc' && full && <div className="bp-body pd-desc" dangerouslySetInnerHTML={{ __html: cleanHtml((full.short && !(full.description || '').includes(full.short.slice(0, 40)) ? full.short : '') + (full.description || '')) }} />}
             {tab === 'spec' && (
               <>
                 <div className="spec2">{rows.map(([k, v]) => <div key={k} className={String(v).length > 34 ? 'wide' : undefined}><i>{SPEC_ICON[k] || '•'}</i><span><small>{k}</small><b>{v}</b></span></div>)}</div>

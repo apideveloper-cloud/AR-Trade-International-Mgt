@@ -9,7 +9,7 @@ export const day = v => iso(v, null);
 /** Page number, page size and the SQL offset from ?page= and ?size= (size is kept between 1 and max). */
 export function pageOf(req, { def = 25, max = 200 } = {}) {
   const size = Math.min(max, Math.max(1, parseInt(req.query.size, 10) || def));
-  const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+  const page = Math.min(1000000, Math.max(1, parseInt(req.query.page, 10) || 1));
   return { size, page, offset: (page - 1) * size };
 }
 

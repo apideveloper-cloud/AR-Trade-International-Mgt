@@ -5,7 +5,7 @@ import { card } from './emailShared.js';
 export default function Templates() {
   const [rows, setRows] = useState(null);
   const [pv, setPv] = useState(null);
-  useEffect(() => { api.get('/templates').then(setRows); }, []);
+  useEffect(() => { api.get('/templates').then(setRows).catch(() => {}); }, []);
   if (!rows) return <span className="spin" />;
   return (
     <>

@@ -2,7 +2,7 @@
 import bcrypt from 'bcryptjs';
 import crypto from 'node:crypto';
 import { pool } from '../db.js';
-import { digits, fail, wrap, checkPassword } from '../util.js';
+import { digits, fail, wrap, checkPassword, str, verifyPassword } from '../util.js';
 import { limit } from '../middleware/security.js';
 import { auth, clearSessionCookie, sendAuth, userOut } from '../middleware/customerAuth.js';
 
@@ -31,15 +31,17 @@ async function verifySocialToken(provider, token, cfg) {
 
 export function mountAuthRoutes(app) {
   app.post('/api/auth/register', limit('register', 10, HOUR), wrap(async (req, res) => {
-    const { name, email, phone, password, address, area } = req.body;
+    const { phone, password, area } = req.body;
+    const name = str(req.body.name).trim().slice(0, 120), email = str(req.body.email).trim().toLowerCase().slice(0, 160), address = str(req.body.address).slice(0, 500);
     if (!name || !email || !password) throw fail(400, 'Name, email and a password are required');
+    if (!/^\S+@\S+\.\S+$/.test(email)) throw fail(400, 'Enter a valid email');
     checkPassword(password);
     if (!/^01\d{9}$/.test(digits(phone))) throw fail(400, 'Enter a valid mobile number (01XXXXXXXXX)');
-    const [ex] = await pool.query('SELECT id FROM users WHERE email = ? OR phone = ?', [email.toLowerCase(), digits(phone)]);
+    const [ex] = await pool.query('SELECT id FROM users WHERE email = ? OR phone = ?', [email, digits(phone)]);
     if (ex.length) throw fail(409, 'An account with this email or mobile already exists');
     const hash = await bcrypt.hash(password, 10);
     const [r] = await pool.query('INSERT INTO users (name,email,phone,password_hash,address,area) VALUES (?,?,?,?,?,?)',
-      [name, email.toLowerCase(), digits(phone), hash, address || '', AREAS.includes(area) ? area : 'inside']);
+      [name, email, digits(phone), hash, address, AREAS.includes(area) ? area : 'inside']);
     sendAuth(req, res, await getUser(r.insertId));
   }));
 
@@ -92,9 +94,9 @@ export function mountAuthRoutes(app) {
   }));
 
   app.post('/api/auth/login', limit('login', 12, 10 * MINUTE), wrap(async (req, res) => {
-    const id = String(req.body.id || req.body.email || '').trim().toLowerCase();
+    const id = str(req.body.id || req.body.email).trim().toLowerCase();
     const [[u]] = await pool.query('SELECT * FROM users WHERE email = ? OR (phone <> "" AND phone = ?)', [id, digits(id)]);
-    if (!u || !(await bcrypt.compare(req.body.password || '', u.password_hash))) throw fail(401, 'Wrong mobile/email or password.');
+    if (!(await verifyPassword(req.body.password, u?.password_hash)) || !u) throw fail(401, 'Wrong mobile/email or password.');
     sendAuth(req, res, u);
   }));
 
@@ -106,8 +108,12 @@ export function mountAuthRoutes(app) {
 
   app.put('/api/auth/me', auth(true), wrap(async (req, res) => {
     const { name, phone, address, area } = req.body;
+    if (phone != null && digits(phone)) {
+      const [dup] = await pool.query('SELECT id FROM users WHERE phone = ? AND id <> ?', [digits(phone), req.user.id]);
+      if (dup.length) throw fail(409, 'That mobile number is already used by another account');
+    }
     await pool.query('UPDATE users SET name = COALESCE(?,name), phone = COALESCE(?,phone), address = COALESCE(?,address), area = COALESCE(?,area) WHERE id = ?',
-      [name != null ? String(name).slice(0, 120) : null, phone != null ? digits(phone) : null, address != null ? String(address).slice(0, 500) : null, AREAS.includes(area) ? area : null, req.user.id]);
+      [typeof name === 'string' ? name.slice(0, 120) : null, phone != null ? digits(phone) : null, typeof address === 'string' ? address.slice(0, 500) : null, AREAS.includes(area) ? area : null, req.user.id]);
     res.json({ user: userOut(await getUser(req.user.id)) });
   }));
 }

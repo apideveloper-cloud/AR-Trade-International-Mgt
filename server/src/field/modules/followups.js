@@ -91,7 +91,7 @@ router.put('/:id/reopen', guardRole('rm', 'manager'), wrap(async (req, res) => {
 router.put('/:id/reschedule', guardRole('rm', 'manager'), wrap(async (req, res) => {
   const f = await load(req.params.id);
   canEdit(req, f);
-  const due = new Date(req.body.dueAt);
+  const due = new Date(req.body.dueAt || NaN);
   if (isNaN(due)) throw fail(400, 'Choose a new date and time');
   const reason = String(req.body.reason || '').trim().slice(0, 60);
   const remarks = String(req.body.remarks || '').trim().slice(0, 255);

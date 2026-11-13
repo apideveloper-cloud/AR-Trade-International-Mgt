@@ -95,7 +95,8 @@ router.put('/:id/decision', guardRole('manager'), wrap(async (req, res) => {
   if (!l) throw fail(404, 'Leave request not found');
   if (l.staff_id === req.staff.id) throw fail(403, 'You cannot decide your own leave');
   if (l.status !== 'Open') throw fail(409, 'This request was already decided');
-  await pool.query('UPDATE field_leave_requests SET status = ?, remarks = ?, decided_by = ?, decided_at = UTC_TIMESTAMP() WHERE id = ?', [status, remarks, req.staff.id, l.id]);
+  const [u] = await pool.query("UPDATE field_leave_requests SET status = ?, remarks = ?, decided_by = ?, decided_at = UTC_TIMESTAMP() WHERE id = ? AND status = 'Open'", [status, remarks, req.staff.id, l.id]);
+  if (!u.affectedRows) throw fail(409, 'This request was already decided');
   const ok = status === 'Approved';
   await notify(l.staff_id, {
     icon: ok ? 'event_available' : 'event_busy', cat: 'Approvals', title: ok ? 'Leave approved' : 'Leave rejected',

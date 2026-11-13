@@ -69,6 +69,7 @@ router.post('/', guardRole('rm', 'manager'), wrap(async (req, res) => {
     if (qty.get(p.id) > p.stock) throw fail(409, `Only ${p.stock} of ${p.name} in stock`);
     subtotal += p.price * qty.get(p.id);
   }
+  if (!(subtotal > 0 && subtotal <= 2000000000)) throw fail(400, 'The order total is too large');
   const discount = Math.round(subtotal * DISCOUNT_PCT / 100);
   const notes = String(req.body.notes || '').trim().slice(0, 255);
   const id = await nextSeq('field_so', 'field_sales_orders', 'SO-2026-', 1046);
@@ -160,7 +161,8 @@ router.put('/:id/approve', guardRole('manager'), wrap(async (req, res) => {
   const [[o]] = await pool.query('SELECT * FROM field_sales_orders WHERE id = ?', [req.params.id]);
   if (!o) throw fail(404, 'Order not found');
   if (o.approval_status !== 'Pending') throw fail(409, 'This order was already decided');
-  await pool.query('UPDATE field_sales_orders SET approval_status = ?, approved_by = ?, approval_note = ?, status = IF(? = "Rejected", "Cancelled", status) WHERE id = ? AND approval_status = "Pending"', [status, req.staff.id, remarks, status, o.id]);
+  const [u] = await pool.query('UPDATE field_sales_orders SET approval_status = ?, approved_by = ?, approval_note = ?, status = IF(? = "Rejected", "Cancelled", status) WHERE id = ? AND approval_status = "Pending"', [status, req.staff.id, remarks, status, o.id]);
+  if (!u.affectedRows) throw fail(409, 'This order was already decided');
   await notify(o.staff_id, {
     icon: status === 'Approved' ? 'fact_check' : 'cancel', cat: 'Approvals', title: `Sales order ${status.toLowerCase()}`, sub: `${o.id} ${status.toLowerCase()} by ${req.staff.name}`,
     body: `Sales order ${o.id} was ${status.toLowerCase()}.` + (remarks ? ` Remarks: ${remarks}` : ''), rows: [['Order', o.id], ['Remarks', remarks || '—']] });

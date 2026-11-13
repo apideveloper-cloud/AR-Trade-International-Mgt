@@ -32,7 +32,7 @@ export default function ChatStart({ user, onDone }) {
         <label>Mobile<input value={f.phone} onChange={set('phone')} autoComplete="tel" inputMode="numeric" placeholder="01XXXXXXXXX" /></label>
       </div>
       <label>Location<input value={f.location} onChange={set('location')} autoComplete="address-level2" placeholder="Area, district (e.g. Mirpur, Dhaka)" /></label>
-      <label className="cs-ck"><input type="checkbox" checked={f.marketing} onChange={set('marketing')} /><span>Send me offers by call, SMS, WhatsApp or email. <Link to="/policy/privacy" target="_blank">Privacy</Link></span></label>
+      <label className="cs-ck"><input type="checkbox" checked={f.marketing} onChange={set('marketing')} /><span>Send me offers by call, SMS, WhatsApp or email. <Link to="/policy/privacy" target="_blank" rel="noreferrer">Privacy</Link></span></label>
       {err && <div className="cs-err" role="alert">{err}</div>}
       <button className="cs-go" type="submit" disabled={busy}>{busy ? 'Starting…' : 'Start chat'}</button>
     </form>

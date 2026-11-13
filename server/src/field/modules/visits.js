@@ -119,9 +119,10 @@ router.post('/:id/save', guardRole('rm', 'manager'), wrap(async (req, res) => {
   const notes = String(req.body.notes || '').trim().slice(0, 2000) || 'Visit completed.';
   const action = ACTIONS.includes(req.body.followupAction) ? req.body.followupAction : ACTIONS[0];
   const when = WHENS[req.body.followupWhen] ? req.body.followupWhen : 'Tomorrow';
-  await pool.query(
-    "UPDATE field_visits SET status = 'Done', check_out = UTC_TIMESTAMP(), purpose = ?, outcome = ?, order_value = ?, notes = ?, followup_action = ?, followup_when = ? WHERE id = ?",
+  const [saved] = await pool.query(
+    "UPDATE field_visits SET status = 'Done', check_out = UTC_TIMESTAMP(), purpose = ?, outcome = ?, order_value = ?, notes = ?, followup_action = ?, followup_when = ? WHERE id = ? AND status = 'InProgress'",
     [purpose, outcome, value, notes, action, when, v.id]);
+  if (!saved.affectedRows) throw fail(409, 'This visit is already completed'); // a double tap must not create two follow-ups
   // follow-up created from the visit
   const [days, at] = WHENS[when];
   const due = bdToDate(addDays(bdDate(), days), at);

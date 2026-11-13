@@ -66,6 +66,7 @@ function bodyOf(req) {
   if (!lines.length) throw fail(400, 'Add at least one item');
   const money = { install: int(b.install), transport: int(b.transport), discount: int(b.discount), vat: int(b.vat) };
   const t = totalsOf(lines, money);
+  if (!(t.total <= 2000000000 && t.net <= 2000000000)) throw fail(400, 'The quotation total is too large');
   if (money.discount > t.total + money.install + money.transport + money.vat) throw fail(400, 'The discount is more than the quotation total');
   return {
     lines, ...money, ...t, custType: CUSTOMER_TYPES.includes(b.custType) ? b.custType : 'New', customerId: parseInt(b.customerId, 10) || null, date: iso(b.date, today()), toName: text(b.toName, 200), address: text(b.address, 300), attend: text(b.attend, 120), desig: text(b.desig, 120), mobile: text(b.mobile, 40), email: text(b.email, 160),

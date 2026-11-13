@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { api, fmtDate } from '../api.js';
 import { NotFound } from './Info.jsx';
+import { cleanHtml } from '../sanitize.js';
 
 const readMins = html => Math.max(1, Math.round(String(html || '').replace(/<[^>]+>/g, ' ').split(/\s+/).length / 200));
 const PAGE = 9;
@@ -155,7 +156,7 @@ const slugify = (s, i) => 's' + i + '-' + s.toLowerCase().replace(/[^a-z0-9à¦€-à
 /** Adds ids to h2/h3 so the sidebar can link to each section. */
 function withToc(html) {
   try {
-    const doc = new DOMParser().parseFromString('<div id="r">' + html + '</div>', 'text/html');
+    const doc = new DOMParser().parseFromString('<div id="r">' + cleanHtml(html) + '</div>', 'text/html');
     const toc = [];
     doc.querySelectorAll('#r h2, #r h3').forEach((h, i) => {
       const text = h.textContent.trim();
@@ -164,7 +165,7 @@ function withToc(html) {
       toc.push({ id: h.id, text, lvl: h.tagName === 'H3' ? 3 : 2 });
     });
     return { html: doc.getElementById('r').innerHTML, toc: toc.filter(t => t.lvl === 2).length > 1 ? toc.filter(t => t.lvl === 2) : toc.slice(0, 12) };
-  } catch { return { html, toc: [] }; }
+  } catch { return { html: cleanHtml(html), toc: [] }; }
 }
 
 /** Thin reading-progress bar; portalled out of the zoomed storefront wrapper so position:fixed stays correct. */

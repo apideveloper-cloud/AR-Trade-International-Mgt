@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { pool } from './db.js';
-import { fail, parseJson, wrap, isLocalImg, localImg } from './util.js';
+import { fail, parseJson, wrap, isLocalImg, localImg, iso } from './util.js';
 import { addRange, whereOf } from './listing.js';
 import { can } from './permissions.js';
 import { like, page } from './adminHelpers.js';
@@ -40,7 +40,7 @@ const savePost = async (req, id) => {
   if (textOf(body).length < 20) throw fail(400, 'The article text is too short');
   const category = String(b.category || 'Articles').trim().slice(0, 60) || 'Articles';
   const status = b.status === 'Draft' ? 'Draft' : 'Published';
-  const date = /^\d{4}-\d{2}-\d{2}$/.test(b.date || '') ? b.date : new Date().toISOString().slice(0, 10);
+  const date = iso(b.date, new Date().toISOString().slice(0, 10)); // a real calendar date, never 2026-13-45
   const excerpt = (String(b.excerpt || '').trim() || textOf(body)).slice(0, 190);
   const cover = localImg(b.cover, 'The cover must be an uploaded image');
   let slug = slugify(b.slug || title) || 'post-' + Date.now();
@@ -61,7 +61,7 @@ const savePage = (b) => {
 };
 // ---------- storefront content (home slides, brand + client logos, FAQs, policies, labels…) ----------
 const text = (v, max = 400) => String(v ?? '').trim().slice(0, max);
-const url = v => { const u = text(v, 500); if (u && !/^(\/api\/uploads\/|https?:\/\/|\/|#\/|\.\/)/.test(u)) throw fail(400, 'Links must start with / , #/ or https://'); return u; };
+const url = v => { const u = text(v, 500); if (u && !/^(\/api\/uploads\/|https?:\/\/|\/|#\/|\.\/)/.test(u)) throw fail(400, 'Links must start with / , #/ or https://'); if (/^\/[\/\\]/.test(u)) throw fail(400, 'Links must start with / , #/ or https://'); return u; }; // "//host" and "/\host" would leave the site
 const img = v => localImg(text(v, 500), 'Images must be uploaded here');
 const list = (v, max = 60) => { if (!Array.isArray(v)) throw fail(400, 'Expected a list'); return v.slice(0, max); };
 const CONTENT = {

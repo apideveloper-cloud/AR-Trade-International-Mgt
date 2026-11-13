@@ -1,7 +1,7 @@
 // Public forms: service requests, the contact form and the double opt-in for offers by email.
 import crypto from 'node:crypto';
 import { pool } from '../db.js';
-import { fail, nextSeq, wrap } from '../util.js';
+import { fail, iso, nextSeq, wrap } from '../util.js';
 import { mailContact, mailReady, sendMail, siteUrl } from '../mailer.js';
 import { onSubscribed } from '../mkt.js';
 import { limit } from '../middleware/security.js';
@@ -35,8 +35,9 @@ export function mountFormRoutes(app) {
     if (!type || !name || !phone) throw fail(400, 'Service type, name and phone are required');
     if (mkt && mktEmail && !EMAIL_RE.test(String(mktEmail))) throw fail(400, 'Enter a valid email');
     const id = await nextSeq('service', 'service_requests', 'SV-', 2091);
+    const cut = (v, n) => String(v ?? '').slice(0, n);
     await pool.query('INSERT INTO service_requests (id,type,name,phone,model,issue,preferred_date) VALUES (?,?,?,?,?,?,?)',
-      [id, type, name, phone, model || '', issue || '', date || null]);
+      [id, cut(type, 80), cut(name, 120), cut(phone, 40), cut(model, 160), cut(issue, 500), iso(date, null)]);
     if (mkt && mktEmail) await optIn(mktEmail, 'Service booking · ' + id, req.ip);
     res.json({ id });
   }));

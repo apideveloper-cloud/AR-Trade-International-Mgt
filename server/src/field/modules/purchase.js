@@ -261,9 +261,12 @@ router.put('/orders/:id', guardRole('purchase', 'manager'), wrap(async (req, res
   const due = req.body.deliverBy == null ? p.deliver_by_d : isoDate(req.body.deliverBy);
   const note = req.body.note == null ? p.note : String(req.body.note).slice(0, 255);
   const t = totals(lines);
+  if (!(t.grand <= 2000000000)) throw fail(400, 'The order total is too large');
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
+    const [[cur]] = await conn.query('SELECT status FROM field_purchase_orders WHERE id = ? FOR UPDATE', [p.id]); // a submit may have just happened
+    if (!cur || cur.status !== 'Draft') throw fail(409, 'Only a draft can be edited. Tap Edit PO to reopen it.');
     await conn.query('DELETE FROM field_purchase_order_items WHERE po_id = ?', [p.id]);
     if (lines.length) await conn.query('INSERT INTO field_purchase_order_items (po_id, product_id, name, sku, qty, unit_price) VALUES ?', [lines.map(l => [p.id, l.productId, l.name, l.sku, l.qty, l.unitPrice])]);
     await conn.query('UPDATE field_purchase_orders SET vendor_id = ?, subtotal = ?, vat = ?, freight = ?, grand_total = ?, deliver_by = ?, payment_terms = ?, deliver_to = ?, note = ? WHERE id = ?',
@@ -280,7 +283,8 @@ router.post('/orders/:id/submit', guardRole('purchase', 'manager'), wrap(async (
   const [lines] = await pool.query('SELECT qty, unit_price FROM field_purchase_order_items WHERE po_id = ?', [p.id]);
   if (!lines.length) throw fail(400, 'Add at least one item before submitting');
   if (lines.some(l => !(l.unit_price > 0))) throw fail(400, 'Every item needs a unit price');
-  await pool.query("UPDATE field_purchase_orders SET status = 'Submitted', submitted_at = UTC_TIMESTAMP(), manager_by = NULL, manager_remarks = '', manager_at = NULL, rejected_by = NULL, reject_remarks = '', rejected_at = NULL WHERE id = ?", [p.id]);
+  const [sb] = await pool.query("UPDATE field_purchase_orders SET status = 'Submitted', submitted_at = UTC_TIMESTAMP(), manager_by = NULL, manager_remarks = '', manager_at = NULL, rejected_by = NULL, reject_remarks = '', rejected_at = NULL WHERE id = ? AND status = 'Draft'", [p.id]);
+  if (!sb.affectedRows) throw fail(409, 'This purchase order was already submitted');
   const ids = (await staffIdsByRole('manager', 'admin')).filter(i => i !== req.staff.id);
   await notify(ids, {
     icon: 'shopping_cart_checkout', cat: 'Approvals', title: 'Purchase order waiting for approval', sub: `${p.id} · ${p.vendor_name} · ৳ ${p.grand_total.toLocaleString('en-IN')}`,
@@ -295,7 +299,8 @@ router.post('/orders/:id/reopen', guardRole('purchase', 'manager'), wrap(async (
   const p = await loadPo(req.params.id);
   mayTouch(req.staff, p);
   if (!['Submitted', 'Rejected'].includes(p.status)) throw fail(409, 'Only a submitted order that nobody has approved yet, or a rejected one, can be reopened');
-  await pool.query("UPDATE field_purchase_orders SET status = 'Draft', rev = rev + 1 WHERE id = ?", [p.id]);
+  const [rr] = await pool.query("UPDATE field_purchase_orders SET status = 'Draft', rev = rev + 1 WHERE id = ? AND status IN ('Submitted', 'Rejected')", [p.id]);
+  if (!rr.affectedRows) throw fail(409, 'This purchase order was just decided, so it cannot be reopened');
   if (p.pr_id) await pool.query("UPDATE field_purchase_requests SET status = 'Ordered' WHERE id = ?", [p.pr_id]);
   res.json(await poOut(await loadPo(p.id), true, req.staff));
 }));
@@ -304,8 +309,9 @@ router.delete('/orders/:id', guardRole('purchase', 'manager'), wrap(async (req, 
   const p = await loadPo(req.params.id);
   mayTouch(req.staff, p);
   if (p.status !== 'Draft') throw fail(409, 'Only a draft can be deleted');
+  const [dr] = await pool.query("DELETE FROM field_purchase_orders WHERE id = ? AND status = 'Draft'", [p.id]);
+  if (!dr.affectedRows) throw fail(409, 'Only a draft can be deleted');
   await pool.query('DELETE FROM field_purchase_order_items WHERE po_id = ?', [p.id]);
-  await pool.query('DELETE FROM field_purchase_orders WHERE id = ?', [p.id]);
   if (p.pr_id) await pool.query("UPDATE field_purchase_requests SET status = 'Open' WHERE id = ? AND NOT EXISTS (SELECT 1 FROM field_purchase_orders WHERE pr_id = ? AND status <> 'Rejected')", [p.pr_id, p.pr_id]);
   res.json({ ok: true });
 }));

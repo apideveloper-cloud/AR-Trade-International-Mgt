@@ -136,7 +136,8 @@ export function Grid({ cols, head, rows, onRow, empty = 'Nothing here yet.', sea
 }
 
 export function downloadCsv(name, columns, rows) {
-  const esc = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+  // a text cell that starts with = + - @ would run as a spreadsheet formula: prefix it with an apostrophe (real numbers are left alone)
+  const esc = v => { let s = String(v ?? ''); if (typeof v === 'string' && /^[=+\-@\t\r]/.test(s) && !(s.trim() !== '' && Number.isFinite(Number(s)))) s = "'" + s; return '"' + s.replace(/"/g, '""') + '"'; };
   const csv = [columns.map(esc).join(','), ...rows.map(r => r.map(esc).join(','))].join('\n');
   saveTextFile(name, '﻿' + csv);
 }

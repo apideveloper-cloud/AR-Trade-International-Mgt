@@ -83,7 +83,7 @@ router.get('/purchase', guard(), wrap(async (req, res) => {
 }));
 
 async function mailVendor(p, lines) {
-  if (!mailReady() || !p.vendor_email) return false;
+  if (!mailReady() || !/^[^\s,;<>"()]+@[^\s,;<>"()]+\.[^\s,;<>"()]+$/.test(p.vendor_email || '')) return false;
   const text = `Purchase order ${p.id}${p.rev ? ' (rev ' + p.rev + ')' : ''} from AR Trade International\n\n` +
     lines.map(l => `${l.name} × ${l.qty} @ ৳ ${l.unit_price}`).join('\n') +
     `\n\nGrand total: ৳ ${p.grand_total}\nDeliver by: ${p.deliver_by_d || '-'} to ${p.deliver_to}\nPayment: ${p.payment_terms}`;
@@ -106,7 +106,8 @@ router.put('/purchase/:id/decision', guard(), wrap(async (req, res) => {
   const money = '৳ ' + p.grand_total.toLocaleString('en-IN');
   const rows = [['PO', p.id], ['Vendor', p.vendor_name], ['Grand total', money], ['Remarks', remarks || '—']];
   if (status === 'Rejected') {
-    await pool.query("UPDATE field_purchase_orders SET status = 'Rejected', rejected_by = ?, reject_remarks = ?, rejected_at = UTC_TIMESTAMP() WHERE id = ?", [req.staff.id, remarks, p.id]);
+    const [u] = await pool.query("UPDATE field_purchase_orders SET status = 'Rejected', rejected_by = ?, reject_remarks = ?, rejected_at = UTC_TIMESTAMP() WHERE id = ? AND status = ?", [req.staff.id, remarks, p.id, p.status]);
+    if (!u.affectedRows) throw fail(409, 'This purchase order was already decided');
     if (p.pr_id) await pool.query("UPDATE field_purchase_requests SET status = 'Open' WHERE id = ?", [p.pr_id]);
     await notify(p.staff_id, { icon: 'cancel', cat: 'Approvals', title: 'Purchase order rejected', sub: `${p.id} rejected by ${req.staff.name}`,
       body: `Purchase order ${p.id} was rejected. Remarks: ${remarks}`, rows: [...rows, ['Rejected by', req.staff.name]] });
@@ -115,7 +116,8 @@ router.put('/purchase/:id/decision', guard(), wrap(async (req, res) => {
 
   if (p.status === 'Submitted') {
     // manager step: pass it to the accountants
-    await pool.query("UPDATE field_purchase_orders SET status = 'ManagerApproved', manager_by = ?, manager_remarks = ?, manager_at = UTC_TIMESTAMP() WHERE id = ?", [req.staff.id, remarks, p.id]);
+    const [u] = await pool.query("UPDATE field_purchase_orders SET status = 'ManagerApproved', manager_by = ?, manager_remarks = ?, manager_at = UTC_TIMESTAMP() WHERE id = ? AND status = 'Submitted'", [req.staff.id, remarks, p.id]);
+    if (!u.affectedRows) throw fail(409, 'This purchase order was already decided');
     await notify(p.staff_id, { icon: 'fact_check', cat: 'Approvals', title: 'Purchase order approved by manager', sub: `${p.id} approved by ${req.staff.name}, waiting for Accounts`,
       body: `Purchase order ${p.id} passed the manager check and is now with Accounts.` + (remarks ? ` Remarks: ${remarks}` : ''), rows: [...rows, ['Approved by', req.staff.name]] });
     const acc = await staffIdsByRole('accountant');
@@ -125,7 +127,8 @@ router.put('/purchase/:id/decision', guard(), wrap(async (req, res) => {
   }
 
   // accounts step: final approval, vendor gets the order
-  await pool.query("UPDATE field_purchase_orders SET status = 'Approved', final_by = ?, final_remarks = ?, final_at = UTC_TIMESTAMP() WHERE id = ?", [req.staff.id, remarks, p.id]);
+  const [fin] = await pool.query("UPDATE field_purchase_orders SET status = 'Approved', final_by = ?, final_remarks = ?, final_at = UTC_TIMESTAMP() WHERE id = ? AND status = 'ManagerApproved'", [req.staff.id, remarks, p.id]);
+  if (!fin.affectedRows) throw fail(409, 'This purchase order was already decided');
   const [lines] = await pool.query('SELECT name, qty, unit_price FROM field_purchase_order_items WHERE po_id = ?', [p.id]);
   const mailed = await mailVendor(p, lines);
   if (mailed) await pool.query('UPDATE field_purchase_orders SET vendor_mailed = 1 WHERE id = ?', [p.id]);

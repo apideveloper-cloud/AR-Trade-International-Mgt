@@ -21,7 +21,7 @@ async function priceOrder(items, { area, coupon, userId, express, partial, phone
 
   const lines = items.map(it => {
     const p = byId.get(parseInt(it?.id, 10));
-    const qty = Math.max(1, Math.min(999, parseInt(it.qty, 10) || 1));
+    const qty = Math.max(1, Math.min(999, parseInt(it?.qty, 10) || 1));
     if (!p) throw fail(400, 'A product in your cart is no longer available');
     if (!p.price) throw fail(400, `${p.name} needs a quotation — please contact us`);
     const avail = Math.max(0, Math.min(qty, p.stock));
@@ -32,7 +32,7 @@ async function priceOrder(items, { area, coupon, userId, express, partial, phone
 
   const cu = String(coupon || '').trim().toUpperCase();
   const welcome = cu === 'WELCOME10';
-  let okCoupon = !!cu && (cu === String(s.coupon).toUpperCase() || welcome);
+  let okCoupon = !!cu && ((!!s.coupon && cu === String(s.coupon).toUpperCase()) || welcome); // no coupon set in Settings must not make the text "UNDEFINED" a valid code
   if (welcome && okCoupon) { // the welcome code works once per customer (account or mobile number)
     const ph = digits(phone).slice(-10);
     const [[used]] = await pool.query('SELECT COUNT(*) n FROM orders WHERE coupon = "WELCOME10" AND status <> "Cancelled" AND ((? IS NOT NULL AND user_id = ?) OR (? <> "" AND RIGHT(customer_phone, 10) = ?))', [userId || null, userId || null, ph, ph]);

@@ -9,14 +9,14 @@ export default function Setup() {
   const [d, setD] = useState(null);
   const [saved, setSaved] = useState('');
   const [checking, setChecking] = useState(false);
-  const load = () => api.get('/setup').then(setD);
+  const load = () => api.get('/setup').then(setD).catch(() => {});
   useEffect(() => { load(); }, []);
   if (!d) return <span className="spin" />;
   const pick = async n => { await api.put('/setup', { provider: n }); load(); };
   const save = async e => {
     e.preventDefault();
-    const f = Object.fromEntries(new FormData(e.target).entries());
-    try { await api.put('/setup', f); setSaved('✓ Saved'); e.target.key.value = ''; load(); } catch (er) { setSaved(er.message); }
+    const form = e.currentTarget, f = Object.fromEntries(new FormData(form).entries());
+    try { await api.put('/setup', f); setSaved('✓ Saved'); form.apiKey.value = ''; load(); } catch (er) { setSaved(er.message); }
   };
   const check = async () => { setChecking(true); try { await api.post('/setup/check-dns'); await load(); } finally { setChecking(false); } };
   return (

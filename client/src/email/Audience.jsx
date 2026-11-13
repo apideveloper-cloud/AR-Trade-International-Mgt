@@ -5,7 +5,7 @@ import { card } from './emailShared.js';
 
 export default function Audience() {
   const [d, setD] = useState(null);
-  const load = () => api.get('/audience').then(setD);
+  const load = () => api.get('/audience').then(setD).catch(() => {});
   useEffect(() => { load(); }, []);
   if (!d) return <span className="spin" />;
   const CH = [['offers', 'Offers'], ['festivals', 'Festivals'], ['tips', 'Health tips'], ['refill', 'Refill alerts']];

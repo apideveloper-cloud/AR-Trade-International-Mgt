@@ -164,6 +164,8 @@ staff.post('/campaigns', guard('marketing.manage'), wrap(async (req, res) => {
   const [[t]] = tpl ? await pool.query('SELECT * FROM mkt_templates WHERE id = ?', [tpl]) : [[null]];
   const tag = TAGS[tpl] || (t?.kind === 'Health tip' ? 'Health tip' : 'Offer');
   const at = when ? new Date(when) : new Date();
+  if (isNaN(at)) throw fail(400, 'Choose a valid send date');
+  if (String(name).length > 160 || String(subjA).length > 200 || String(subjB || '').length > 200) throw fail(400, 'The name or subject line is too long');
   const kind = ['offers', 'festivals', 'tips', 'all'].includes(aud) ? aud : 'offers';
   // a campaign is only "Sent" once the mail worker has really sent it; until then it stays Scheduled
   const [r] = await pool.query('INSERT INTO mkt_campaigns (name,tag,template_id,subj_a,subj_b,body,design,audience,status,send_at,sent) VALUES (?,?,?,?,?,?,?,?,?,?,?)',

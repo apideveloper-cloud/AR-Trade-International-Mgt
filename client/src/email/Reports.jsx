@@ -6,13 +6,13 @@ import { card, dash, pct } from './emailShared.js';
 
 export default function Reports() {
   const [d, setD] = useState(null);
-  useEffect(() => { api.get('/reports').then(setD); }, []);
+  useEffect(() => { api.get('/reports').then(setD).catch(() => {}); }, []);
   if (!d) return <span className="spin" />;
   const T = d.totals;
   const kpis = [['Emails sent', T.sent.toLocaleString('en-US'), `${d.campaignsSent} campaigns sent`], ['Open rate', d.hasTracking ? pct(T.opens, T.sent) + '%' : dash, d.hasTracking ? T.opens + ' opens' : 'Needs provider tracking'], ['Click rate', d.hasTracking ? pct(T.clicks, T.sent) + '%' : dash, d.hasTracking ? T.clicks + ' clicks' : 'Needs provider tracking'], ['Unsubscribes', String(d.unsubscribed), 'Recorded in the preference log'], ['Revenue from email', T.revenue ? fmt(T.revenue) : dash, 'From results you enter']];
   const exportCsv = () => {
     const rows = [['name', 'type', 'sent', 'opens', 'clicks', 'unsubscribes', 'revenue_bdt'], ...d.rows.map(r => [r.name, r.kind, r.sent, r.opens ?? '', r.clicks ?? '', r.unsubs, r.revenue ?? ''])];
-    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([rows.map(x => x.map(y => '"' + String(y).replace(/"/g, '""') + '"').join(',')).join('\n')], { type: 'text/csv' })); a.download = 'ar-email-report.csv'; a.click();
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([rows.map(x => x.map(y => { const s = String(y); return '"' + (/^[=+\-@\t\r]/.test(s) && !/^-?\d+(\.\d+)?$/.test(s) ? "'" : '') + s.replace(/"/g, '""') + '"'; }).join(',')).join('\n')], { type: 'text/csv' })); a.download = 'ar-email-report.csv'; a.click();
   };
   const bar = (v, max, c) => (v == null ? <span className="em-s5">{dash}</span> : (
     <div className="em-s6"><span className="em-s7"><span style={{ display: 'block', height: '100%', width: Math.min(100, v * max) + '%', background: c, borderRadius: 999 }} /></span><b className="em-s8">{v}%</b></div>

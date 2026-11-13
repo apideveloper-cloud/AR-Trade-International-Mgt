@@ -43,7 +43,7 @@ router.post('/login', wrap(async (req, res) => {
   const id = String(req.body.id || '').trim().toLowerCase();
   if (!id) throw fail(400, 'Enter your employee ID, mobile or email');
   const [[s]] = await pool.query('SELECT * FROM staff WHERE LOWER(employee_code) = ? OR email = ? OR (phone <> "" AND phone = ?)', [id, id, digits(id).slice(-11)]);
-  if (!s || !(await bcrypt.compare(req.body.password || '', s.password_hash))) throw fail(401, 'Wrong employee ID / mobile / email or password.');
+  if (!s || !s.password_hash || !(await bcrypt.compare(String(req.body.password || ''), s.password_hash))) throw fail(401, 'Wrong employee ID / mobile / email or password.');
   if (s.status !== 'Active') throw fail(403, s.status === 'Pending' ? 'Your account is waiting for approval.' : 'This account is disabled.');
   // the sign-in screen lets people pick their role; it must match what the account really is
   const want = String(req.body.role || '');
@@ -159,6 +159,7 @@ router.get('/track/live', guard('field.approve'), wrap(async (req, res) => {
 // full route for one person in a time range (?from=&to=); employees may only read their own
 router.get('/track/:staffId', guard(), wrap(async (req, res) => {
   const sid = parseInt(req.params.staffId, 10);
+  if (!sid) throw fail(400, 'Invalid staff id');
   if (sid !== req.staff.id && !isApprover(req.staff)) throw fail(403, 'Your role cannot do this');
   const [rows] = await pool.query(`SELECT lat, lng, ${UTC('at')} at FROM field_track WHERE staff_id = ? AND at >= ? AND at <= ? ORDER BY at, id LIMIT 5000`, [sid, ...range(req.query)]);
   res.json(rows.map(r => ({ lat: Number(r.lat), lng: Number(r.lng), time: r.at })));
@@ -168,7 +169,7 @@ router.get('/track/:staffId', guard(), wrap(async (req, res) => {
 router.post('/expenses', guard(), wrap(async (req, res) => {
   const title = String(req.body.title || '').trim().slice(0, 160);
   const category = String(req.body.category || '').trim().slice(0, 60);
-  const amount = Number(req.body.amount);
+  const amount = Math.round(Number(req.body.amount) * 100) / 100;
   if (!title || !category || !(amount > 0) || amount > 10000000) throw fail(400, 'Description, category and a valid amount are required');
   const ref = clientRefOf(req.body);
   if (ref) { // retry of a claim this person already submitted: return it again
@@ -211,7 +212,8 @@ router.put('/expenses/:id/decision', guard('field.approve'), wrap(async (req, re
   if (!e) throw fail(404, 'Expense not found');
   if (e.staff_id === req.staff.id) throw fail(403, 'You cannot approve your own expense');
   if (e.status !== 'Pending') throw fail(409, 'This expense was already decided');
-  await pool.query('UPDATE field_expenses SET status = ?, decided_by = ?, decided_at = UTC_TIMESTAMP(), remarks = ? WHERE id = ?', [status, req.staff.id, remarks, e.id]);
+  const [dec] = await pool.query("UPDATE field_expenses SET status = ?, decided_by = ?, decided_at = UTC_TIMESTAMP(), remarks = ? WHERE id = ? AND status = 'Pending'", [status, req.staff.id, remarks, e.id]);
+  if (!dec.affectedRows) throw fail(409, 'This expense was already decided');
   await notify(e.staff_id, {
     icon: status === 'Approved' ? 'fact_check' : 'cancel', cat: 'Approvals',
     title: status === 'Approved' ? 'Expense approved' : 'Expense rejected', sub: `${e.title} ৳ ${Number(e.amount).toLocaleString('en-IN')} ${status.toLowerCase()} by ${req.staff.name}`,

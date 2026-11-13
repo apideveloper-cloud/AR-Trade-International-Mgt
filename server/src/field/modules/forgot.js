@@ -53,7 +53,8 @@ router.post('/verify', wrap(async (req, res) => {
   const real = Buffer.from(row.code_hash);
   if (given.length !== real.length || !crypto.timingSafeEqual(given, real)) throw fail(400, 'That code is not correct.');
   await pool.query('UPDATE field_reset_codes SET used = 1 WHERE id = ?', [row.id]);
-  res.json({ resetToken: jwt.sign({ sid: s.id, purpose: 'field-reset' }, secret(), { expiresIn: '10m' }) });
+  // `pv` ties the token to the current password hash, so it works once: after the reset the hash changes and the token is dead
+  res.json({ resetToken: jwt.sign({ sid: s.id, purpose: 'field-reset', pv: hash(s.id, s.password_hash || '').slice(0, 16) }, secret(), { expiresIn: '10m' }) });
 }));
 
 router.post('/reset', wrap(async (req, res) => {
@@ -62,7 +63,8 @@ router.post('/reset', wrap(async (req, res) => {
   if (t.purpose !== 'field-reset') throw fail(400, 'This reset link is not valid.');
   checkPassword(req.body.password);
   const [[s]] = await pool.query('SELECT * FROM staff WHERE id = ?', [t.sid]);
-  if (!s) throw fail(404, 'Account not found');
+  if (!s || s.status !== 'Active') throw fail(404, 'Account not found');
+  if (t.pv !== hash(s.id, s.password_hash || '').slice(0, 16)) throw fail(400, 'This reset link has already been used. Please start again.');
   if (s.password_hash && await bcrypt.compare(String(req.body.password), s.password_hash)) throw fail(400, 'Choose a password you have not used before');
   await pool.query('UPDATE staff SET password_hash = ? WHERE id = ?', [await bcrypt.hash(String(req.body.password), 10), s.id]);
   await pool.query('UPDATE field_reset_codes SET used = 1 WHERE staff_id = ?', [s.id]);

@@ -1,18 +1,18 @@
 // Admin console sign-in, registration, the signed-in user and the header notifications.
 import bcrypt from 'bcryptjs';
 import { pool } from '../db.js';
-import { digits, fail, wrap, checkPassword } from '../util.js';
+import { digits, fail, wrap, checkPassword, str, verifyPassword } from '../util.js';
 import { unpublishedProducts } from '../productImages.js';
 import { can, REGISTRABLE } from '../permissions.js';
 import { meOut, sign } from './guard.js';
 
 export function mountAuthRoutes(router, guard) {
   router.post('/login', wrap(async (req, res) => {
-    const id = String(req.body.id || '').trim().toLowerCase();
+    const id = str(req.body.id).trim().toLowerCase();
     const [[s]] = await pool.query('SELECT * FROM staff WHERE email = ? OR (phone <> "" AND phone = ?)', [id, digits(id)]);
-    if (!s || !(await bcrypt.compare(req.body.password || '', s.password_hash))) throw fail(401, 'Wrong mobile/email or password.');
+    if (!(await verifyPassword(req.body.password, s?.password_hash)) || !s) throw fail(401, 'Wrong mobile/email or password.');
     // the role picked on the sign-in page has to be this account's role (checked only once the password is right, so it reveals nothing to a guesser)
-    const want = String(req.body.role || '').trim();
+    const want = str(req.body.role).trim();
     if (want && want !== s.role) throw fail(403, `This account is not ${/^[AEIOU]/i.test(want) ? 'an' : 'a'} ${want}. It is registered as ${s.role}. Pick ${s.role} and sign in again.`);
     if (s.status === 'Pending') throw fail(403, 'Your account is waiting for an admin to approve it.');
     if (s.status !== 'Active') throw fail(403, 'This account is disabled.');
@@ -20,15 +20,17 @@ export function mountAuthRoutes(router, guard) {
   }));
 
   router.post('/register', wrap(async (req, res) => {
-    const { name, email, phone, password, role } = req.body;
+    const { phone, password, role } = req.body;
+    const name = str(req.body.name).trim().slice(0, 120), email = str(req.body.email).trim().toLowerCase().slice(0, 160);
     if (!name || !email || !password) throw fail(400, 'Name, work email and a password are required.');
+    if (!/^\S+@\S+\.\S+$/.test(email)) throw fail(400, 'Enter a valid work email.');
     checkPassword(password);
     if (!/^01[3-9]\d{8}$/.test(digits(phone).slice(-11))) throw fail(400, 'Enter a valid 11-digit mobile number (01XXXXXXXXX).');
     if (!REGISTRABLE.includes(role)) throw fail(400, 'Choose one of the listed roles.');
-    const [ex] = await pool.query('SELECT id FROM staff WHERE email = ? OR phone = ?', [email.toLowerCase(), digits(phone).slice(-11)]);
+    const [ex] = await pool.query('SELECT id FROM staff WHERE email = ? OR phone = ?', [email, digits(phone).slice(-11)]);
     if (ex.length) throw fail(409, 'This email or mobile number is already registered.');
     await pool.query('INSERT INTO staff (name,email,phone,password_hash,role,status) VALUES (?,?,?,?,?,"Pending")',
-      [name, email.toLowerCase(), digits(phone).slice(-11), await bcrypt.hash(password, 10), role]);
+      [name, email, digits(phone).slice(-11), await bcrypt.hash(str(password), 10), role]);
     res.json({ ok: true });
   }));
 

@@ -21,6 +21,8 @@ import { pageOf, addRange, addSearch, wantsPage } from '../../listing.js';
 const router = Router();
 const guardSales = guardRole('rm', 'manager', 'accountant');
 const PROD = process.env.NODE_ENV === 'production';
+// a 4-digit code is only safe with a limit on guesses: 5 wrong tries lock the code for 15 minutes (a new code resets it)
+const otpTries = new Map();
 const otpHash = (id, code) => crypto.createHash('sha256').update(`dlv:${id}:${code}:${secret()}`).digest('hex');
 
 const SELECT = `SELECT d.*, o.customer_id, o.total, o.staff_id order_staff, o.approval_status, c.name customer, c.phone, c.contact_person,
@@ -111,6 +113,7 @@ router.post('/:id/otp', guardSales, wrap(async (req, res) => {
   if (d.status === 'Delivered') throw fail(409, 'Already delivered');
   const code = String(crypto.randomInt(0, 10000)).padStart(4, '0');
   await pool.query('UPDATE field_deliveries SET otp_hash = ? WHERE id = ?', [otpHash(d.id, code), d.id]);
+  otpTries.delete(d.id);
   const p = digits(d.phone).slice(-11);
   if (!PROD) console.log(`[field] delivery ${d.id} OTP: ${code}`);
   // there is no SMS gateway yet: outside production the code is only returned as devCode, in production nothing is sent at all
@@ -128,9 +131,12 @@ router.put('/:id/confirm', guardSales, wrap(async (req, res) => {
   const otp = String(req.body.otp || '').trim();
   let otpOk = false;
   if (otp) {
+    const tr = otpTries.get(d.id);
+    if (tr && tr.n >= 5 && Date.now() - tr.at < 15 * 60000) throw fail(429, 'Too many wrong codes. Send a new code to the customer.');
     const a = Buffer.from(otpHash(d.id, otp)), b = Buffer.from(d.otp_hash || '0');
     otpOk = a.length === b.length && crypto.timingSafeEqual(a, b);
-    if (!otpOk) throw fail(400, 'The customer code is not correct');
+    if (!otpOk) { otpTries.set(d.id, { n: (tr && Date.now() - tr.at < 15 * 60000 ? tr.n : 0) + 1, at: Date.now() }); throw fail(400, 'The customer code is not correct'); }
+    otpTries.delete(d.id);
   }
   if (!req.body.signature && !otpOk) throw fail(400, 'Get the customer\'s signature or OTP');
   const lat = req.body.lat == null ? null : coord(req.body.lat, 90), lng = req.body.lng == null ? null : coord(req.body.lng, 180);

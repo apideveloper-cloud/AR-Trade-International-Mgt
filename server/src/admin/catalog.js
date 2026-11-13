@@ -84,11 +84,11 @@ export function mountCatalogRoutes(router, guard) {
   }));
   router.post('/products', guard('products.manage'), wrap(async (req, res) => {
     const b = req.body;
-    if (!b.name || !b.cat || !b.brand) throw fail(400, 'Name, brand and category are required');
+    if (typeof b.name !== 'string' || typeof b.cat !== 'string' || typeof b.brand !== 'string' || !b.name || !b.cat || !b.brand) throw fail(400, 'Name, brand and category are required');
     const [[{ m }]] = await pool.query('SELECT COALESCE(MAX(id), 29999) m FROM products WHERE id >= 30000');
     const id = Math.max(30000, m + 1);
     await pool.query('INSERT INTO products (id,category_id,brand,name,old_price,price,img,stock,is_new,active,tech,color,yield_info,part,compat,spec,description,gallery,edited) VALUES (?,?,?,?,?,?,?,?,1,1,?,?,?,?,?,?,?,?,1)',
-      [id, b.cat, b.brand, b.name, parseInt(b.old, 10) || 0, parseInt(b.price, 10) || 0, localImg(b.img) || null, parseInt(b.stock, 10) || 0, b.tech || '', b.color || '', b.yield || '', b.part || '', b.compat || '', b.spec || '', sanitizeHtml(String(b.description || ''), SAN), JSON.stringify(Array.isArray(b.gallery) ? b.gallery.map(String).slice(0, 12) : (b.img ? [b.img] : []))]);
+      [id, b.cat, b.brand, b.name, Math.max(0, parseInt(b.old, 10) || 0), Math.max(0, parseInt(b.price, 10) || 0), localImg(b.img) || null, Math.max(0, parseInt(b.stock, 10) || 0), String(b.tech || ''), String(b.color || ''), String(b.yield || ''), String(b.part || ''), String(b.compat || ''), String(b.spec || ''), sanitizeHtml(String(b.description || ''), SAN), JSON.stringify((Array.isArray(b.gallery) ? b.gallery : (b.img ? [b.img] : [])).map(u => String(u).trim()).filter(isLocalImg).slice(0, 12))]);
     await assignSlug(pool, id);
     const [[p]] = await pool.query('SELECT * FROM products WHERE id = ?', [id]);
     res.json(prodOut(p));

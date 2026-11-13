@@ -95,7 +95,11 @@ async function cleanLines(conn, raw, { needCost = true } = {}) {
   const [rows] = await conn.query('SELECT id, name FROM products WHERE id IN (?)', [lines.map(l => l.productId)]);
   return lines.map(l => { const p = rows.find(r => r.id === l.productId); if (!p) throw fail(400, 'A product on the list no longer exists'); return { ...l, name: p.name }; });
 }
-const sum = lines => lines.reduce((t, l) => t + l.qty * l.unitCost - (l.discount || 0), 0);
+const sum = lines => { // money columns are INT: refuse a total they cannot hold instead of failing half way
+  const t = lines.reduce((a, l) => a + l.qty * l.unitCost - (l.discount || 0), 0);
+  if (!(t <= 2000000000)) throw fail(400, 'The total is too large');
+  return t;
+};
 const vendorOf = async (conn, id) => {
   const [[v]] = await conn.query('SELECT id, name FROM field_vendors WHERE id = ?', [parseInt(id, 10)]);
   if (!v) throw fail(400, 'Choose a vendor first');
@@ -238,7 +242,7 @@ router.get('/stock/:id/moves', guard(VIEW), wrap(async (req, res) => {
   res.json({ items: rows.map(m => ({ id: m.id, kind: m.kind, qty: m.qty, unitCost: m.unit_cost, balance: m.balance, ref: m.ref, note: m.note, by: m.staff_name, at: m.created_at })) });
 }));
 router.post('/stock/adjust', guard(MANAGE), wrap(async (req, res) => {
-  const productId = parseInt(req.body.productId, 10), counted = Math.round(Number(req.body.counted));
+  const productId = parseInt(req.body.productId, 10), counted = req.body.counted === null || req.body.counted === '' || req.body.counted === undefined ? NaN : Math.round(Number(req.body.counted)); // empty must not mean 0
   const note = text(req.body.note, 300);
   if (!productId || !Number.isInteger(counted) || counted < 0) throw fail(400, 'Enter the quantity you counted');
   if (!note) throw fail(400, 'Write the reason for the correction');
@@ -493,7 +497,7 @@ router.post('/payments', guard(MANAGE), wrap(async (req, res) => {
     const v = await vendorOf(conn, b.vendorId);
     let receiptId = text(b.receiptId, 20) || null;
     if (receiptId) {
-      const [[r]] = await conn.query('SELECT id, total, vendor_id, status, (SELECT COALESCE(SUM(amount), 0) FROM vendor_payments p WHERE p.receipt_id = stock_receipts.id) paid FROM stock_receipts WHERE id = ?', [receiptId]);
+      const [[r]] = await conn.query('SELECT id, total, vendor_id, status, (SELECT COALESCE(SUM(amount), 0) FROM vendor_payments p WHERE p.receipt_id = stock_receipts.id) paid FROM stock_receipts WHERE id = ? FOR UPDATE', [receiptId]); // locked: two payments at once cannot both fit in the same balance
       if (!r || r.vendor_id !== v.id) throw fail(400, 'That purchase does not belong to this vendor');
       if (!billedOf(r.status)) throw fail(409, `${r.id} is not approved yet, so it cannot be paid`);
       if (amount > r.total - Number(r.paid)) throw fail(409, `Only ৳ ${(r.total - Number(r.paid)).toLocaleString('en-US')} is still due on ${r.id}`);

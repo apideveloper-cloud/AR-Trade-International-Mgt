@@ -1,6 +1,7 @@
 // Small helpers shared by the public and admin API routes
 import crypto from 'node:crypto';
 import jwt from 'jsonwebtoken';
+import bcrypt from 'bcryptjs';
 import { pool } from './db.js';
 
 /** The one place the JWT secret is read. Production never falls back to the dev secret. */
@@ -35,9 +36,15 @@ export const wrap = fn => (req, res) => fn(req, res).catch(e => {
 
 /** Password rule for customers and staff: at least 8 characters with a letter and a number. */
 export const checkPassword = pw => {
-  const s = String(pw || '');
-  if (s.length < 8 || !/[A-Za-z]/.test(s) || !/\d/.test(s)) throw fail(400, 'Password must be at least 8 characters and include a letter and a number');
+  const s = typeof pw === 'string' ? pw : '';
+  if (s.length < 8 || s.length > 128 || !/[A-Za-z]/.test(s) || !/\d/.test(s)) throw fail(400, 'Password must be at least 8 characters and include a letter and a number');
 };
+
+/** Only real strings count as text (an object or array in a JSON body becomes ''; a number is kept as text), so .toLowerCase() / bcrypt never throw on hostile input. */
+export const str = v => (typeof v === 'string' ? v : typeof v === 'number' ? String(v) : '');
+const DUMMY_HASH = bcrypt.hashSync('timing-equaliser', 10);
+/** bcrypt check that never throws and takes as long for an unknown account (hash missing) as for a known one. */
+export const verifyPassword = (plain, hash) => bcrypt.compare(str(plain), hash || DUMMY_HASH).then(ok => !!hash && ok);
 
 /** Reads one cookie from the request (no cookie-parser dependency). */
 export const readCookie = (req, name) => {

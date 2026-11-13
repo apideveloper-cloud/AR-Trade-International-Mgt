@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import { pool } from './db.js';
-import { digits, fail, parseJson, wrap, checkPassword, readCustomer, sessionCookie } from './util.js';
+import { digits, fail, parseJson, wrap, checkPassword, readCustomer, sessionCookie, str, verifyPassword } from './util.js';
+import { limit } from './middleware/security.js';
 import { cancelOrder } from './flow.js';
 
 const router = Router();
@@ -35,14 +36,25 @@ router.put('/profile', wrap(async (req, res) => {
   const cur = parseJson(req.user.profile) || {};
   const profile = { ...cur };
   for (const k of ['gender', 'dob', 'org', 'bin', 'devices']) if (k in b) profile[k] = String(b[k] || '').slice(0, 200);
-  if (b.notifs) profile.notifs = b.notifs;
+  if (b.notifs && typeof b.notifs === 'object') { // only the known topics and channels, as true / false (the profile column is not a place for arbitrary data)
+    const n = {};
+    for (const t of Object.keys(NOTIF_DEFAULTS)) if (b.notifs[t] && typeof b.notifs[t] === 'object') n[t] = Object.fromEntries(Object.keys(NOTIF_DEFAULTS[t]).map(c => [c, !!b.notifs[t][c]]));
+    profile.notifs = n;
+  }
   const area = ['inside', 'suburb', 'outside'].includes(b.area) ? b.area : req.user.area;
-  if (b.email && b.email !== req.user.email) {
-    const [ex] = await pool.query('SELECT id FROM users WHERE email = ? AND id <> ?', [String(b.email).toLowerCase(), req.user.id]);
+  const email = (str(b.email).trim().toLowerCase().slice(0, 160)) || req.user.email;
+  if (email !== req.user.email) {
+    if (!/^\S+@\S+\.\S+$/.test(email)) throw fail(400, 'Enter a valid email');
+    const [ex] = await pool.query('SELECT id FROM users WHERE email = ? AND id <> ?', [email, req.user.id]);
     if (ex.length) throw fail(409, 'That email is already used by another account');
   }
+  const phone = b.phone != null ? digits(b.phone) : req.user.phone;
+  if (phone && phone !== req.user.phone) {
+    const [ex] = await pool.query('SELECT id FROM users WHERE phone = ? AND id <> ?', [phone, req.user.id]);
+    if (ex.length) throw fail(409, 'That mobile number is already used by another account');
+  }
   await pool.query('UPDATE users SET name = ?, email = ?, phone = ?, address = ?, area = ?, profile = ? WHERE id = ?',
-    [b.name || req.user.name, (b.email || req.user.email).toLowerCase(), b.phone != null ? digits(b.phone) : req.user.phone, b.address ?? req.user.address, area, JSON.stringify(profile), req.user.id]);
+    [str(b.name).trim().slice(0, 120) || req.user.name, email, phone, b.address != null ? str(b.address).slice(0, 500) : req.user.address, area, JSON.stringify(profile), req.user.id]);
   const [[u]] = await pool.query('SELECT * FROM users WHERE id = ?', [req.user.id]);
   res.json(profileOut(u));
 }));
@@ -56,7 +68,10 @@ router.get('/addresses', wrap(async (req, res) => {
 router.post('/addresses', wrap(async (req, res) => {
   const b = req.body;
   if (!b.line || !b.thana || !b.area) throw fail(400, 'Thana, area and house/road are required');
+  for (const k of ['label', 'district', 'thana', 'area', 'line']) if (b[k] != null) b[k] = String(b[k]).trim().slice(0, k === 'line' ? 200 : 80);
+  for (const k of ['lat', 'lng']) b[k] = b[k] != null && b[k] !== '' && Number.isFinite(Number(b[k])) && Math.abs(Number(b[k])) <= 180 ? Number(b[k]) : null;
   const [[{ n }]] = await pool.query('SELECT COUNT(*) n FROM user_addresses WHERE user_id = ?', [req.user.id]);
+  if (n >= 20) throw fail(400, 'You can save up to 20 addresses');
   const def = b.isDefault || n === 0;
   if (def) await pool.query('UPDATE user_addresses SET is_default = 0 WHERE user_id = ?', [req.user.id]);
   await pool.query('INSERT INTO user_addresses (user_id,label,district,thana,area,line,lat,lng,is_default) VALUES (?,?,?,?,?,?,?,?,?)',
@@ -86,6 +101,9 @@ router.get('/family', wrap(async (req, res) => {
 router.post('/family', wrap(async (req, res) => {
   const b = req.body;
   if (!b.name) throw fail(400, 'Name is required');
+  for (const k of ['name', 'relation', 'address']) if (b[k] != null) b[k] = String(b[k]).trim().slice(0, k === 'address' ? 300 : 120);
+  const [[{ fn }]] = await pool.query('SELECT COUNT(*) fn FROM user_family WHERE user_id = ?', [req.user.id]);
+  if (fn >= 30) throw fail(400, 'Too many family members saved');
   if (b.phone && !/^01\d{9}$/.test(digits(b.phone))) throw fail(400, 'Enter a valid mobile number (01XXXXXXXXX)');
   await pool.query('INSERT INTO user_family (user_id,name,relation,phone,address) VALUES (?,?,?,?,?)', [req.user.id, b.name, b.relation || '', digits(b.phone), b.address || '']);
   res.json({ ok: true });
@@ -103,7 +121,7 @@ router.post('/reminders', wrap(async (req, res) => {
   const days = [15, 30, 45, 60, 90].includes(+every) ? +every : 30;
   const [[p]] = await pool.query('SELECT id FROM products WHERE id = ?', [productId]);
   if (!p) throw fail(404, 'Product not found');
-  await pool.query('INSERT INTO user_reminders (user_id,product_id,qty,every_days,next_at) VALUES (?,?,?,?,DATE_ADD(CURDATE(), INTERVAL ? DAY))', [req.user.id, p.id, Math.max(1, +qty || 1), days, days]);
+  await pool.query('INSERT INTO user_reminders (user_id,product_id,qty,every_days,next_at) VALUES (?,?,?,?,DATE_ADD(CURDATE(), INTERVAL ? DAY))', [req.user.id, p.id, Math.min(999, Math.max(1, Math.round(+qty) || 1)), days, days]);
   res.json({ ok: true });
 }));
 router.put('/reminders/:id', wrap(async (req, res) => {
@@ -154,9 +172,9 @@ router.delete('/me', wrap(async (req, res) => {
   res.json({ ok: true });
 }));
 
-router.put('/password', wrap(async (req, res) => {
+router.put('/password', limit('pwchange', 10, 30 * 60000), wrap(async (req, res) => {
   const { current, next } = req.body;
-  if (!(await bcrypt.compare(current || '', req.user.password_hash))) throw fail(400, 'Current password is wrong');
+  if (!(await verifyPassword(current, req.user.password_hash))) throw fail(400, 'Current password is wrong');
   checkPassword(next);
   const hash = await bcrypt.hash(next, 10);
   await pool.query('UPDATE users SET password_hash = ? WHERE id = ?', [hash, req.user.id]);

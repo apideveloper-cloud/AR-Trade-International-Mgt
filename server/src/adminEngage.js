@@ -102,12 +102,14 @@ export function mountEngageRoutes(router, guard) {
   router.post('/jobs', guard('careers.manage'), wrap(async (req, res) => {
     const j = req.body;
     if (!j.title || !j.dept) throw fail(400, 'Title and department are required');
-    const id = j.id || 'J-' + (Math.floor(Date.now() / 1000) % 100000);
+    const id = String(j.id || 'J-' + (Math.floor(Date.now() / 1000) % 100000)).slice(0, 20);
+    const due = j.deadline ? new Date(j.deadline) : new Date(Date.now() + 30 * 864e5);
+    if (isNaN(due)) throw fail(400, 'Enter a valid deadline date');
     const lines = v => (Array.isArray(v) ? v : String(v || '').split('\n')).map(s => s.trim()).filter(Boolean);
     await pool.query(
       `REPLACE INTO jobs (id,title,dept,type,loc,exp,salary,vacancies,deadline,open,about,resp,req,perks) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [id, j.title, j.dept, j.type || 'Full-time', j.loc || '', j.exp || '', j.salary || '', parseInt(j.vacancies, 10) || 1,
-        (j.deadline ? new Date(j.deadline) : new Date(Date.now() + 30 * 864e5)).toISOString().slice(0, 19).replace('T', ' '), +(j.open !== false), j.about || '',
+        due.toISOString().slice(0, 19).replace('T', ' '), +(j.open !== false), j.about || '',
         JSON.stringify(lines(j.resp)), JSON.stringify(lines(j.req)), JSON.stringify(lines(j.perks))]);
     res.json({ id });
   }));

@@ -19,6 +19,7 @@ const TOOLS = [
 function PageEditor({ id, group, onDone }) {
   const [f, setF] = useState({ title: '', slug: '', excerpt: '', cover: '', status: 'Published', order: 0, metaTitle: '', metaDesc: '', metaKeywords: '', noindex: false });
   const [loading, setLoading] = useState(!!id);
+  const [loadErr, setLoadErr] = useState(false); // the article could not be read: never show an empty form that could overwrite it
   const [busy, setBusy] = useState(false);
   const [upl, setUpl] = useState(false);
   const [msg, setMsg] = useState(null);
@@ -28,11 +29,14 @@ function PageEditor({ id, group, onDone }) {
 
   useEffect(() => {
     if (!id) { if (ed.current) ed.current.innerHTML = '<p><br></p>'; return; }
+    let live = true;
     adm.get('/pages/' + id).then(r => {
+      if (!live) return;
       setF({ title: r.title, slug: r.slug, excerpt: r.excerpt, cover: r.cover, status: r.status, order: r.order, metaTitle: r.metaTitle, metaDesc: r.metaDesc, metaKeywords: r.metaKeywords, noindex: r.noindex });
       setLoading(false);
-      setTimeout(() => { if (ed.current) ed.current.innerHTML = r.body; }, 0);
-    }).catch(e => { setMsg({ err: true, t: e.message }); setLoading(false); });
+      setTimeout(() => { if (live && ed.current) ed.current.innerHTML = r.body; }, 0);
+    }).catch(e => { if (!live) return; setMsg({ err: true, t: e.message }); setLoadErr(true); setLoading(false); });
+    return () => { live = false; };
   }, [id]);
 
   const cmd = (c, v) => { ed.current && ed.current.focus(); document.execCommand(c, false, v || null); };
@@ -55,6 +59,7 @@ function PageEditor({ id, group, onDone }) {
   };
 
   if (loading) return <div className="a-card">Loading…</div>;
+  if (loadErr) return <div className="a-card"><div className="a-msg err">{msg?.t}</div><button type="button" className="a-btn ghost sm" onClick={() => onDone()}>← Back</button></div>;
   return (
     <div className="a-card" style={{ gap: 14 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>

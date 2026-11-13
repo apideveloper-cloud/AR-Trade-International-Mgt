@@ -23,8 +23,8 @@ function ResultsForm({ c, onDone }) {
 export default function Campaigns() {
   const [camps, setCamps] = useState(null);
   const [tpls, setTpls] = useState([]);
-  const load = () => api.get('/campaigns').then(setCamps);
-  useEffect(() => { load(); api.get('/templates').then(setTpls); }, []);
+  const load = () => api.get('/campaigns').then(setCamps).catch(() => {});
+  useEffect(() => { load(); api.get('/templates').then(setTpls).catch(() => {}); }, []);
   const tpl = id => tpls.find(t => t.id === id);
   return (
     <div className="em-s44">

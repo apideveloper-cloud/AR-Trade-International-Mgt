@@ -17,7 +17,7 @@ export default function RiderApp({ staff, reload }) {
   const canvas = useRef(null);
   const signed = useRef(false);
 
-  const loadRiders = useCallback(() => hub.get('/riders').then(r => { setRiders(r); setRiderId(id => id ?? r[0]?.id); }), []);
+  const loadRiders = useCallback(() => hub.get('/riders').then(r => { setRiders(r); setRiderId(id => id ?? r[0]?.id); }).catch(e => setErr(e.message)), []);
   const loadMe = useCallback(() => (riderId ? hub.get('/riders/' + riderId).then(setData).catch(e => setErr(e.message)) : Promise.resolve()), [riderId]);
   useEffect(() => { loadRiders(); }, [loadRiders]);
   useEffect(() => { loadMe(); }, [loadMe]);

@@ -13,7 +13,7 @@ const PREFIX = /^\/api\/(admin|inv|quotes|mkt|hub|field)(\/|$)/;
 const MUTATING = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 const SKIP = [/^\/api\/field\/track\b/, /^\/api\/quotes\/shared\//, /\/read(-all)?$/, /^\/api\/admin\/audit\b/, /^\/api\/mkt\/preview$/]; // GPS pings, "mark notification read" and email previews change nothing; reading the log is not logged
 const OPENED = /(\.pdf|\/pdf|\/download|\/cv)$/; // documents are logged when they are opened or downloaded
-const SECRET_KEY = /pass|token|secret|api_?key|otp|signature|pin\b|authorization|hash|(^|_)code$|^current$/i;
+const SECRET_KEY = /pass|token|secret|api_?key|otp|signature|pin\b|authorization|hash|(^|_)code$|^current$|^next$|^new(_?password)?$/i;
 
 export async function ensureAudit() {
   await pool.query(`CREATE TABLE IF NOT EXISTS audit_log (
@@ -125,7 +125,7 @@ async function record(req, res, url, payload) {
   const ok = res.statusCode < 400;
   const body = req.body && Object.keys(req.body).length ? clean(req.body) : null;
   const tried = d.action === 'Signed in' && !signedIn ? String(req.body?.id || '').slice(0, 120) : '';
-  const ip = String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim().replace(/^::ffff:/, '').slice(0, 45);
+  const ip = String(req.ip || req.socket.remoteAddress || '').trim().replace(/^::ffff:/, '').slice(0, 45); // req.ip honours the one trusted proxy; a client-sent X-Forwarded-For must not choose what the log says
   await pool.query(
     'INSERT INTO audit_log (staff_id, staff_name, staff_role, module, action, entity, entity_id, method, path, status, ok, error, summary, detail, ip, agent) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
     [signedIn?.id ?? null, signedIn?.name || tried || '', signedIn?.role || '', d.module, d.action, d.entity, d.entityId, req.method, url.slice(0, 255), res.statusCode, ok ? 1 : 0, ok ? '' : String(payload?.error || '').slice(0, 255),
