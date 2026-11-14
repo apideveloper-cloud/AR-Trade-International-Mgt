@@ -24,7 +24,7 @@ export default function Prefs() {
     setD({ ...d, prefs }); setSaved(false);
     try { await api.put('/prefs/' + token, prefs); setSaved(true); } catch (e) { setErr(e.message); load(); }
   };
-  const act = async what => { await api.post(`/prefs/${token}/${what}`); load(); };
+  const act = async what => { try { await api.post(`/prefs/${token}/${what}`); } catch (e) { setErr(e.message); } load(); };
 
   return (
     <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: '32px 18px', background: 'radial-gradient(90% 60% at 50% 0%,#dbe6f7 0%,#eef1f6 70%)' }}>

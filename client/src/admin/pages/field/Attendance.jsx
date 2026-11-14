@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { fld } from '../../adminApi.js';
 import { Modal, Summary } from '../../ui.jsx';
 import { Facts, Notice, usePaged } from '../../fieldKit.jsx';
+import { saveTextFile } from '../../hooks/download.js';
 import { hhmm, hours, Av, Chip, osm } from './shared.jsx';
 import '../../field.css';
 
@@ -27,8 +28,7 @@ export function FieldAttendance() {
   const exportCsv = () => {
     const esc = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
     const csv = ['Name,Role,Phone,Status,Clock in,Clock out,Hours,Days this month', ...rows.map(r => [r.name, r.roleLabel, r.phone, r.status, hhmm(r.firstIn), hhmm(r.lastOut), hours(r.minutes), r.monthDays].map(esc).join(','))].join('\n');
-    const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv' })), download: `attendance-${d.date}.csv` });
-    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    saveTextFile(`attendance-${d.date}.csv`, '﻿' + csv);
   };
   if (err && !d) return <Notice err={err} />;
   if (!d) return <span className="spin" />;

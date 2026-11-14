@@ -10,8 +10,7 @@ import './styles/popups-toasts.css';
 import './styles/error-pages-loader.css';
 import './styles/live-search-clients.css';
 import './styles/mobile-nav.css';
-import './account.css';
-import './product.css';
+import './styles/pd-best-sellers.css'; // shared bits (the chat button, best sellers on the home page); the rest of the product-page styles load with the product page
 import './blog.css';
 import './flat.css';
 

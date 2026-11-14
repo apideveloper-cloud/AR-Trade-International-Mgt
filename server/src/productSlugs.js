@@ -8,7 +8,7 @@ import { productSlug } from './slug.js';
 export async function pickSlug(taken, { id, name, part }) {
   const partSlug = productSlug(part, 40);
   const tries = [productSlug(name), productSlug(name, 100)];
-  if (partSlug) tries.push(productSlug(name, 80) + '-' + partSlug);
+  if (partSlug) tries.push(productSlug(name, Math.min(80, 119 - partSlug.length)) + '-' + partSlug);
   for (const s of tries) if (s && !(await taken(s))) return s;
   return (tries[0] || 'product') + '-' + id;
 }

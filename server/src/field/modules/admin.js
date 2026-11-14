@@ -34,7 +34,6 @@ async function statusText(key) {
 
 router.get('/overview', admin, wrap(async (req, res) => {
   const now = new Date();
-  const d30 = period('week', now); void d30;
   const cur = { start: new Date(now.getTime() - 30 * 864e5), end: now };
   const prev = { start: new Date(now.getTime() - 60 * 864e5), end: cur.start };
   const q = async w => { const t = tsBetween('created_at', w.start, w.end); const [[r]] = await pool.query(`SELECT COUNT(*) n, COALESCE(SUM(total), 0) s FROM orders WHERE status <> 'Cancelled' AND ${t.sql}`, t.args); return r; };

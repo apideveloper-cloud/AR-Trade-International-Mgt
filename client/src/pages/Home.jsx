@@ -4,7 +4,7 @@ import { productPath } from '../slug.js';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import ProductCard, { BuyAction } from '../components/ProductCard.jsx';
-import { fmt, offPct } from '../api.js';
+import { copyText, fmt, offPct } from '../api.js';
 import { CAT_FALLBACK, CAT_TINT, SVC_IMGS, isPhoto } from '../data.js';
 import { useStore } from '../store.jsx';
 import useReveal from '../useReveal.js';
@@ -194,7 +194,7 @@ function Popular() {
 function Offer() {
   const { site, user, setLoginOpen } = useStore();
   const [copied, setCopied] = useState(false);
-  const copy = () => { try { navigator.clipboard.writeText(site.coupon); } catch { /* clipboard unavailable */ } setCopied(true); };
+  const copy = () => copyText(site.coupon).then(ok => { if (ok) setCopied(true); });
   return (
     <section className="sec">
       <div className="offer">
@@ -395,7 +395,7 @@ export default function Home() {
               <Link to={productPath(deal)} className="pic"><img src={deal.img} alt={deal.name} loading="lazy" decoding="async" /></Link>
               <Link to={productPath(deal)}><span className="nm clamp2">{deal.name}</span></Link>
               <div className="foot">
-                <span className="pr"><b>{fmt(deal.price)}</b><s>{fmt(deal.old)}</s></span>
+                <span className="pr"><b>{deal.price ? fmt(deal.price) : 'On request'}</b>{off > 0 && <s>{fmt(deal.old)}</s>}</span>
                 <button className="btn" onClick={() => addToCart(deal)}>+ Add to cart</button>
               </div>
             </div>

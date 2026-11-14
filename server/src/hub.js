@@ -62,7 +62,7 @@ hub.put('/orders/:id/flow', guard(['hub.dispatch','hub.deliver']), wrap(async (r
   }
   if (flow === 'Out for delivery') {
     if (!o.rider_id && !o.courier) throw fail(400, 'Assign a rider or courier first');
-    extra.out_at = new Date().toISOString().slice(0, 19).replace('T', ' ');
+    extra.out_at = new Date(); // a Date is written and read back in the same (driver) time zone; the old UTC text was shifted by the server's offset
     extra.otp = o.otp || String(1000 + crypto.randomInt(9000));
   }
   await applyFlow(o.id, flow, note || '', extra);
@@ -115,7 +115,7 @@ hub.post('/orders/:id/deliver', guard(['hub.dispatch','hub.deliver']), wrap(asyn
     if (!can(req.staff, 'hub.dispatch') || !o.courier) throw fail(403, 'Only staff can close a courier delivery');
     pod.name = o.courier;
   } else if (method === 'otp') {
-    if (String(otp || '').trim() !== String(o.otp)) throw fail(400, 'OTP does not match');
+    if (!o.otp || String(otp || '').trim() !== String(o.otp)) throw fail(400, 'OTP does not match');
   } else if (method === 'sig') {
     if (!/^data:image\/png;base64,/.test(signature || '') || signature.length > 300000) throw fail(400, 'Ask the receiver to sign in the box.');
     pod.name = String(name || '').slice(0, 80); pod.signature = signature;
@@ -232,7 +232,7 @@ pub.get('/live', wrap(async (req, res) => {
 pub.post('/return', wrap(async (req, res) => {
   const { id, phone, reason, note } = req.body;
   const [[o]] = await pool.query('SELECT * FROM orders WHERE id = ?', [String(id || '').toUpperCase()]);
-  if (!o || digits(o.customer_phone).slice(-10) !== digits(phone).slice(-10)) throw fail(404, 'No order found with that ID and mobile number.');
+  if (!o || !digits(phone) || digits(o.customer_phone).slice(-10) !== digits(phone).slice(-10)) throw fail(404, 'No order found with that ID and mobile number.');
   if (!RETURN_REASONS.includes(reason)) throw fail(400, 'Choose a reason');
   const el = returnEligible(o, reason);
   if (!el.ok) throw fail(400, el.why);

@@ -1,5 +1,4 @@
 /* Purchase drawer */
-.a-drawer:has(.pd-top) { width: min(720px, 100%); }
 .pd-steps { list-style: none; margin: 0 0 12px; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .pd-steps li { position: relative; display: flex; align-items: center; gap: 10px; padding: 9px 12px; border: 1px solid #e3e8f1; border-radius: 12px; background: #fff; color: #8a8f9b; min-width: 0; }
 .pd-steps i { flex: none; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-size: 12px; font-weight: 800; background: #eceef3; color: #6b7388; }
@@ -52,7 +51,6 @@
 @media (max-width: 640px) { .pd-h-meta { grid-template-columns: repeat(2, minmax(0, 1fr)); } .pd-hero { grid-template-columns: 1fr; } .pd-h-r { align-items: flex-start; text-align: left; } .pd-lh { display: none; } }
 
 /* Purchase drawer, compact pass: everything one size down so the products and the action bar fit without scrolling */
-.a-drawer:has(.pd-top) { width: min(640px, 100%); }
 .pd-hero { padding: 11px 14px 10px; gap: 8px 14px; border-radius: 14px; margin-bottom: 10px; box-shadow: 0 12px 22px -16px rgba(11, 22, 49, .8); }
 .pd-h-av { width: 36px; height: 36px; border-radius: 11px; font-size: 13px; }
 .pd-h-l { gap: 10px; } .pd-h-v { gap: 3px; } .pd-h-v > b { font-size: 15px; } .pd-h-v i { font-size: 10px; padding: 1px 7px; }

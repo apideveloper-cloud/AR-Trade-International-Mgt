@@ -67,7 +67,7 @@ export default function Header() {
     const title = (cats.find(c => c.id === m.cat) || {}).t || m.t;
     return { ...m, title, items: [{ t: `All ${title} (${pr.length})`, to: '/shop/' + m.cat }, ...top.map(([b, n]) => ({ t: `${b} (${n})`, to: sh(m.cat, b) }))] };
   });
-  const first = user ? user.name.split(' ')[0] : null;
+  const first = user ? String(user.name || '').split(' ')[0] : null;
 
   return (
     <>
@@ -83,7 +83,7 @@ export default function Header() {
             </a>
             {user ? (
               <Link to="/account" className="chip">
-                <span className="ic fill">{user.name[0].toUpperCase()}</span>
+                <span className="ic fill">{String(user.name || '?')[0].toUpperCase()}</span>
                 <span className="tx"><small>Hello,</small><b>{first}</b></span>
               </Link>
             ) : (

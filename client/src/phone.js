@@ -1,8 +1,11 @@
 // Bangladesh mobile numbers. The same rule runs again on the server, so what is accepted here is accepted there.
 
+/** Bangla digits (০-৯) become 0-9, so a customer typing in Bangla is understood. */
+export const toAsciiDigits = v => String(v ?? '').replace(/[০-৯]/g, c => String(c.charCodeAt(0) - 0x09E6));
+
 /** 01XXXXXXXXX (operators 013 to 019) from 01712-345678, +880 1712 345678, 8801712345678 and the like; '' if the text is not a mobile number. */
 export function bdMobile(v) {
-  const raw = String(v ?? '');
+  const raw = toAsciiDigits(v);
   if (!raw || /[^\d\s+\-().]/.test(raw)) return '';
   let d = raw.replace(/\D/g, '');
   if (d.length === 13 && d.startsWith('880')) d = '0' + d.slice(3);
@@ -17,7 +20,7 @@ export const MOBILE_HINT = 'Enter a valid mobile number, e.g. 01712-345678';
 
 /** Live check while typing: '' if the text is fine or still a possible start of a number, otherwise the hint. */
 export function mobileProblem(v) {
-  const raw = String(v ?? '').trim();
+  const raw = toAsciiDigits(v).trim();
   if (!raw || bdMobile(raw)) return '';
   if (/[^\d\s+\-().]/.test(raw)) return MOBILE_HINT;
   let d = raw.replace(/\D/g, '');

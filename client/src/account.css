@@ -38,7 +38,6 @@
 a.ac-card:hover { border-color: #d6dce7; color: #16181d; }
 .ac-card-hd { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid #efede8; }
 .ac-card-hd b { font-family: var(--disp); font-weight: 700; font-size: 18px; letter-spacing: -.01em; }
-.ac-link { font-size: 13px; font-weight: 700; color: oklch(0.48 0.17 258); background: oklch(0.96 0.02 258); border-radius: 8px; padding: 6px 10px; }
 .ac-grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); gap: 20px; align-items: start; }
 .ac-row { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 12px 20px; border-bottom: 1px solid #f0f1f5; color: #16181d; }
 .ac-row:hover { background: #f7f8fb; color: #16181d; }

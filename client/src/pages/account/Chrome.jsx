@@ -9,14 +9,14 @@ export function AccountHero({ user, profile, orders }) {
   const live = (orders || []).filter(o => o.status !== 'Cancelled');
   const spent = live.reduce((a, o) => a + o.total, 0);
   const hour = new Date().getHours();
-  const greet = `${hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'}, ${user.name.split(' ')[0]}`;
+  const greet = `${hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'}, ${String(user.name || '').split(' ')[0]}`;
   const kpis = [['▤', 'Orders', live.length], ['৳', 'Total spent', fmt(spent)], ['♡', 'Wishlist', wish.length], ['⌂', 'In cart', cartCount]];
   return (
   <section className="ac-hero">
     <div className="in">
       <div className="ac-s139">
         <div className="ac-s140">
-          <div className="ac-av"><div>{user.name[0].toUpperCase()}</div></div>
+          <div className="ac-av"><div>{String(user.name || '?')[0].toUpperCase()}</div></div>
           <div className="ac-s141">
             <span className="ac-eyebrow"><i />Member since {new Date(profile.since).getFullYear()}</span>
             <h1>{greet}</h1>

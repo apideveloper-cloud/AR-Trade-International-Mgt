@@ -21,6 +21,7 @@ const abs = (base, u) => (!u ? '' : /^https?:\/\//.test(u) ? u : base + u);
 
 /** Public content pages: their address is forced to lower case and no trailing slash. Tokens (reset, prefs) and the apps are not touched. */
 const PUBLIC_PAGE = /^\/(shop|product|blog|services|about|contact|faq|offers|careers|policy)(\/|$)/i;
+const dec = s => { try { return decodeURIComponent(s); } catch { return s; } }; // a malformed %-escape in the address must be a 404, not a 500
 const search = req => { const q = req.originalUrl.indexOf('?'); return q < 0 ? '' : req.originalUrl.slice(q); };
 const PRIVATE = /^\/(cart|checkout|success|account|login|track|wishlist|compare|reset|prefs|admin|hub|email|field)(\/|$)/;
 const STATIC = {
@@ -107,7 +108,7 @@ export function mountSeo(app, dist) {
     }
 
     // one address per page: lower case, no trailing slash (a second spelling would be a duplicate page for search engines)
-    const shown = (() => { try { return decodeURIComponent(p); } catch { return p; } })();
+    const shown = dec(p);
     if (PUBLIC_PAGE.test(shown) && shown !== shown.toLowerCase()) return res.redirect(301, encodeURI(shown.toLowerCase()) + search(req));
     if (PUBLIC_PAGE.test(req.path) && req.path.length > 1 && req.path.endsWith('/')) return res.redirect(301, p + search(req));
 
@@ -165,13 +166,13 @@ export function mountSeo(app, dist) {
         m = { path: p, type: 'product', title, desc, keywords: x.meta_keywords, image: imgs[0], ld: [prod, crumbs] };
       }
     } else if ((r = p.match(/^\/blog\/([^/]+)$/))) {
-      const [[x]] = await pool.query('SELECT slug, title, excerpt, cover, author, body, meta_title, meta_desc, meta_keywords, noindex, DATE_FORMAT(published, "%Y-%m-%d") d, DATE_FORMAT(COALESCE(updated_at, published), "%Y-%m-%d") dm FROM blog_posts WHERE slug = ? AND status = "Published"', [decodeURIComponent(r[1])]);
+      const [[x]] = await pool.query('SELECT slug, title, excerpt, cover, author, body, meta_title, meta_desc, meta_keywords, noindex, DATE_FORMAT(published, "%Y-%m-%d") d, DATE_FORMAT(COALESCE(updated_at, published), "%Y-%m-%d") dm FROM blog_posts WHERE slug = ? AND status = "Published"', [dec(r[1])]);
       if (x) {
         const desc = x.meta_desc || x.excerpt || clip(plain(x.body), 155);
         m = { path: p, type: 'article', title: x.meta_title || `${x.title} | ${NAME}`, desc, keywords: x.meta_keywords, noindex: !!x.noindex, image: x.cover, ld: [{ '@context': 'https://schema.org', '@type': 'BlogPosting', headline: clip(String(x.title || ''), 110), description: clip(plain(desc), 300) || undefined, image: abs(base, x.cover || LOGO), datePublished: x.d, dateModified: x.dm || x.d, author: { '@type': !x.author || x.author === NAME ? 'Organization' : 'Person', name: x.author || NAME }, publisher: { '@type': 'Organization', name: NAME, logo: { '@type': 'ImageObject', url: base + '/api/uploads/site/artrade-logo.png' } }, mainEntityOfPage: base + p }] };
       }
     } else if ((r = p.match(/^\/services\/([^/]+)$/))) {
-      const [[x]] = await pool.query('SELECT title, excerpt, cover, body, meta_title, meta_desc, meta_keywords, noindex FROM site_pages WHERE slug = ? AND status = "Published"', [decodeURIComponent(r[1])]);
+      const [[x]] = await pool.query('SELECT title, excerpt, cover, body, meta_title, meta_desc, meta_keywords, noindex FROM site_pages WHERE slug = ? AND status = "Published"', [dec(r[1])]);
       if (x) m = { path: p, title: x.meta_title || `${x.title} | ${NAME}`, desc: x.meta_desc || x.excerpt || clip(plain(x.body), 155), keywords: x.meta_keywords, noindex: !!x.noindex, image: x.cover };
     } else if ((r = p.match(/^\/shop\/([^/]+)$/)) && r[1] !== 'all') {
       const [[x]] = await pool.query('SELECT title, description FROM categories WHERE id = ?', [r[1]]);
@@ -193,10 +194,10 @@ export function mountSeo(app, dist) {
     if (!m) {
       // a page that does not exist must answer 404, not 200 (Google treats a 200 "not found" page as a soft 404)
       let exists = p === '/' || PRIVATE.test(p);
-      if (!exists && (r = p.match(/^\/careers\/([^/]+)$/))) exists = !!(await pool.query('SELECT 1 FROM jobs WHERE id = ?', [decodeURIComponent(r[1])]))[0].length;
+      if (!exists && (r = p.match(/^\/careers\/([^/]+)$/))) exists = !!(await pool.query('SELECT 1 FROM jobs WHERE id = ?', [dec(r[1])]))[0].length;
       if (!exists && (r = p.match(/^\/policy\/([^/]+)$/))) {
         const c = parseJson((await pool.query('SELECT v FROM settings WHERE k = "content"'))[0][0]?.v) || {};
-        exists = (c.policies || []).some(x => x.k === decodeURIComponent(r[1]));
+        exists = (c.policies || []).some(x => x.k === dec(r[1]));
       }
       if (!exists) status = 404;
       m = { path: p, title: status === 404 ? 'Page not found | ' + NAME : NAME, desc: STATIC['/'][1], noindex: status === 404 || PRIVATE.test(p) || p !== '/' };

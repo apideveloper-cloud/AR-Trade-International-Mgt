@@ -43,10 +43,10 @@ export function mountFormRoutes(app) {
   }));
 
   app.post('/api/contact', limit('contact', 8, 1800000), wrap(async (req, res) => {
-    const { name, contact, company, msg, subject } = req.body;
+    const b = req.body, [name, contact, company, msg, subject] = ['name', 'contact', 'company', 'msg', 'subject'].map(k => (typeof b[k] === 'string' || typeof b[k] === 'number' ? String(b[k]) : '')); // a JSON object/array here would be expanded into broken SQL
     if (!name || !msg) throw fail(400, 'Name and message are required');
-    if (String(name).length > 120 || String(contact || '').length > 160 || String(company || '').length > 160 || String(subject || '').length > 160 || String(msg).length > 5000) throw fail(400, 'One of the fields is too long');
-    await pool.query('INSERT INTO messages (name,contact,company,subject,body) VALUES (?,?,?,?,?)', [name, contact || '', company || '', subject || '', msg]);
+    if (name.length > 120 || contact.length > 160 || company.length > 160 || subject.length > 160 || msg.length > 5000) throw fail(400, 'One of the fields is too long');
+    await pool.query('INSERT INTO messages (name,contact,company,subject,body) VALUES (?,?,?,?,?)', [name, contact, company, subject, msg]);
     // the message is already saved for the admin inbox; the email is a best-effort notification
     if (mailReady()) {
       const shop = (await getSettings()).site?.email;

@@ -27,7 +27,8 @@ export function mountEngageRoutes(router, guard) {
   }));
   router.put('/reviews/:id', guard('reviews.moderate'), wrap(async (req, res) => {
     if (!['Pending', 'Approved', 'Rejected'].includes(req.body.status)) throw fail(400, 'Unknown status');
-    await pool.query('UPDATE reviews SET status = ?, reviewed_at = NOW() WHERE id = ?', [req.body.status, req.params.id]);
+    const [r] = await pool.query('UPDATE reviews SET status = ?, reviewed_at = NOW() WHERE id = ?', [req.body.status, req.params.id]);
+    if (!r.affectedRows) throw fail(404, 'Review not found');
     res.json({ ok: true });
   }));
   router.delete('/reviews/:id', guard('reviews.moderate'), wrap(async (req, res) => { await pool.query('DELETE FROM reviews WHERE id = ?', [req.params.id]); res.json({ ok: true }); }));
@@ -107,7 +108,8 @@ export function mountEngageRoutes(router, guard) {
     if (isNaN(due)) throw fail(400, 'Enter a valid deadline date');
     const lines = v => (Array.isArray(v) ? v : String(v || '').split('\n')).map(s => s.trim()).filter(Boolean);
     await pool.query(
-      `REPLACE INTO jobs (id,title,dept,type,loc,exp,salary,vacancies,deadline,open,about,resp,req,perks) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      `INSERT INTO jobs (id,title,dept,type,loc,exp,salary,vacancies,deadline,open,about,resp,req,perks) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+       ON DUPLICATE KEY UPDATE title=VALUES(title), dept=VALUES(dept), type=VALUES(type), loc=VALUES(loc), exp=VALUES(exp), salary=VALUES(salary), vacancies=VALUES(vacancies), deadline=VALUES(deadline), open=VALUES(open), about=VALUES(about), resp=VALUES(resp), req=VALUES(req), perks=VALUES(perks)`,
       [id, j.title, j.dept, j.type || 'Full-time', j.loc || '', j.exp || '', j.salary || '', parseInt(j.vacancies, 10) || 1,
         due.toISOString().slice(0, 19).replace('T', ' '), +(j.open !== false), j.about || '',
         JSON.stringify(lines(j.resp)), JSON.stringify(lines(j.req)), JSON.stringify(lines(j.perks))]);
@@ -132,7 +134,8 @@ export function mountEngageRoutes(router, guard) {
   }));
   router.put('/applications/:id', guard('careers.manage'), wrap(async (req, res) => {
     if (!['New', 'Shortlisted', 'Interview', 'Offered', 'Hired', 'Rejected'].includes(req.body.stage)) throw fail(400, 'Unknown stage');
-    await pool.query('UPDATE applications SET stage = ? WHERE id = ?', [req.body.stage, req.params.id]);
+    const [r] = await pool.query('UPDATE applications SET stage = ? WHERE id = ?', [req.body.stage, req.params.id]);
+    if (!r.affectedRows) throw fail(404, 'Application not found');
     res.json({ ok: true });
   }));
 

@@ -9,7 +9,7 @@
 .foot-cta b { font-family: var(--disp); font-weight: 800; font-size: 22px; color: #fff; letter-spacing: -.02em; display: block; }
 .foot-cta .ghost { border: 1px solid rgba(255,255,255,.2); background: transparent; color: #fff; border-radius: 12px; padding: 12px 18px; font-size: 14px; font-weight: 700; }
 .foot-cta .ghost:hover { background: rgba(255,255,255,.08); }
-.foot-cta .call { background: var(--grad); color: #fff; border-radius: 12px; padding: 12px 20px; font-size: 14px; font-weight: 800; box-shadow: 0 12px 24px -12px oklch(0.5 0.15 252 / .9); }
+.foot-cta .call { background: linear-gradient(135deg, oklch(0.52 0.13 238), oklch(0.46 0.15 252)); color: #fff; border-radius: 12px; padding: 12px 20px; font-size: 14px; font-weight: 800; box-shadow: 0 12px 24px -12px oklch(0.5 0.15 252 / .9); }
 .foot-cta .call:hover { color: #fff; filter: brightness(1.08); }
 .foot-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 32px 28px; }
 .foot-grid .col { display: flex; flex-direction: column; gap: 11px; min-width: 0; }
@@ -31,3 +31,19 @@
 .foot-bot a:hover { color: #fff; }
 .foot-bot .dev-by { margin-left: auto; white-space: nowrap; }
 
+
+/* footer call-to-action */
+.foot-acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.foot-cta .call, .foot-cta .ghost { display: inline-flex; align-items: center; justify-content: center; gap: 8px; text-align: center; cursor: pointer; transition: transform .15s, background .2s, filter .2s; }
+@media (max-width: 640px) {
+  .foot-cta { flex-direction: column; align-items: stretch; gap: 16px; padding: 18px 16px; }
+  .foot-cta .l { align-items: center; }
+  .foot-cta b { font-size: 20px; }
+  .foot-acts { display: grid; grid-template-columns: 1fr; gap: 10px; width: 100%; }
+  .foot-acts .call { order: -1; min-height: 50px; font-size: 15px; border-radius: 14px; position: relative; overflow: hidden; }
+  .foot-acts .call::after { content: ""; position: absolute; inset: 0; background: linear-gradient(110deg, transparent 30%, rgba(255,255,255,.35) 50%, transparent 70%); transform: translateX(-120%); animation: fshine 3.2s ease-in-out 4; }
+  .foot-acts .ghost { min-height: 48px; font-size: 15px; border-radius: 14px; background: rgba(255,255,255,.06); }
+  .foot-acts .call:active, .foot-acts .ghost:active { transform: scale(.98); }
+}
+@keyframes fshine { 0%, 55% { transform: translateX(-120%); } 100% { transform: translateX(120%); } }
+@media (prefers-reduced-motion: reduce) { .foot-acts .call::after { animation: none; } }

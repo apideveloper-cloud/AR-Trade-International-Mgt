@@ -46,6 +46,6 @@ ${rows.length ? `<tr><td style="padding:14px 14px 4px"><table role="presentation
 ${cta && ctaUrl ? `<tr><td align="center" style="padding:20px 16px 26px"><a href="${esc(ctaUrl)}" style="display:inline-block;background:#000000;color:#ffffff;font:700 16px Georgia,serif;padding:15px 52px;text-decoration:none">${esc(cta)}</a></td></tr>` : ''}
 <tr><td style="padding:16px 22px 22px;border-top:1px solid #eceff5;font:12px/1.5 Arial,sans-serif;color:#7a8196;text-align:center">You are receiving this because you subscribed to AR Trade International, Dhaka.<br><a href="${esc(prefsUrl || '#')}" style="color:#2f5fd0">Unsubscribe or change what you receive</a></td></tr>
 </table></td></tr></table></body></html>`;
-  const text = [headline || subject, '', ...paras, '', ...list.map(p => `${p.name} - ${money(p.price)}${p.old > p.price ? ` (was ${money(p.old)})` : ''}: ${base}/product/${p.id}`), cta && ctaUrl ? `\n${cta}: ${ctaUrl}` : '', '', 'Unsubscribe or change what you receive: ' + (prefsUrl || '')].join('\n');
+  const text = [headline || subject, '', ...paras, '', ...list.map(p => `${p.name} - ${money(p.price)}${p.old > p.price ? ` (was ${money(p.old)})` : ''}: ${base}${productPath(p)}`), cta && ctaUrl ? `\n${cta}: ${ctaUrl}` : '', '', 'Unsubscribe or change what you receive: ' + (prefsUrl || '')].join('\n');
   return { html, text };
 }

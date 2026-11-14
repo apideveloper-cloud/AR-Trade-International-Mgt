@@ -48,8 +48,8 @@ async function sendMarketing(email, subject, content) {
 async function productsByIds(ids) {
   const list = (Array.isArray(ids) ? ids : []).map(Number).filter(Number.isInteger).slice(0, 8);
   if (!list.length) return [];
-  const [rows] = await pool.query('SELECT id, brand, name, old_price, price, img FROM products WHERE active = 1 AND id IN (?)', [list]);
-  return list.map(id => rows.find(r => r.id === id)).filter(Boolean).map(r => ({ id: r.id, name: r.name, price: r.price, old: r.old_price, img: r.img }));
+  const [rows] = await pool.query('SELECT id, brand, name, slug, old_price, price, img FROM products WHERE active = 1 AND id IN (?)', [list]);
+  return list.map(id => rows.find(r => r.id === id)).filter(Boolean).map(r => ({ id: r.id, name: r.name, slug: r.slug, price: r.price, old: r.old_price, img: r.img }));
 }
 /** Cleans what the campaign form sends before it is stored or rendered. */
 const cleanDesign = d => {
@@ -169,7 +169,7 @@ staff.post('/campaigns', guard('marketing.manage'), wrap(async (req, res) => {
   const kind = ['offers', 'festivals', 'tips', 'all'].includes(aud) ? aud : 'offers';
   // a campaign is only "Sent" once the mail worker has really sent it; until then it stays Scheduled
   const [r] = await pool.query('INSERT INTO mkt_campaigns (name,tag,template_id,subj_a,subj_b,body,design,audience,status,send_at,sent) VALUES (?,?,?,?,?,?,?,?,?,?,?)',
-    [name, tag, tpl || null, subjA, subjB || '', body || null, JSON.stringify(design), kind, 'Scheduled', at.toISOString().slice(0, 19).replace('T', ' '), 0]);
+    [name, tag, tpl || null, subjA, subjB || '', body || null, JSON.stringify(design), kind, 'Scheduled', at, 0]);
   const [[c]] = await pool.query('SELECT * FROM mkt_campaigns WHERE id = ?', [r.insertId]);
   res.json(campOut(c));
 }));

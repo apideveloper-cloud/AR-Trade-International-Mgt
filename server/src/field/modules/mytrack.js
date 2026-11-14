@@ -2,22 +2,11 @@
 //   GET /api/field/mytrack/me             km today, on-road seconds, visits n/m, next stop (with distance) and the street name of my last GPS point
 //   GET /api/field/mytrack/place?lat=&lng=  street / area name for a point (OpenStreetMap Nominatim, cached); { place: string|null }
 import { Router } from 'express';
-import { pool, wrap, fail, guard, todayBD, UTC } from '../common.js';
+import { pool, wrap, fail, guard, todayBD, UTC, distKm, pathKm } from '../common.js';
 
 const router = Router();
-const rad = d => (d * Math.PI) / 180;
-const distKm = (a, b) => {
-  const dLat = rad(b.lat - a.lat), dLng = rad(b.lng - a.lng);
-  const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) ** 2;
-  return 12742 * Math.asin(Math.sqrt(h));
-};
 const mysql = d => d.toISOString().slice(0, 19).replace('T', ' ');
 const dayStart = () => new Date(`${todayBD()}T00:00:00+06:00`);
-function pathKm(points) {
-  let km = 0;
-  for (let i = 1; i < points.length; i++) km += distKm(points[i - 1], points[i]);
-  return Math.round(km * 10) / 10;
-}
 
 // ---- reverse geocoding: "Kakrail Rd, Ramna, Dhaka" for a GPS point. Cached by ~100 m cell, at most one lookup per 1.1 s (Nominatim policy). ----
 const placeCache = new Map(); // key -> { v: string|null, at: ms }

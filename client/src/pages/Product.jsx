@@ -11,6 +11,7 @@ import { useStore } from '../store.jsx';
 import { NotFound } from './Info.jsx';
 import Lightbox from '../components/Lightbox.jsx';
 import { cleanHtml } from '../sanitize.js';
+import '../productStyles.css';
 
 const HOW = [
   'উপরের মেনু বার থেকে আপনার কাংখিত প্রোডাক্টটির ক্যাটাগরি সিলেক্ট করুন।',
@@ -67,9 +68,15 @@ export default function Product() {
   useEffect(() => {
     if (!p) return undefined;
     document.title = full?.metaTitle || `${p.name} | AR Trade International`;
-    const set = (n, v) => { if (!v) return; let m = document.head.querySelector(`meta[name="${n}"]`); if (!m) { m = document.createElement('meta'); m.name = n; document.head.appendChild(m); } m.content = v; };
+    const undo = [];
+    const set = (n, v) => {
+      if (!v) return;
+      let m = document.head.querySelector(`meta[name="${n}"]`);
+      if (m) { const was = m.content; undo.push(() => { m.content = was; }); } else { m = document.createElement('meta'); m.name = n; document.head.appendChild(m); undo.push(() => m.remove()); }
+      m.content = v;
+    };
     set('description', full?.metaDesc); set('keywords', full?.metaKeywords);
-    return () => { document.title = 'AR Trade International'; };
+    return () => { undo.forEach(f => f()); document.title = 'AR Trade International'; }; // leaving the product must not leave its description behind on the next page
   }, [p, full]);
   // show the sticky buy bar once the main buy box has scrolled out of view
   useEffect(() => {

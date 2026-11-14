@@ -49,6 +49,14 @@ export function drawHeader(doc, { title, number, date, site = {}, qr, caption = 
 }
 
 export const invoiceNo = id => 'INV-' + String(id).replace(/^\D+/, '');
+/** Pending (and cancelled) orders print as a SALES ORDER (SO-…); from Confirmed onwards the same order is a SALES INVOICE (INV-…). */
+export const docInfo = o => {
+  const num = String(o.id).replace(/^\D+/, '');
+  const isOrder = o.status === 'Pending' || o.status === 'Cancelled';
+  return isOrder ? { isOrder, title: 'SALES ORDER', word: 'Sales order', no: 'SO-' + num } : { isOrder, title: 'SALES INVOICE', word: 'Sales invoice', no: 'INV-' + num };
+};
+/** Shared by the PDF route and the email route: document label, number and the PDF file name. */
+export const docLabel = o => { const dk = docInfo(o); return { ...dk, lower: dk.word.toLowerCase(), fileName: dk.no + '.pdf' }; };
 export { money };
 export const when = (d, time = true) => {
   const x = new Date(d);
@@ -105,17 +113,17 @@ export async function buildInvoicePdf(o, site = {}) {
   const phone = String(o.customer?.phone || '').replace(/\D/g, '');
   const qr = await qrPng(`${siteBase()}/track?id=${encodeURIComponent(o.id)}${phone ? '&phone=' + phone : ''}`);
   return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ size: 'A4', margin: 0, bufferPages: true, info: { Title: `${invoiceNo(o.id)} - AR Trade International`, Author: 'AR Trade International' } });
+    const doc = new PDFDocument({ size: 'A4', margin: 0, bufferPages: true, info: { Title: `${docInfo(o).no} - AR Trade International`, Author: 'AR Trade International' } });
     const chunks = [];
     doc.on('data', c => chunks.push(c));
     doc.on('end', () => resolve(Buffer.concat(chunks)));
     doc.on('error', reject);
     for (const [k, f] of Object.entries(FONT_FILES)) doc.registerFont(k, f);
 
-    const inv = invoiceNo(o.id);
+    const dk = docInfo(o), inv = dk.no;
     const paid = o.payStatus === 'Paid';
 
-    drawHeader(doc, { title: 'INVOICE', number: inv, date: when(o.date), site, qr, caption: 'Scan to track the order' });
+    drawHeader(doc, { title: dk.title, number: inv, date: when(o.date), site, qr, caption: 'Scan to track the order' });
 
     // ---- billed to / order details ----
     const colW = (RIGHT - M - 14) / 2;
@@ -170,8 +178,9 @@ export async function buildInvoicePdf(o, site = {}) {
     });
 
     // ---- totals (right) and payment note (left) ----
-    const totals = [['Subtotal', money(o.subtotal)], ['Discount', o.discount ? '− ' + money(o.discount) : money(0)], ['Delivery', o.delivery ? money(o.delivery) : 'Free'], ['VAT (included)', money(o.vat)]];
-    if (y + 40 + totals.length * 17 + 46 > H - 90) { doc.addPage(); y = 40; }
+    const totals = [['Subtotal', money(o.subtotal)], ['Discount', o.discount ? '− ' + money(o.discount) : money(0)], ['Delivery', o.delivery ? money(o.delivery) : 'Free'], ['Govt VAT & taxes', o.vatAmount != null ? money(o.vatAmount) : 'Excluded']];
+    // room for the totals, the note, the thank-you line and the footer, else the totals start a new page
+    if (y + 40 + totals.length * 17 + 46 + 100 > H - 70) { doc.addPage(); y = 40; }
     y += 14;
     const bx = M + 285, bw = RIGHT - bx;
     totals.forEach(([k, v], i) => {
@@ -196,15 +205,27 @@ export async function buildInvoicePdf(o, site = {}) {
       for (const l of wrap(doc, o.note, 250, 9, false).slice(0, 4)) { ny += 12; put(doc, l, M, ny, { size: 9, color: INK }); }
     }
 
+    // thank-you line: centred on the page, a little below the totals (not at the bottom of the page)
+    const tyEnd = Math.max(ty + 32, ny + 14);
+    put(doc, 'Thank you for shopping with AR Trade International.', (M + RIGHT) / 2, Math.min(tyEnd + 80, H - 96), { size: 11.5, bold: true, color: NAVY, align: 'center' });
+
     // ---- footer on every page ----
     const foot = () => {
       doc.moveTo(M, H - 66).lineTo(RIGHT, H - 66).lineWidth(.6).strokeColor(LINE).stroke();
-      put(doc, 'Thank you for shopping with AR Trade International.', M, H - 56, { size: 9.5, bold: true, color: NAVY });
       put(doc, [site.address || '159 Santinagar, Dhaka-1217', site.phone, site.email].filter(Boolean).join('   ·   '), M, H - 42, { size: 8, color: MUTED });
-      put(doc, 'This is a computer-generated invoice and does not need a signature.', M, H - 30, { size: 8, color: MUTED });
+      put(doc, `This is a computer-generated ${dk.word.toLowerCase()} and does not need a signature.`, M, H - 30, { size: 8, color: MUTED });
+    };
+    // coloured logo watermark in the centre of every page, faint enough to keep the text readable
+    const watermark = () => {
+      if (!fs.existsSync(LOGO)) return;
+      const w = 280;
+      doc.save();
+      doc.opacity(0.09);
+      doc.image(LOGO, (doc.page.width - w) / 2, (doc.page.height - w) / 2, { width: w });
+      doc.restore();
     };
     const range = doc.bufferedPageRange();
-    for (let i = 0; i < range.count; i++) { doc.switchToPage(range.start + i); foot(); }
+    for (let i = 0; i < range.count; i++) { doc.switchToPage(range.start + i); watermark(); foot(); }
     doc.end();
   });
 }

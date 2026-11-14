@@ -6,8 +6,10 @@ export default function Lightbox({ img, name, views, start, onClose, onView }) {
   const [z, setZ] = useState(1);
   const [pos, setPos] = useState({ x: 0, y: 0 });
   const drag = useRef(null);
+  const at = useRef(start); // the current view for the key handler, which is bound once
   const reset = () => { setZ(1); setPos({ x: 0, y: 0 }); };
-  const go = d => { setI(v => { const n = (v + d + views.length) % views.length; onView(n); return n; }); reset(); };
+  const show = n => { at.current = n; setI(n); onView(n); reset(); };
+  const go = d => show((at.current + d + views.length) % views.length);
   const zoomBy = d => setZ(v => { const n = Math.max(1, Math.min(5, +(v + d).toFixed(2))); if (n === 1) setPos({ x: 0, y: 0 }); return n; });
   useEffect(() => {
     const key = e => { if (e.key === 'Escape') onClose(); else if (e.key === 'ArrowRight') go(1); else if (e.key === 'ArrowLeft') go(-1); else if (e.key === '+' || e.key === '=') zoomBy(.5); else if (e.key === '-') zoomBy(-.5); };
@@ -37,7 +39,7 @@ export default function Lightbox({ img, name, views, start, onClose, onView }) {
       </div>
       <div className="lbx-strip" onClick={e => e.stopPropagation()}>
         {views.map((x, n) => (
-          <button key={x.k} aria-label={x.k} className={n === i ? 'on' : ''} onClick={() => { setI(n); onView(n); reset(); }}>
+          <button key={x.k} aria-label={x.k} className={n === i ? 'on' : ''} onClick={() => show(n)}>
             <span style={{ backgroundImage: `url('${x.img || img}')`, backgroundSize: x.img ? 'contain' : `${x.s * 100}%`, backgroundPosition: x.img ? 'center' : x.o }} />
           </button>
         ))}

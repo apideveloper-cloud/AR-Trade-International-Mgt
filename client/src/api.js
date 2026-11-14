@@ -27,6 +27,8 @@ export const api = {
   put: (url, body) => write('PUT', url, body)
 };
 
+/** Copies text to the clipboard; resolves true/false and never rejects (the Clipboard API is missing or refused on plain http and some browsers). */
+export const copyText = text => { try { return Promise.resolve(navigator.clipboard.writeText(text)).then(() => true, () => false); } catch { return Promise.resolve(false); } };
 export const fmt = n => '৳ ' + Math.round(n || 0).toLocaleString('en-US');
 export const fmtDate = t => new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 export const fmtTime = t => new Date(t).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });

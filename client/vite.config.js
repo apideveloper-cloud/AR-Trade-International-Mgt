@@ -13,6 +13,8 @@ export default defineConfig({
   plugins: [react()],
   build: {
     target: 'es2020',
+    sourcemap: false,
+    cssCodeSplit: true,
     chunkSizeWarningLimit: 600,
     rollupOptions: { output: { manualChunks: vendorChunk } }
   },

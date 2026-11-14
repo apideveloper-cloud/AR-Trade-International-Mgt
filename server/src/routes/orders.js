@@ -7,12 +7,13 @@ import { limit } from '../middleware/security.js';
 import { auth } from '../middleware/customerAuth.js';
 import { AREAS } from './auth.js';
 import { getSettings } from './shared.js';
-import { mergeDelivery, validCoord, distanceKm, feeForKm, quote, deliveryCharge } from '../delivery.js';
+import { mergeDelivery, quote, deliveryCharge, resolveDelivery } from '../delivery.js';
 
 const PARTIAL = ['split', 'together', 'drop'];
 const ORDER_SOURCES = ['Call center', 'Admin', 'Seller'];
 
-async function priceOrder(items, { area, coupon, userId, express, partial, phone, district, dest, partner }) {
+/** `staff` (default false) allows the old flat-fee branch when no district is sent; `preview` (cart page) returns delivery 0 + byDistance when no district is sent. */
+async function priceOrder(items, { area, coupon, userId, express, partial, phone, district, dest, partner, staff = false, preview = false }) {
   const s = (await getSettings()).site;
   if (!Array.isArray(items) || items.length > 100) throw fail(400, 'Your cart is empty or too large');
   const ids = items.map(i => parseInt(i?.id, 10)).filter(Number.isInteger);
@@ -44,28 +45,11 @@ async function priceOrder(items, { area, coupon, userId, express, partial, phone
   const member = Math.round((subtotal - discount) * memberPct / 100);
 
   const dl = mergeDelivery(s.delivery);
-  let zone, base, distanceKmV = null, shipPartner = '', destPt = null;
-  if (district != null && String(district).trim() !== '') { // new checkout: Dhaka is priced by distance, everywhere else by courier
-    if (String(district).trim().toLowerCase() === 'dhaka') {
-      zone = 'inside';
-      if (!validCoord(dest)) throw fail(400, 'Pick your delivery location on the map');
-      destPt = { lat: Number(dest.lat), lng: Number(dest.lng) };
-      distanceKmV = quote(destPt, dl).km;
-      base = feeForKm(distanceKmV, dl);
-    } else {
-      zone = 'outside';
-      const pt = dl.partners.find(x => x.id === String(partner ?? ''));
-      if (!pt) throw fail(400, 'Choose a shipping partner');
-      shipPartner = pt.name;
-      base = s.outsideFee;
-    }
-  } else { // an old cached checkout page: the zone comes from the area and the old fees apply
-    zone = AREAS.includes(area) ? area : 'inside';
-    base = zone === 'outside' ? s.outsideFee : zone === 'suburb' ? s.suburbFee : s.insideFee;
-  }
-  const expressFee = express && zone === 'inside' ? s.expressFee : 0;
-  const { freeElig, delivery } = deliveryCharge({ subtotal, zone, base, freeOver: destPt ? 0 : s.freeOver, express: expressFee }); // a map-priced delivery is always charged: the free-over-a-spend rule is for the old checkout
-  const freeOn = !destPt && Number(s.freeOver) > 0;
+  // Dhaka is priced by distance, elsewhere by courier. No district = flat old fees, for staff-placed orders only (a customer order needs a district; a cart preview just shows no delivery charge yet)
+  const { zone, base, distanceKm: distanceKmV, shipPartner, dest: destPt, byDistance, pending } = resolveDelivery({ district, area, dest, partner, staff, preview, areas: AREAS }, s, dl);
+  const expressFee = !pending && express && zone === 'inside' ? s.expressFee : 0;
+  const { freeElig, delivery } = pending ? { freeElig: false, delivery: 0 } : deliveryCharge({ subtotal, zone, base, freeOver: byDistance ? 0 : s.freeOver, express: expressFee }); // a map-priced delivery is always charged: the free-over-a-spend rule is for the old checkout
+  const freeOn = !byDistance && Number(s.freeOver) > 0;
   const total = Math.max(0, subtotal - discount - member + delivery);
   const vat = Math.round(total * s.vatPct / (100 + s.vatPct));
 
@@ -73,7 +57,7 @@ async function priceOrder(items, { area, coupon, userId, express, partial, phone
     lines, subtotal, saved, discount, member, memberPct, delivery, express: expressFee, base, freeOver: s.freeOver, freeElig,
     freeLeft: zone === 'outside' || !freeOn ? 0 : Math.max(0, s.freeOver - subtotal), zone, distanceKm: distanceKmV, shipPartner, dest: destPt, total, vat, vatPct: s.vatPct,
     okCoupon, coupon: okCoupon ? cu : '', heldN: lines.filter(l => l.held).length, shortN: lines.filter(l => l.short > 0).length,
-    count: lines.reduce((a, l) => a + l.qty, 0), partial: mode,
+    byDistance, count: lines.reduce((a, l) => a + l.qty, 0), partial: mode,
     short: lines.filter(l => l.short > 0).map(l => ({ id: l.p.id, name: l.p.name, avail: l.avail, qty: l.qty }))
   };
 }
@@ -81,7 +65,7 @@ async function priceOrder(items, { area, coupon, userId, express, partial, phone
 const quoteOut = t => ({
   subtotal: t.subtotal, saved: t.saved, discount: t.discount, member: t.member, memberPct: t.memberPct, delivery: t.delivery, express: t.express,
   freeOver: t.freeOver, freeElig: t.freeElig, freeLeft: t.freeLeft, zone: t.zone, distanceKm: t.distanceKm, shipPartner: t.shipPartner, total: t.total, vat: t.vat, vatPct: t.vatPct,
-  okCoupon: t.okCoupon, heldN: t.heldN, count: t.count, short: t.short
+  byDistance: t.byDistance, okCoupon: t.okCoupon, heldN: t.heldN, count: t.count, short: t.short
 });
 
 async function hydrateOrders(rows) {
@@ -95,7 +79,7 @@ async function hydrateOrders(rows) {
     company: r.company, bin: r.bin, express: !!r.express, distanceKm: r.distance_km != null ? Number(r.distance_km) : null, shipPartner: r.ship_partner || '',
     destLat: r.dest_lat != null ? Number(r.dest_lat) : null, destLng: r.dest_lng != null ? Number(r.dest_lng) : null, source: r.source || 'Customer', placedBy: r.placed_by || '',
     customer: { name: r.customer_name, phone: r.customer_phone, email: r.customer_email },
-    subtotal: r.subtotal, discount: r.discount + r.member_discount, delivery: r.delivery, total: r.total, vat: r.vat,
+    subtotal: r.subtotal, discount: r.discount + r.member_discount, delivery: r.delivery, total: r.total, vat: r.vat, vatAmount: r.vat_amount != null ? Number(r.vat_amount) : null,
     items: items.filter(i => i.order_id === r.id).map(i => ({ id: i.product_id, name: i.name, img: i.img, price: i.price, qty: i.qty, backorder: i.backorder })),
     history: hist.filter(h => h.order_id === r.id).map(h => ({ s: h.status, at: h.at }))
   }));
@@ -113,7 +97,7 @@ async function placeOrder(body, { userId = null, source = 'Customer', placedBy =
   const mobile = bdMobile(customer.phone);
   if (!mobile) throw fail(400, 'Enter a valid mobile number (01XXXXXXXXX)');
   customer.phone = mobile;
-  const t = await priceOrder(items, { area, coupon, userId, express, partial, phone: customer.phone, district, dest, partner });
+  const t = await priceOrder(items, { area, coupon, userId, express, partial, phone: customer.phone, district, dest, partner, staff: source !== 'Customer' });
   const live = t.lines.filter(l => l.chargeQty > 0);
   if (!live.length) throw fail(400, 'None of the items in your cart are in stock right now');
 
@@ -148,11 +132,11 @@ async function placeOrder(body, { userId = null, source = 'Customer', placedBy =
 
 export function mountOrderRoutes(app) {
   app.post('/api/quote', auth(false), wrap(async (req, res) => {
-    const t = await priceOrder(req.body.items || [], { ...req.body, userId: req.user?.id, phone: req.body.phone });
+    const t = await priceOrder(req.body.items || [], { ...req.body, userId: req.user?.id, phone: req.body.phone, staff: false, preview: true });
     res.json(quoteOut(t));
   }));
 
-  app.post('/api/delivery/quote', limit('dquote', 60, 600000), wrap(async (req, res) => {
+  app.post('/api/delivery/quote', limit('dquote', 120, 600000), wrap(async (req, res) => {
     res.json(quote(req.body, mergeDelivery((await getSettings()).site?.delivery)));
   }));
 

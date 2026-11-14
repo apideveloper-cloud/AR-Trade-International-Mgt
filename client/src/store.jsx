@@ -6,7 +6,7 @@ export const useStore = () => useContext(Ctx);
 
 function usePersisted(key, init, storage = 'localStorage') {
   const [v, setV] = useState(() => {
-    try { const s = JSON.parse(window[storage].getItem(key)); return s ?? init; } catch { return init; }
+    try { const s = JSON.parse(window[storage].getItem(key)); return s != null && typeof s === typeof init && Array.isArray(s) === Array.isArray(init) ? s : init; } catch { return init; } // a damaged or foreign value falls back to the default instead of crashing (wish.includes, Object.entries)
   });
   useEffect(() => { try { window[storage].setItem(key, JSON.stringify(v)); } catch { /* storage unavailable */ } }, [key, storage, v]);
   return [v, setV];
@@ -49,6 +49,7 @@ export function StoreProvider({ children }) {
   const [wish, setWish] = usePersisted('ar_wish', []);
   const [compare, setCompare] = usePersisted('ar_compare', []);
   const [user, setUser] = useState(null);
+  const [authReady, setAuthReady] = useState(() => !getToken()); // false while a remembered sign-in is still being checked with the server
   const [toast, setToast] = useState(null);
   const [cartOpen, setCartOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
@@ -58,7 +59,11 @@ export function StoreProvider({ children }) {
 
   useEffect(() => {
     api.get('/bootstrap').then(setData).catch(e => setError(e.message));
-    if (getToken()) api.get('/auth/me').then(r => setUser(r.user)).catch(() => setToken(null));
+    if (getToken()) {
+      api.get('/auth/me').then(r => setUser(r.user))
+        .catch(e => { if (e.status === 401 || e.status === 403) setToken(null); }) // only a rejected session clears the flag; a network blip must not sign the customer out
+        .finally(() => setAuthReady(true));
+    }
   }, []);
 
   /** Shows a toast. kind: 'success' | 'error' | 'info' | 'cart'; when omitted it is worked out from the text and link. */
@@ -99,6 +104,8 @@ export function StoreProvider({ children }) {
     return r.user;
   }, []);
   const login = useCallback(b => auth('login', b), [auth]);
+  /** Quick account from a guest order: signs the customer in and returns { user, login: { id, password } }. */
+  const autoAccount = useCallback(async (orderId, phone) => { const r = await api.post('/orders/' + encodeURIComponent(orderId) + '/account', { phone }); setToken(true); setUser(r.user); return r; }, []);
   const register = useCallback(b => auth('register', b), [auth]);
   const social = useCallback(b => auth('social', b), [auth]);
   const logout = useCallback(() => { setToken(null); setUser(null); api.post('/auth/logout').catch(() => {}); }, []);
@@ -121,11 +128,11 @@ export function StoreProvider({ children }) {
     data, error, cats: data?.cats || [], products: data?.products || [], site, content: data?.content, find,
     cart, cartLines, cartCount, cartSubtotal, addToCart, setQty, clearCart,
     wish, toggleWish, compare, setCompare, toggleCompare,
-    user, setUser, login, register, social, logout,
+    user, setUser, authReady, login, autoAccount, register, social, logout,
     toast, say, dismissToast, cartOpen, setCartOpen, loginOpen, setLoginOpen,
     optMail, setOptMail, optIn, subscribed,
     totals, tk: tkSite
   }), [data, error, site, find, cart, cartLines, cartCount, cartSubtotal, addToCart, setQty, clearCart, wish, toggleWish, compare, setCompare, toggleCompare,
-    user, login, register, social, logout, toast, say, dismissToast, cartOpen, loginOpen, optMail, optIn, subscribed, totals, tkSite]);
+    user, authReady, login, register, social, logout, toast, say, dismissToast, cartOpen, loginOpen, optMail, optIn, subscribed, totals, tkSite]);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { api, fmtDate } from '../api.js';
+import { api, copyText, fmtDate } from '../api.js';
 import { NotFound } from './Info.jsx';
 import { cleanHtml } from '../sanitize.js';
 
@@ -120,7 +120,12 @@ export function Blog() {
   const q = sp.get('q') || '';
   const setQ = v => { const n = new URLSearchParams(sp); if (v) n.set('q', v); else n.delete('q'); setSp(n, { replace: true }); };
 
-  useEffect(() => { document.title = 'Blog | AR Trade International'; api.get('/blog').then(d => setPosts(d.posts)).catch(e => setErr(e.message)); }, []);
+  useEffect(() => {
+    document.title = 'Blog | AR Trade International';
+    let live = true;
+    api.get('/blog').then(d => { if (live) setPosts(d.posts); }).catch(e => { if (live) setErr(e.message); });
+    return () => { live = false; document.title = 'AR Trade International'; };
+  }, []);
   useEffect(() => { setShown(PAGE); }, [cat, q]);
 
   const list = useMemo(() => (posts || []).filter(p => (!cat || p.category === cat) && match(p, q)), [posts, cat, q]);
@@ -186,11 +191,12 @@ export function BlogPost() {
   const [all, setAll] = useState([]);
   const [missing, setMissing] = useState(false);
 
-  useEffect(() => { api.get('/blog').then(r => setAll(r.posts)).catch(() => {}); }, []);
+  useEffect(() => { let live = true; api.get('/blog').then(r => { if (live) setAll(r.posts); }).catch(() => {}); return () => { live = false; }; }, []);
   useEffect(() => {
     setD(null); setMissing(false); window.scrollTo(0, 0);
-    api.get('/blog/' + slug).then(r => { setD(r); document.title = r.post.metaTitle || r.post.title + ' | AR Trade International'; }).catch(() => setMissing(true));
-    return () => { document.title = 'AR Trade International'; };
+    let live = true; // a slow answer for the previous article must not overwrite the one now open
+    api.get('/blog/' + slug).then(r => { if (!live) return; setD(r); document.title = r.post.metaTitle || r.post.title + ' | AR Trade International'; }).catch(() => { if (live) setMissing(true); });
+    return () => { live = false; document.title = 'AR Trade International'; };
   }, [slug]);
   const body = useMemo(() => (d ? withToc(d.post.body) : { html: '', toc: [] }), [d]);
 
@@ -198,7 +204,7 @@ export function BlogPost() {
   if (!d) return <div style={{ padding: 80, textAlign: 'center' }}><span className="spin" /></div>;
   const { post, related } = d;
   const url = encodeURIComponent(window.location.href), tt = encodeURIComponent(post.title);
-  const copy = () => { try { navigator.clipboard.writeText(window.location.href); } catch { /* clipboard unavailable */ } };
+  const copy = () => { copyText(window.location.href); };
 
   return (
     <section className="bpost">

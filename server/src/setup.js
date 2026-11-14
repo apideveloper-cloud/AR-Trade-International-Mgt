@@ -93,6 +93,7 @@ async function seedBlog() {
 
 async function main() {
   if (process.argv.includes('--reset')) {
+    if (process.env.NODE_ENV === 'production') { console.error('Refusing to drop every table while NODE_ENV=production.'); process.exit(1); }
     await pool.query('SET FOREIGN_KEY_CHECKS = 0');
     for (const t of TABLES) await pool.query(`DROP TABLE IF EXISTS ${t}`);
     await pool.query('SET FOREIGN_KEY_CHECKS = 1');

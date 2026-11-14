@@ -1,5 +1,5 @@
 /* Quotations: wide writing panel (details + items on the left, totals, terms and signature on the right) */
-.a-modal.slide.qt { width: min(1320px, 100vw); }
+.a-modal.slide.qt { width: min(var(--slide-w, 1180px), 100vw); }
 .qt-form { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 16px; align-items: start; }
 .qt-main { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
 .qt-side { position: sticky; top: 0; display: flex; flex-direction: column; gap: 12px; }

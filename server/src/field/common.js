@@ -50,6 +50,19 @@ export const coord = (v, max) => { const n = Number(v); if (!Number.isFinite(n) 
 /** Today's date (YYYY-MM-DD) in Bangladesh time, for "today" style filters on DATE columns. */
 export const todayBD = () => new Date(Date.now() + 6 * 3600e3).toISOString().slice(0, 10);
 
+/** Great-circle distance in km between two { lat, lng } points, and the length of a path of points. */
+const rad = d => (Number(d) * Math.PI) / 180;
+export const distKm = (a, b) => {
+  const dLat = rad(b.lat - a.lat), dLng = rad(b.lng - a.lng);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return 12742 * Math.asin(Math.sqrt(h));
+};
+export const pathKm = points => {
+  let km = 0;
+  for (let i = 1; i < points.length; i++) km += distKm(points[i - 1], points[i]);
+  return Math.round(km * 10) / 10;
+};
+
 /** Whole taka amount of a DECIMAL column. */
 export const taka = v => Math.round(Number(v) || 0);
 

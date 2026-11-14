@@ -1,4 +1,4 @@
-import { Suspense, useCallback, useEffect, useState } from 'react';
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { lazyPage } from '../lazyPage.js';
 import { PageLoader } from '../components/PageLoader.jsx';
 import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
@@ -10,6 +10,7 @@ import { AdminFooter, TopBar } from './AdminChrome.jsx';
 import { DialogHost } from './ui.jsx';
 import { MODULE_OF, NAV, TITLES } from './nav.js';
 import { Login } from './login/Login.jsx';
+import { StaffCtx } from './pages/sales/staffContext.js';
 
 // the sign-in screen is shared with the Email Center and the Delivery Hub, which import it from here
 export { Login };
@@ -41,6 +42,8 @@ export default function AdminApp() {
   const [openG, setOpenG] = useState('');
   const [menuOpen, setMenuOpen] = useState(false); // phone width: the menu is a side drawer opened by the hamburger button
   const [mods, setMods] = useState(null); // field-app modules this role may use: the menu hides pages whose module is off for them
+  const menuQRef = useRef('');
+  menuQRef.current = menuQ; // read by the Escape handler below without re-binding it on every keystroke
   const nav = useNavigate();
   const { pathname } = useLocation();
 
@@ -54,7 +57,21 @@ export default function AdminApp() {
   }, []);
   useEffect(() => {
     if (!menuOpen) return undefined;
-    const onKey = e => { if (e.key === 'Escape') setMenuOpen(false); };
+    const onKey = e => {
+      if (e.key === 'Escape') {
+        if (menuQRef.current && e.target?.matches?.('.nav-search input')) return; // the search box clears itself first; a second Escape closes the menu
+        setMenuOpen(false);
+      } else if (e.key === 'Tab') { // keep Tab / Shift+Tab inside the open drawer
+        const dr = document.querySelector('.adm-drawer');
+        if (!dr) return;
+        const fs = [...dr.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])')].filter(el => getComputedStyle(el).visibility !== 'hidden' && el.getClientRects().length);
+        if (!fs.length) return;
+        const first = fs[0], last = fs[fs.length - 1];
+        if (!dr.contains(document.activeElement)) { e.preventDefault(); first.focus(); }
+        else if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+    };
     document.addEventListener('keydown', onKey);
     document.body.classList.add('adm-menu-open');
     const f = setTimeout(() => document.querySelector('.adm-drawer-hd button')?.focus(), 60);
@@ -118,6 +135,7 @@ export default function AdminApp() {
   if (pathname === '/admin' || pathname === '/admin/') return <Navigate to={'/admin/' + home} replace />;
 
   return (
+    <StaffCtx.Provider value={staff}>
     <div className="adm">
       <aside className={'adm-side' + (menuOpen ? ' open' : '')}>
         <div className="adm-brand logo"><img src="/admin-logo-light.png" alt="AR Trade International" /><small>Admin console</small></div>
@@ -125,7 +143,7 @@ export default function AdminApp() {
           <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
         </button>
         {menuOpen && <div className="adm-scrim" onClick={() => setMenuOpen(false)} aria-hidden="true" />}
-        <div className="adm-drawer" id="adm-drawer">
+        <div className="adm-drawer" id="adm-drawer" {...(menuOpen ? { role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Menu' } : {})}>
         <div className="adm-drawer-hd"><b>Menu</b><button type="button" onClick={() => setMenuOpen(false)} aria-label="Close the menu">✕</button></div>
         <div className="nav-search">
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
@@ -211,5 +229,6 @@ export default function AdminApp() {
         <AdminFooter staff={staff} />
       </main>
     </div>
+    </StaffCtx.Provider>
   );
 }

@@ -333,7 +333,7 @@ async function claudeReply({ text, history = [], ctx = {} }, data, base) {
     `PRODUCTS MATCHING THE CUSTOMER'S LATEST MESSAGE (the customer also sees these as cards, so do not repeat every detail):`,
     catalog
   ].join('\n');
-  const msgs = [...history.slice(-8).map(m => ({ role: m.from === 'me' ? 'user' : 'assistant', content: String(m.text).slice(0, 600) })), { role: 'user', content: text }];
+  const msgs = [...history.filter(m => m && typeof m === 'object').slice(-8).map(m => ({ role: m.from === 'me' ? 'user' : 'assistant', content: String(m.text).slice(0, 600) })), { role: 'user', content: text }];
   // the API wants the conversation to start with the customer and alternate
   while (msgs.length && msgs[0].role !== 'user') msgs.shift();
   const clean = msgs.filter((m, i) => i === 0 || m.role !== msgs[i - 1].role);

@@ -275,8 +275,8 @@ router.get('/receipts', guard(VIEW), wrap(async (req, res) => {
     ${from} ORDER BY r.received_on DESC, r.created_at DESC LIMIT ${size} OFFSET ${offset}`, args);
   const items = rows.map(r => ({ id: r.id, vendorId: r.vendor_id, vendor: r.vendor, poId: r.po_id, invoiceNo: r.invoice_no, referenceNo: r.reference_no, date: r.d, total: r.total, pcs: Number(r.pcs), paid: Number(r.paid), due: billedOf(r.status) ? Math.max(0, r.total - Number(r.paid)) : 0, status: r.status, by: r.staff_name, note: r.note }));
   if (!paged) return res.json({ items });
-  const [[t]] = await pool.query(`SELECT COUNT(*) n, COALESCE(SUM(r.total), 0) total, COALESCE(SUM(${PAID}), 0) paid, COALESCE(SUM(r.${BILLED} AND r.total > ${PAID}), 0) due_n, COALESCE(SUM(r.status = 'Pending'), 0) pend, COALESCE(SUM(r.status = 'Approved'), 0) appr ${from}`, args);
-  res.json({ total: Number(t.n), rows: items, items, totals: { bills: Number(t.n), total: Number(t.total), paid: Number(t.paid), due: Math.max(0, Number(t.total) - Number(t.paid)), dueCount: Number(t.due_n), pending: Number(t.pend), approved: Number(t.appr) } });
+  const [[t]] = await pool.query(`SELECT COUNT(*) n, COALESCE(SUM(r.total), 0) total, COALESCE(SUM(${PAID}), 0) paid, COALESCE(SUM(r.${BILLED} AND r.total > ${PAID}), 0) due_n, COALESCE(SUM(IF(r.${BILLED}, GREATEST(r.total - ${PAID}, 0), 0)), 0) due_amt, COALESCE(SUM(r.status = 'Pending'), 0) pend, COALESCE(SUM(r.status = 'Approved'), 0) appr ${from}`, args);
+  res.json({ total: Number(t.n), rows: items, items, totals: { bills: Number(t.n), total: Number(t.total), paid: Number(t.paid), due: Number(t.due_amt), dueCount: Number(t.due_n), pending: Number(t.pend), approved: Number(t.appr) } });
 }));
 router.get('/next-invoice', guard(VIEW), wrap(async (req, res) => {
   res.json({ invoiceNo: await nextInvoiceNo(iso(req.query.date, today()).slice(2, 4), true) });

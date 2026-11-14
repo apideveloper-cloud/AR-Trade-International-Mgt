@@ -1,18 +1,16 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { pool } from './db.js';
 import { digits, fail, iso, wrap, checkPassword, secret } from './util.js';
 import { guard } from './admin.js';
-import { can } from './permissions.js';
-import { pathToFileURL } from 'node:url';
 import { ensureFieldSchema } from './field/migrate.js';
 import { moduleGate, ensureModuleTable } from './field/gate.js';
-import { staffOut, roleKey, ROLE_LABELS, notify, staffIdsByRole, todayBD, clientRefOf } from './field/common.js';
+import { staffOut, roleKey, ROLE_LABELS, notify, staffIdsByRole, todayBD, clientRefOf, isApprover, mysqlDate, UTC, range, coord } from './field/common.js';
 
 // REST API for the AR Trade mobile app: attendance, live GPS tracking and expenses.
 const router = Router();
@@ -21,17 +19,6 @@ for (const area of ['attendance', 'track', 'expenses', 'vouchers']) router.use('
 const here = path.dirname(fileURLToPath(import.meta.url));
 const VOUCHERS = path.resolve(here, '../uploads/vouchers');
 fs.mkdirSync(VOUCHERS, { recursive: true });
-
-const isApprover = s => can(s, 'field.approve');
-const mysqlDate = v => { const d = new Date(v); if (isNaN(d)) throw fail(400, 'Invalid time'); return d.toISOString().slice(0, 19).replace('T', ' '); };
-const UTC = c => `DATE_FORMAT(${c}, '%Y-%m-%dT%H:%i:%sZ')`; // times are stored in UTC
-const range = q => { // client sends its local day as UTC instants; default = last 24h
-  const to = q.to ? new Date(q.to) : new Date();
-  const from = q.from ? new Date(q.from) : new Date(to.getTime() - 864e5);
-  if (isNaN(from) || isNaN(to)) throw fail(400, 'Invalid range');
-  return [mysqlDate(from), mysqlDate(to)];
-};
-const coord = (v, max) => { const n = Number(v); if (!Number.isFinite(n) || Math.abs(n) > max) throw fail(400, 'Invalid coordinates'); return n; };
 
 const expenseOut = e => ({
   id: String(e.id), employeeName: e.name, title: e.title, category: e.category, amount: Number(e.amount),
@@ -48,7 +35,10 @@ router.post('/login', wrap(async (req, res) => {
   // the sign-in screen lets people pick their role; it must match what the account really is
   const want = String(req.body.role || '');
   if (want && want !== roleKey(s.role)) throw fail(403, `This ID is registered as ${s.role}, not ${ROLE_LABELS[want] || want}. Pick your own role.`);
-  const token = jwt.sign({ sid: s.id, srole: s.role }, secret(), { expiresIn: '30d' });
+  // one phone at a time: a new app sign-in ends this user's previous app session (the web console has its own, separate session)
+  const sa = crypto.randomBytes(16).toString('hex');
+  await pool.query('UPDATE staff SET app_session_id = ? WHERE id = ?', [sa, s.id]);
+  const token = jwt.sign({ sid: s.id, srole: s.role, sa }, secret(), { expiresIn: '30d' });
   res.json({ token, staff: staffOut(s) });
 }));
 
@@ -185,7 +175,9 @@ router.post('/expenses', guard(), wrap(async (req, res) => {
     file = crypto.randomBytes(8).toString('hex') + { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp' }[m[1]];
     fs.writeFileSync(path.join(VOUCHERS, file), buf);
   }
-  const [r] = await pool.query('INSERT INTO field_expenses (staff_id,title,category,amount,voucher,client_ref) VALUES (?,?,?,?,?,?)', [req.staff.id, title, category, amount, file, ref]);
+  let r;
+  try { [r] = await pool.query('INSERT INTO field_expenses (staff_id,title,category,amount,voucher,client_ref) VALUES (?,?,?,?,?,?)', [req.staff.id, title, category, amount, file, ref]); }
+  catch (e) { if (file) fs.rm(path.join(VOUCHERS, file), { force: true }, () => {}); throw e; } // no orphan image when the claim was not saved
   const [[e]] = await pool.query(`SELECT e.*, ${UTC('CONVERT_TZ(e.created_at, @@session.time_zone, "+00:00")')} created_utc, s.name FROM field_expenses e JOIN staff s ON s.id = e.staff_id WHERE e.id = ?`, [r.insertId]);
   staffIdsByRole('manager', 'accountant', 'admin').then(ids => notify(ids.filter(i => i !== req.staff.id), {
     icon: 'receipt_long', cat: 'Approvals', title: 'Expense waiting for approval', sub: `${req.staff.name} · ${title} · ৳ ${amount.toLocaleString('en-IN')}`,

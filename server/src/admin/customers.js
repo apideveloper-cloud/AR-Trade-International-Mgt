@@ -69,7 +69,8 @@ export function mountCustomerRoutes(router, guard) {
   }));
   router.put('/services/:id', guard('services.manage'), wrap(async (req, res) => {
     if (!SERVICE_STATUSES.includes(req.body.status)) throw fail(400, 'Unknown status');
-    await pool.query('UPDATE service_requests SET status = ? WHERE id = ?', [req.body.status, req.params.id]);
+    const [r] = await pool.query('UPDATE service_requests SET status = ? WHERE id = ?', [req.body.status, req.params.id]);
+    if (!r.affectedRows) throw fail(404, 'Service request not found');
     res.json({ ok: true });
   }));
 }

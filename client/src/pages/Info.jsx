@@ -88,7 +88,7 @@ export function Contact() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(240px,1fr))', gap: 14 }}>
         <div style={box}><span style={k}>Showroom</span><span style={{ fontWeight: 700, fontSize: 17 }}>{site.address}</span><span style={{ fontSize: 13, color: '#5d6270' }}>{ft.hours}</span></div>
         <div style={box}><span style={k}>Call / WhatsApp</span><a href="tel:+8801977554401" style={{ fontWeight: 700, fontSize: 17 }}>{site.phone}</a><span style={{ fontSize: 13, color: '#5d6270' }}>{ft.mobileBanking}</span></div>
-        <div style={box}><span style={k}>Email</span><a href="mailto:info@artradeinternational.com" style={{ fontWeight: 700, fontSize: 17 }}>{site.email}</a><span style={{ fontSize: 13, color: '#5d6270' }}>{ft.email2}</span></div>
+        <div style={box}><span style={k}>Email</span><a href={'mailto:' + site.email} style={{ fontWeight: 700, fontSize: 17 }}>{site.email}</a><span style={{ fontSize: 13, color: '#5d6270' }}>{ft.email2}</span></div>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%,420px),1fr))', gap: 20 }}>
         <div className="white-card" style={{ gap: 14 }}>

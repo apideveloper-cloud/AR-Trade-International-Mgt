@@ -2,7 +2,7 @@
 //   GET /api/field/overview
 import { Router } from 'express';
 import { pool, guardRole, wrap, UTC_TS, roleKey } from '../common.js';
-import { period, tsBetween, toSql, tkText, kfmt, bdDateStr } from '../report_util.js';
+import { period, tsBetween, tkText, bdDateStr } from '../report_util.js';
 
 const router = Router();
 const CLOCKERS = ['Field Officer', 'RM', 'Purchase Officer'];
@@ -23,7 +23,7 @@ router.get('/', guardRole('manager', 'accountant'), wrap(async (req, res) => {
   const lv = decidesLeave ? (await pool.query("SELECT COUNT(*) n FROM field_leave_requests WHERE status = 'Open' AND staff_id <> ?", [req.staff.id]))[0][0] : { n: 0 };
   const po = (await tryQuery('SELECT COUNT(*) n FROM field_purchase_orders WHERE status IN (?) AND staff_id <> ?', [poStates, req.staff.id], [{ n: 0 }]))[0];
   const so = decidesLeave ? (await tryQuery("SELECT COUNT(*) n FROM field_sales_orders WHERE approval_status = 'Pending'", [], [{ n: 0 }]))[0] : { n: 0 };
-  const [[sales]] = await pool.query(`SELECT COUNT(*) n, COALESCE(SUM(total), 0) amt FROM field_sales_orders WHERE ${t.sql}`, t.args);
+  const [[sales]] = await pool.query(`SELECT COUNT(*) n, COALESCE(SUM(total), 0) amt FROM field_sales_orders WHERE status <> 'Cancelled' AND ${t.sql}`, t.args);
   const [[coll]] = await pool.query(`SELECT COUNT(*) n, COALESCE(SUM(amount), 0) amt FROM field_payments WHERE status <> 'Bounced' AND ${t.sql}`, t.args);
   const [[dues]] = await pool.query(
     `SELECT COALESCE(SUM(total - paid), 0) amt, COALESCE(SUM(IF(DATEDIFF(UTC_DATE(), DATE(created_at)) > 30, total - paid, 0)), 0) overdue FROM field_invoices WHERE total > paid`);
@@ -44,4 +44,3 @@ router.get('/', guardRole('manager', 'accountant'), wrap(async (req, res) => {
 }));
 
 export default router;
-void toSql; void kfmt;

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { mktApi as api } from '../admin/adminApi.js';
 import { Note } from './EmailParts.jsx';
-import { card, inp, lbl } from './emailShared.js';
+import { act, card, inp, lbl } from './emailShared.js';
 
 const RULES = [['✓', 'Double opt-in only', 'Nobody is added until they click the confirmation link.'], ['✓', 'One-click unsubscribe', 'Every email carries unsubscribe and preference links; it takes effect immediately.'], ['✓', 'Preferences respected', 'Campaigns only reach people who allow that type of email.'], ['✓', 'Consent is logged', 'Date, time, source and IP are kept for every signup.'], ['✓', 'No sharing or selling', 'The list is never shared or sold.'], ['!', 'Authenticate your domain', 'SPF, DKIM and DMARC keep your emails out of spam.']];
 
@@ -12,7 +12,7 @@ export default function Setup() {
   const load = () => api.get('/setup').then(setD).catch(() => {});
   useEffect(() => { load(); }, []);
   if (!d) return <span className="spin" />;
-  const pick = async n => { await api.put('/setup', { provider: n }); load(); };
+  const pick = n => act(() => api.put('/setup', { provider: n }), load);
   const save = async e => {
     e.preventDefault();
     const form = e.currentTarget, f = Object.fromEntries(new FormData(form).entries());

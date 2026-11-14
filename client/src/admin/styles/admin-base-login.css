@@ -83,7 +83,7 @@
 .a-mini { width: 100%; border: 1px solid #e4e2dc; border-radius: 8px; padding: 7px 8px; }
 .a-thumb { width: 44px; height: 44px; border-radius: 8px; background: #f6f5f2 center / 118% no-repeat; }
 .a-scrim { position: fixed; inset: 0; background: rgba(22,24,29,.4); z-index: 50; }
-.a-drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(480px, 100%); background: #f6f5f2; z-index: 51; display: flex; flex-direction: column; overflow: auto; }
+.a-drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(var(--drawer-w, 1050px), 100%); background: #f6f5f2; z-index: 51; display: flex; flex-direction: column; overflow: auto; }
 .a-drawer .hd { display: flex; justify-content: space-between; align-items: center; padding: 20px 22px; border-bottom: 1px solid #e4e2dc; background: #fff; }
 .a-drawer .bd { padding: 20px 22px; display: flex; flex-direction: column; gap: 16px; }
 .a-box { background: #fff; border: 1px solid #e4e2dc; border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 4px; font-size: 13px; line-height: 1.5; }

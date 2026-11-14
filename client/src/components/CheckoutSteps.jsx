@@ -11,11 +11,11 @@ const STEPS = [['Cart', 'cart'], ['Details', 'details'], ['Confirmation', 'done'
 /** Order progress as a tracker: finished steps are ticked, the current step pulses and a light runs along the road to the next one. step 0-2 = current step, 3 = everything done. */
 export default function CheckoutSteps({ step = 1 }) {
   return (
-    <ol className="cks" aria-label="Checkout progress">
+    <ol className={'cks' + (step >= 3 ? ' all' : '')} aria-label="Checkout progress">
       {STEPS.map(([t, ic], i) => (
         <Fragment key={t}>
-          {i > 0 && <li className={'cks-line' + (i <= step ? ' done' : i === step + 1 ? ' next' : '')} aria-hidden="true" />}
-          <li className={'cks-i' + (i < step ? ' done' : i === step ? ' cur' : '')} aria-current={i === step ? 'step' : undefined}>
+          {i > 0 && <li className={'cks-line' + (i <= step ? ' done' : i === step + 1 ? ' next' : '')} style={{ '--i': i }} aria-hidden="true" />}
+          <li className={'cks-i' + (i < step ? ' done' : i === step ? ' cur' : '')} style={{ '--i': i }} aria-current={i === step ? 'step' : undefined}>
             <span className="cks-dot">
               {i < step
                 ? <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M3.2 8.4l3 3 6.6-6.8" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" /></svg>

@@ -14,16 +14,17 @@ import Addresses from './account/Addresses.jsx';
 import Family from './account/Family.jsx';
 import Refill from './account/Refill.jsx';
 import Settings from './account/Settings.jsx';
+import '../account.css';
 import './accountInline.css';
 
 export default function Account() {
-  const { user } = useStore();
+  const { user, authReady } = useStore();
   const [orders, reloadOrders] = useOrders();
   const [profile, setProfile] = useState(null);
   const [rems, setRems] = useState(null);
   const loadRems = useCallback(() => acc.get('/reminders').then(setRems).catch(() => setRems([])), []);
   useEffect(() => { if (user) { acc.get('/profile').then(setProfile).catch(() => {}); loadRems(); } }, [user, loadRems]);
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) return authReady ? <Navigate to="/login" replace /> : <div className="ac-s138"><span className="spin" /></div>; // a reload must not bounce a signed-in customer to /login before the session check finishes
   if (!profile) return <div className="ac-s138"><span className="spin" /></div>;
 
   return (

@@ -5,7 +5,7 @@
 //   GET  /api/field/team/:id/messages     chat thread between me and :id (marks theirs as read)
 //   POST /api/field/team/:id/messages     { body }
 import { Router } from 'express';
-import { pool, wrap, fail, guard, isApprover, roleKey, ROLE_LABELS, UTC, todayBD, notify } from '../common.js';
+import { pool, wrap, fail, guard, isApprover, roleKey, ROLE_LABELS, UTC, todayBD, notify, distKm, pathKm } from '../common.js';
 import { placeNow } from './mytrack.js';
 
 const router = Router();
@@ -15,12 +15,6 @@ const OFFICE = { lat: Number(process.env.FIELD_OFFICE_LAT || 23.7465), lng: Numb
 const ZONE_KM = Number(process.env.FIELD_ZONE_KM || 10);
 const OFFICE_KM = 0.3;
 
-const rad = d => (d * Math.PI) / 180;
-const distKm = (a, b) => {
-  const dLat = rad(b.lat - a.lat), dLng = rad(b.lng - a.lng);
-  const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) ** 2;
-  return 12742 * Math.asin(Math.sqrt(h));
-};
 const mysql = d => d.toISOString().slice(0, 19).replace('T', ' ');
 /** Start of "today" in Bangladesh time, as a UTC Date. */
 const dayStart = () => new Date(`${todayBD()}T00:00:00+06:00`);
@@ -48,12 +42,6 @@ function statusOf({ clocked, pos, atClient }) {
   if (d <= OFFICE_KM) return 'In office';
   if (d > ZONE_KM) return 'Off route';
   return 'On duty';
-}
-
-function pathKm(points) {
-  let km = 0;
-  for (let i = 1; i < points.length; i++) km += distKm(points[i - 1], points[i]);
-  return Math.round(km * 10) / 10;
 }
 
 router.get('/', guard(), allowed, wrap(async (req, res) => {
@@ -98,6 +86,7 @@ router.get('/', guard(), allowed, wrap(async (req, res) => {
 
 router.get('/:id/route', guard(), wrap(async (req, res) => {
   const id = parseInt(req.params.id, 10);
+  if (!id) throw fail(400, 'Invalid staff id');
   if (id !== req.staff.id && !isApprover(req.staff) && !['manager', 'admin'].includes(roleKey(req.staff.role))) throw fail(403, 'Your role cannot do this');
   const [rows] = await pool.query(`SELECT lat, lng, ${UTC('at')} time FROM field_track WHERE staff_id = ? AND at >= ? ORDER BY at LIMIT 5000`, [id, mysql(dayStart())]);
   res.json(rows.map(r => ({ lat: Number(r.lat), lng: Number(r.lng), time: r.time })));
@@ -105,6 +94,7 @@ router.get('/:id/route', guard(), wrap(async (req, res) => {
 
 router.get('/:id/messages', guard(), wrap(async (req, res) => {
   const other = parseInt(req.params.id, 10);
+  if (!other) throw fail(400, 'Invalid staff id');
   const [[who]] = await pool.query('SELECT id, name, role FROM staff WHERE id = ?', [other]);
   if (!who) throw fail(404, 'Person not found');
   await pool.query('UPDATE field_chat SET read_at = NOW() WHERE from_staff = ? AND to_staff = ? AND read_at IS NULL', [other, req.staff.id]);

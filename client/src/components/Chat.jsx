@@ -8,9 +8,9 @@ import ChatStart from './ChatStart.jsx';
 import { assistantStatus } from '../supportHours.js';
 import './chat-avatar.css';
 
-// the support agent's photo (client/public/agent.png); the round AR logo is the fallback
-const AGENT_PIC = '/agent.png', LOGO_PIC = '/ar-icon-round.png';
-const AgentPic = ({ className = '' }) => <img className={className} src={AGENT_PIC} alt="Support Team" onError={e => { if (!e.currentTarget.src.endsWith(LOGO_PIC)) e.currentTarget.src = LOGO_PIC; }} />;
+// the support agent's photo (client/public/agent.webp); the round AR logo is the fallback
+const AGENT_PIC = '/agent.webp', LOGO_PIC = '/ar-icon-round.png';
+const AgentPic = ({ className = '' }) => <img className={className} src={AGENT_PIC} alt="Support Team" decoding="async" onError={e => { if (!e.currentTarget.src.endsWith(LOGO_PIC)) e.currentTarget.src = LOGO_PIC; }} />;
 
 export const openChat = () => window.dispatchEvent(new Event('ar:openchat'));
 
@@ -147,7 +147,7 @@ export default function Chat() {
         <div className="links">
           <a href={'https://wa.me/' + site.whatsapp} target="_blank" rel="noreferrer">WhatsApp</a>
           <a href="tel:+8801977554401">Call us</a>
-          <a href="/track">Track order</a>
+          <Link to="/track" onClick={() => { setOpen(false); setSeen(agentN); }}>Track order</Link>
         </div>
       </div>
       {!lead ? (

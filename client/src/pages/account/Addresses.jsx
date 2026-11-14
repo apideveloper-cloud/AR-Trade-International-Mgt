@@ -9,7 +9,7 @@ export default function Addresses() {
   const [pin, setPin] = useState({ lat: 23.7394, lng: 90.4119 });
   const [saved, setSaved] = useState(false);
   const [err, setErr] = useState('');
-  const load = () => acc.get('/addresses').then(setRows);
+  const load = () => acc.get('/addresses').then(setRows).catch(() => setRows(r => r || []));
   useEffect(() => { load(); }, []);
   const map = (lat, lng, z = 16) => `https://maps.google.com/maps?q=${lat},${lng}&z=${z}&output=embed`;
   const nudge = (dy, dx) => setPin(p => ({ lat: +(p.lat + dy).toFixed(6), lng: +(p.lng + dx).toFixed(6) }));
@@ -33,8 +33,8 @@ export default function Addresses() {
               {a.lat && <span className="mono ac-s95">📍 {a.lat}, {a.lng}</span>}
             </div>
             <div className="ac-s96">
-              {!a.isDefault && <button className="ac-btn ghost sm" onClick={async () => { await acc.put(`/addresses/${a.id}/default`); load(); }}>Set default</button>}
-              <button className="ac-btn ghost sm ac-s52" onClick={async () => { await acc.del('/addresses/' + a.id); load(); }}>Remove</button>
+              {!a.isDefault && <button className="ac-btn ghost sm" onClick={async () => { try { await acc.put(`/addresses/${a.id}/default`); } catch (er) { setErr(er.message); } load(); }}>Set default</button>}
+              <button className="ac-btn ghost sm ac-s52" onClick={async () => { try { await acc.del('/addresses/' + a.id); } catch (er) { setErr(er.message); } load(); }}>Remove</button>
             </div>
           </div>
         ))}

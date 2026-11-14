@@ -92,7 +92,6 @@
 .vd-lrow > b { text-align: right; } .vd-lrow.head span:nth-child(n+3), .vd-lrow > span:nth-child(n+3) { text-align: right; }
 .vd-lrow small { display: block; color: #8a8f9b; font-size: 11px; } .vd-lrow .pd { color: #17784a; font-weight: 600; }
 /* the vendor drawer is wider than the usual 480px so the statement fits without scrolling */
-.a-drawer:has(.vd-top) { width: min(720px, 100%); }
 .vd-lrow { grid-template-columns: 82px minmax(120px, 1fr) 84px 96px 92px; gap: 8px; padding: 9px 14px; font-size: 12.5px; }
 
 .vd-id { padding: 3px 9px; border-radius: 8px; background: #0b1631; color: #fff; font-size: 11.5px; font-weight: 700; letter-spacing: .03em; }

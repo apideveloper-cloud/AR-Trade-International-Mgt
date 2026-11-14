@@ -13,7 +13,8 @@ export default function Refill({ orders, reload: reloadRem, rems }) {
     return [...seen.values()].slice(0, 12);
   }, [orders]);
   const order = (id, qty) => { const p = find(id); if (p?.price) { addToCart(p, qty); nav('/cart'); } else say('This product is not available right now'); };
-  const remind = async i => { await acc.post('/reminders', { productId: i.id, qty: i.qty, every: 30 }); reloadRem(); };
+  const run = async fn => { try { await fn(); } catch (er) { say(er.message); } reloadRem(); }; // a failed call shows a message instead of an unhandled rejection
+  const remind = i => run(() => acc.post('/reminders', { productId: i.id, qty: i.qty, every: 30 }));
   const due = r => { const d = Math.ceil((new Date(r.next) - Date.now()) / 864e5); return d <= 0 ? ['Due now', 'oklch(0.96 0.03 25)', 'oklch(0.48 0.17 25)'] : d <= 7 ? [`In ${d} days`, 'oklch(0.95 0.05 85)', 'oklch(0.45 0.12 70)'] : [`In ${d} days`, 'oklch(0.95 0.03 240)', 'oklch(0.42 0.15 250)']; };
   return (
     <>
@@ -28,10 +29,10 @@ export default function Refill({ orders, reload: reloadRem, rems }) {
               <Thumb src={r.img} size={52} />
               <div className="ac-s119"><b className="ac-s120">{r.name}</b><span className="ac-s94">Qty {r.qty} · next on {fmtDate(r.next)}</span></div>
               <span style={{ fontSize: 12, fontWeight: 800, padding: '5px 10px', borderRadius: 999, background: bg, color: fg }}>{chip}</span>
-              <select className="ac-input ac-s121" value={r.every} onChange={async e => { await acc.put('/reminders/' + r.id, { every: e.target.value }); reloadRem(); }}>{[15, 30, 45, 60, 90].map(d => <option key={d} value={d}>Every {d} days</option>)}</select>
-              <label className="ac-s122"><input type="checkbox" checked={r.active} onChange={async e => { await acc.put('/reminders/' + r.id, { active: e.target.checked }); reloadRem(); }} />On</label>
+              <select className="ac-input ac-s121" value={r.every} onChange={e => run(() => acc.put('/reminders/' + r.id, { every: e.target.value }))}>{[15, 30, 45, 60, 90].map(d => <option key={d} value={d}>Every {d} days</option>)}</select>
+              <label className="ac-s122"><input type="checkbox" checked={r.active} onChange={e => run(() => acc.put('/reminders/' + r.id, { active: e.target.checked }))} />On</label>
               <button className="ac-btn dark sm" onClick={() => order(r.productId, r.qty)}>Order now</button>
-              <button className="ac-btn ghost sm" title="Remove" onClick={async () => { await acc.del('/reminders/' + r.id); reloadRem(); }}>✕</button>
+              <button className="ac-btn ghost sm" title="Remove" onClick={() => run(() => acc.del('/reminders/' + r.id))}>✕</button>
             </div>
           );
         })}

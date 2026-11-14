@@ -34,3 +34,6 @@
 .chat-open { transition: transform .18s ease, box-shadow .18s ease, bottom .3s ease, background .2s; }
 body:has(.sticky-buy.on) .chat-open { bottom: 96px; }
 body:has(.sticky-buy.on) .chat { bottom: 96px; }
+
+/* small blue link button used outside the account pages too (product page offers header) */
+.ac-link { font-size: 13px; font-weight: 700; color: oklch(0.48 0.17 258); background: oklch(0.96 0.02 258); border-radius: 8px; padding: 6px 10px; }

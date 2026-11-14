@@ -146,7 +146,7 @@ export async function matrix() {
 
 export async function saveRole(role, perms, staff) {
   const next = new Set((Array.isArray(perms) ? perms : []).filter(p => PERM_KEYS.includes(p) && p !== MASTER_ONLY));
-  const before = permsOf(role);
+  const before = new Set([...permsOf(role)].filter(p => !ADMIN_ONLY.includes(p))); // the fixed admin permissions are not in the matrix, so they must not show up as "revoked"
   await pool.query('DELETE FROM role_perms WHERE role = ?', [role]);
   await pool.query('INSERT INTO role_perms (role, perm) VALUES ?', [[[role, '*seeded'], ...ADDED.map(k => [role, '*added:' + k]), ...[...next].map(p => [role, p])]]);
   await loadPermissions();

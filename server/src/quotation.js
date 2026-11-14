@@ -292,12 +292,12 @@ export async function buildQuotePdf(q, site = {}) {
     });
 
     // ---- terms (left) and totals (right) ----
-    if (y + 215 > H - 70) { doc.addPage(); y = 40; }
-    y += 12;
     const notes = String(q.notes || '').split(/\r?\n/).map(s => s.trim()).filter(Boolean);
     if (!notes.some(n => /valid/i.test(n))) notes.push(`Quotation valid only for ${q.validDays} days.`);
     const noteLines = notes.map(n => wrapText(doc, n, 238, 8.5, false));
     const termsH = Math.max(34 + noteLines.reduce((t, ls) => t + ls.length * 11.5 + 3, 0), 148);
+    if (y + 12 + termsH + 55 > H - 70) { doc.addPage(); y = 40; } // long terms must not run into the footer
+    y += 12;
     const bx = M + 288, bw = RIGHT - bx;
     doc.roundedRect(M, y, 272, termsH, 10).fillAndStroke(SOFT, LINE);
     put(doc, 'TERMS & CONDITIONS', M + 12, y + 11, { size: 7.5, bold: true, color: BLUE });

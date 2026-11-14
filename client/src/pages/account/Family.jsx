@@ -8,8 +8,8 @@ export default function Family() {
   const [addrs, setAddrs] = useState([]);
   const { user, say } = useStore();
   const nav = useNavigate();
-  const load = () => acc.get('/family').then(setRows);
-  useEffect(() => { load(); acc.get('/addresses').then(setAddrs); }, []);
+  const load = () => acc.get('/family').then(setRows).catch(() => setRows(r => r || []));
+  useEffect(() => { load(); acc.get('/addresses').then(setAddrs).catch(() => {}); }, []);
   const add = async e => {
     e.preventDefault();
     const d = Object.fromEntries(new FormData(e.target).entries());
@@ -27,7 +27,7 @@ export default function Family() {
             <span className="ac-s94">Delivers to: <b className="ac-s114">{f.address}</b></span>
             <div className="ac-s115">
               <button className="ac-btn dark sm" onClick={() => { try { sessionStorage.setItem('ar_order_for', JSON.stringify(f)); } catch { /* storage unavailable */ } nav('/shop/all'); }}>Order for {f.name.split(' ')[0]}</button>
-              <button className="ac-btn ghost sm ac-s52" onClick={async () => { await acc.del('/family/' + f.id); load(); }}>Remove</button>
+              <button className="ac-btn ghost sm ac-s52" onClick={async () => { try { await acc.del('/family/' + f.id); } catch (er) { say(er.message); } load(); }}>Remove</button>
             </div>
           </div>
         ))}

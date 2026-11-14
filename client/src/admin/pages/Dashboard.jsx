@@ -46,7 +46,7 @@ export function Dashboard({ go, staff }) {
     return () => { stale = true; };
   }, [asOf, range]);
   const pick = v => { setRange(v); try { localStorage.setItem('dash_range', String(v)); } catch { /* storage unavailable */ } };
-  if (err) return <div className="a-msg err">{err}</div>;
+  if (err && !o) return <div className="a-msg err">{err}</div>;
   if (!o) return <span className="spin" />;
 
   const has = k => o.sections.includes(k);
@@ -213,6 +213,7 @@ export function Dashboard({ go, staff }) {
 
   return (
     <>
+      {err && <div className="a-msg err">{err}</div>}
       {report && <ProductReport id={report} range={range} asOf={asOf} onClose={() => setReport(null)} go={go} />}
       {asOf && <div className="a-msg" style={{ background: '#fff6e0', color: '#8a5a00' }}>Showing the picture as of {o.asOf}. <a href="/admin/dashboard" style={{ fontWeight: 800 }}>Back to today</a></div>}
       <section className="dash-hero compact">

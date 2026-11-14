@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { mktApi as api } from '../admin/adminApi.js';
 import { fmtTime } from '../api.js';
-import { card } from './emailShared.js';
+import { act, card } from './emailShared.js';
 
 export default function Audience() {
   const [d, setD] = useState(null);
@@ -23,7 +23,7 @@ export default function Audience() {
             <b className="em-s88">{u.email}</b>
             <div className="em-s89">{CH.map(([k, t]) => <span key={k} style={{ fontSize: 11.5, fontWeight: 700, padding: '4px 9px', borderRadius: 999, background: u.prefs[k] ? 'oklch(0.95 0.04 250)' : '#f1f2f5', color: u.prefs[k] ? 'oklch(0.42 0.15 256)' : '#a0a5b1' }}>{t}</span>)}</div>
             {u.token && <a href={'/prefs/' + u.token} target="_blank" rel="noreferrer" className="em-s90">Preference page ↗</a>}
-            <button onClick={async () => { if (window.confirm('Unsubscribe ' + u.email + '?')) { await api.del('/audience/' + encodeURIComponent(u.email)); load(); } }} className="em-s91">Unsubscribe</button>
+            <button onClick={() => { if (window.confirm('Unsubscribe ' + u.email + '?')) act(() => api.del('/audience/' + encodeURIComponent(u.email)), load); }} className="em-s91">Unsubscribe</button>
           </div>
         ))}
       </div>

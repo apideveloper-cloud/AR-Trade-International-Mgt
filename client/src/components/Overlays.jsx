@@ -3,7 +3,7 @@ import { productPath } from '../slug.js';
 import Social from './Social.jsx';
 import { popupAllowed, popupClose, popupOpen } from '../popupBus.js';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { api, fmt, offPct } from '../api.js';
+import { api, copyText, fmt, offPct } from '../api.js';
 import { useStore } from '../store.jsx';
 
 const TOAST_ICON = {
@@ -119,7 +119,8 @@ export function LoginModal() {
         await register({ name: d.name, phone: d.phone, email: d.email, password: d.pw });
       } else await login({ id: d.id, password: d.pw });
       done();
-    } catch (e2) { setErr(e2.message); setBusy(false); }
+    } catch (e2) { setErr(e2.message); }
+    setBusy(false); // this modal stays mounted, so a later sign-in (after signing out) must not find the button still disabled
   };
   const forgot = async e => {
     const id = (e.currentTarget.form.elements.id.value || '').trim();
@@ -203,7 +204,7 @@ export function PromoPopup() {
 
   const src = products.filter(p => p.img && p.old && p.price).map(p => ({ p, off: offPct(p) })).sort((a, b) => b.off - a.off);
   const close = () => { try { sessionStorage.setItem('arPromoSeen', '1'); } catch { /* storage unavailable */ } setOpen(false); };
-  const copy = () => { try { navigator.clipboard.writeText(site.coupon); } catch { /* clipboard unavailable */ } setCopied(true); };
+  const copy = () => copyText(site.coupon).then(ok => { if (ok) setCopied(true); });
 
   return (
     <div className="pop-bg" onClick={close}>
@@ -242,10 +243,9 @@ export function PromoPopup() {
 
 /** Newsletter popup: after a delay and on exit intent (once per session), then the double opt-in demo mail. */
 export function NewsletterPopup() {
-  const { content, optIn, subscribed, optMail, say } = useStore();
+  const { content, optIn, subscribed, optMail, say, site } = useStore();
   const [mode, setMode] = useState(null);
   const [err, setErr] = useState('');
-  const { site } = useStore();
   const pp = content.popup || { on: true, delay: 30, exit: true };
   const pmode = site.popupMode || 'one';
   const delay = Number(site.nlDelay ?? pp.delay ?? 30);

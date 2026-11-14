@@ -112,7 +112,7 @@ router.get('/', guardRole('rm', 'manager', 'accountant'), wrap(async (req, res) 
   if (mine) { conds.push('o.staff_id = ?'); args.push(req.staff.id); }
   if (ap) { conds.push('o.approval_status = ?'); args.push(ap); }
   const where = conds.length ? 'WHERE ' + conds.join(' AND ') : '';
-  const [[t]] = await pool.query(`SELECT COUNT(*) n, COALESCE(SUM(total), 0) total FROM field_sales_orders o WHERE o.created_at >= ? ${mine ? 'AND o.staff_id = ?' : ''}`, mine ? [bdDayStartUtc(), req.staff.id] : [bdDayStartUtc()]);
+  const [[t]] = await pool.query(`SELECT COUNT(*) n, COALESCE(SUM(total), 0) total FROM field_sales_orders o WHERE o.status <> 'Cancelled' AND o.created_at >= ? ${mine ? 'AND o.staff_id = ?' : ''}`, mine ? [bdDayStartUtc(), req.staff.id] : [bdDayStartUtc()]);
   const summary = { ordersToday: t.n, salesToday: Number(t.total) };
   if (wantsPage(req)) { // paged: filtered and cut in the database (same visibility: own orders unless the role sees all)
     const { size, page, offset } = pageOf(req);

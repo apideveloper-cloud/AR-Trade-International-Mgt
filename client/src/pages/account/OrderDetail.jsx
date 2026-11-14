@@ -1,5 +1,7 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { fmt, fmtDate, fmtTime } from '../../api.js';
+import LiveTrack from '../../components/LiveTrack.jsx';
+import { api, fmt, fmtDate, fmtTime } from '../../api.js';
 import { printInvoice } from '../../invoice.js';
 import { useStore } from '../../store.jsx';
 import { Badge, STEPS, Thumb, acc, useBuyAgain } from './shared.jsx';
@@ -9,11 +11,31 @@ export default function OrderDetail({ orders, reload }) {
   const { site, say } = useStore();
   const buyAgain = useBuyAgain();
   const o = (orders || []).find(x => x.id === id);
+  const phone = o?.customer?.phone;
+  // the live tracking view (courier, ETA, returns) for this order; it belongs to one order+phone, so it vanishes when either changes
+  const key = phone ? id + '|' + phone : '';
+  const keyRef = useRef(key);
+  keyRef.current = key;
+  const [liveState, setLiveState] = useState({ key: '', d: null });
+  const live = liveState.key === key ? liveState.d : null;
+  const loadLive = useCallback(() => {
+    if (!phone) return Promise.resolve();
+    const k = id + '|' + phone;
+    return api.get(`/live/live?id=${encodeURIComponent(id)}&phone=${encodeURIComponent(phone)}`)
+      .then(d => { if (keyRef.current === k) setLiveState({ key: k, d }); }) // a late answer for another order is dropped
+      .catch(() => {}); // a failed poll keeps what is shown, so the 5-second refresh carries on
+  }, [id, phone]);
+  useEffect(() => { loadLive(); }, [loadLive]);
+  useEffect(() => { // refresh while the parcel is on the road
+    if (live?.flow !== 'Out for delivery') return undefined;
+    const t = setInterval(() => { if (!document.hidden) loadLive(); }, 5000);
+    return () => clearInterval(t);
+  }, [live?.flow, loadLive]);
   if (orders === null) return <span className="spin" />;
   if (!o) return <div className="ac-card">Order not found. <Link to="/account/orders" className="ac-s41">Back to orders</Link></div>;
   const cancel = async () => {
     if (!window.confirm('Cancel order ' + o.id + '?')) return;
-    try { await acc.post(`/orders/${o.id}/cancel`); say('Order cancelled'); reload(); } catch (e) { say(e.message); }
+    try { await acc.post(`/orders/${o.id}/cancel`); say('Order cancelled'); reload(); loadLive(); } catch (e) { say(e.message); }
   };
   const idx = STEPS.indexOf(o.status);
   const steps = o.status === 'Cancelled' ? o.history.map(h => h.s) : STEPS;
@@ -24,11 +46,12 @@ export default function OrderDetail({ orders, reload }) {
         <div className="ac-s28"><h2 className="ac-title">Order {o.id}</h2><span className="ac-s50">Placed {fmtDate(o.date)} · {o.payment}</span></div>
         <div className="ac-s51">
           <Badge s={o.status} />
-          {o.status === 'Delivered' && <button className="ac-btn grad" onClick={() => printInvoice(o, site)}>⤓ Invoice (PDF)</button>}
+          {o.status === 'Delivered' && <button className="ac-btn grad" onClick={() => { if (!printInvoice(o, site)) say('Please allow pop-ups to print the invoice'); }}>⤓ Invoice (PDF)</button>}
           <button className="ac-btn ghost" onClick={() => buyAgain(o.items)}>Buy again</button>
           {['Pending', 'Confirmed'].includes(o.status) && <button className="ac-btn ghost ac-s52" onClick={cancel}>Cancel order</button>}
         </div>
       </div>
+      {live ? <LiveTrack d={live} phone={phone} onChanged={() => { loadLive(); reload(); }} /> : (
       <div className="ac-grid2">
         <div className="ac-card ac-s53">
           <b className="ac-s54">Tracking</b>
@@ -66,6 +89,7 @@ export default function OrderDetail({ orders, reload }) {
           </div>
         </div>
       </div>
+      )}
     </>
   );
 }

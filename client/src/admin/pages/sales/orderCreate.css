@@ -4,7 +4,7 @@
 .oc-src-lbl { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #6b7388; margin-right: 4px; }
 .oc-tag { font-style: normal; display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: 999px; font-size: 10.5px; font-weight: 800; background: #eef1f6; color: #5d6679; }
 .oc-tag.blue { background: #e3effd; color: #1f5fb8; } .oc-tag.violet { background: #eee9fd; color: #5a3fc0; } .oc-tag.amber { background: #fdf0d6; color: #8a5a00; }
-.a-modal.slide.oc { width: min(1160px, 100vw); }
+.a-modal.slide.oc { width: min(var(--slide-w, 1180px), 100vw); }
 .oc-form { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 12px; align-items: start; }
 .oc-main { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 .oc-side { position: sticky; top: 0; display: flex; flex-direction: column; gap: 10px; }

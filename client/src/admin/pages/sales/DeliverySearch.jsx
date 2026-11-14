@@ -50,7 +50,7 @@ export function DeliverySearch({ lists }) {
           <div className="os-grid">
             <div className="c4">{box('q', 'Order, customer or phone', ICON.search, { placeholder: 'WP-21158, name or 01…' })}</div>
             <div className="c3">{box('product', 'Product', ICON.box, { placeholder: 'Product name' })}</div>
-            <label className="os-f c2">Area<span className="os-in os-sel">{ICON.pin}<select value={p.area || ''} onChange={e => apply({ area: e.target.value })}><option value="">All areas</option>{Object.entries(AREA).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></span></label>
+            <label className="os-f c2">Area<span className="os-in os-sel">{ICON.pin}<select value={p.area || ''} onChange={e => apply({ area: e.target.value })}><option value="">All areas</option>{Object.entries(AREA).filter(([k]) => k !== 'suburb' /* the old suburb zone no longer exists at checkout */).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></span></label>
             <label className="os-f c3">Payment<span className="os-in os-sel">{ICON.card}<select value={p.pay || ''} onChange={e => apply({ pay: e.target.value })}><option value="">All payments</option>{PAYMENTS.map(m => <option key={m}>{m}</option>)}</select></span></label>
             <label className="os-f c3">Order date from<span className="os-in os-dt">{ICON.cal}<input type="date" value={p.from || ''} max={p.to || undefined} onChange={e => apply({ from: e.target.value })} /></span></label>
             <label className="os-f c3">Order date to<span className="os-in os-dt">{ICON.cal}<input type="date" value={p.to || ''} min={p.from || undefined} onChange={e => apply({ to: e.target.value })} /></span></label>

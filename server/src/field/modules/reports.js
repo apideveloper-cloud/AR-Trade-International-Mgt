@@ -4,8 +4,8 @@
 //   GET /api/field/reports/collection?period=day|week|month
 //   GET /api/field/reports/export?name=sales|collection|delivery|attendance|route|leave|expense|approvals|ledger&period=&format=json|csv
 import { Router } from 'express';
-import { pool, guard, wrap, fail, UTC, UTC_TS, isApprover } from '../common.js';
-import { period, workdaysElapsed, tsBetween, toSql, tkText, kfmt, group, pctDelta, numDelta, setting, seesAll, bdParts, bdDateStr, isFriday, CSV, MON, DAY, BD } from '../report_util.js';
+import { pool, guard, wrap, fail, UTC, UTC_TS, distKm } from '../common.js';
+import { period, workdaysElapsed, tsBetween, toSql, tkText, kfmt, pctDelta, numDelta, setting, seesAll, bdParts, bdDateStr, CSV, MON, DAY, BD } from '../report_util.js';
 import { addSearch, day, pageOf, wantsPage, whereOf } from '../../listing.js';
 
 const router = Router();
@@ -37,6 +37,7 @@ async function attendanceDays(win, staffIds, prev = false) {
   for (const r of rows) {
     const at = new Date(r.at_utc);
     const key = `${r.staff_id}|${bdDateStr(at)}`;
+    if (r.type !== 'Clocked In' && !days.has(key)) continue; // a clock-out whose clock-in was on an earlier day is not a day present (and has no first-in time)
     const d = days.get(key) || { staff: r.staff_id, date: bdDateStr(at), first: null, ms: 0, open: null };
     if (r.type === 'Clocked In') { d.first ||= at; d.open = at; } else if (d.open) { d.ms += at - d.open; d.open = null; }
     days.set(key, d);
@@ -66,8 +67,9 @@ router.get('/summary', guard(), wrap(async (req, res) => {
   let kpis, title, target, files, unit = 'k';
 
   if (type === 'sales') {
-    const orders = await rowsIn('field_sales_orders', 'created_at', win, sf, sa);
-    const prev = await rowsIn('field_sales_orders', 'created_at', win, sf, sa, true);
+    const notCancelled = ` AND status <> 'Cancelled'${sf}`; // a rejected order is cancelled and is not a sale
+    const orders = await rowsIn('field_sales_orders', 'created_at', win, notCancelled, sa);
+    const prev = await rowsIn('field_sales_orders', 'created_at', win, notCancelled, sa, true);
     const pay = (await rowsIn('field_payments', 'created_at', win, ` AND status <> 'Bounced'${sf}`, sa));
     const payPrev = await rowsIn('field_payments', 'created_at', win, ` AND status <> 'Bounced'${sf}`, sa, true);
     orders.forEach(o => { bars[win.bucketOf(new Date(o.at_utc))] += Number(o.total); });
@@ -256,7 +258,7 @@ async function dataset(name, win, req) {
       for (const n of names) {
         const [pts] = await pool.query('SELECT lat, lng FROM field_track WHERE staff_id = ? AND at >= ? AND at < ? ORDER BY at, id', [n.id, toSql(win.start), toSql(win.end)]);
         let km = 0;
-        for (let i = 1; i < pts.length; i++) km += hav(pts[i - 1], pts[i]);
+        for (let i = 1; i < pts.length; i++) km += distKm({ lat: Number(pts[i - 1].lat), lng: Number(pts[i - 1].lng) }, { lat: Number(pts[i].lat), lng: Number(pts[i].lng) });
         let v = [{ done: 0, total: 0 }];
         try { [v] = await pool.query('SELECT SUM(status = "Done") done, COUNT(*) total FROM field_visits WHERE staff_id = ? AND visit_date >= ? AND visit_date < ?', [n.id, bdDateStr(win.start), bdDateStr(win.end)]); } catch { /* visits module missing */ }
         rows.push([n.name, pts.length, km.toFixed(1), `${Number(v[0].done || 0)} / ${Number(v[0].total || 0)}`]);
@@ -284,12 +286,6 @@ async function dataset(name, win, req) {
       throw fail(404, 'Unknown report');
   }
 }
-function hav(a, b) {
-  const R = 6371, rad = x => (Number(x) * Math.PI) / 180;
-  const dLat = rad(b.lat) - rad(a.lat), dLng = rad(b.lng) - rad(a.lng);
-  const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(h));
-}
 
 router.get('/export', guard(), wrap(async (req, res) => {
   const win = customWindow(req) || period(kind(req.query.period || 'month'));
@@ -309,4 +305,3 @@ router.get('/export', guard(), wrap(async (req, res) => {
 }));
 
 export default router;
-void isApprover; void group; void isFriday; void DAY; void UTC;

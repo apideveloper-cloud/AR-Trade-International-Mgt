@@ -14,10 +14,10 @@ export function ChatLeads() {
   const t = useTable('/chat-leads', { size: 15, status: '', marketing: '' });
   const [err, setErr] = useState('');
   const s = t.data.stats || { total: 0, fresh: 0, customers: 0, marketing: 0, week: 0 };
-  const save = async (id, patch) => { try { await adm.put('/chat-leads/' + id, patch); t.reload(); } catch (e) { setErr(e.message); } };
+  const save = async (id, patch) => { try { await adm.put('/chat-leads/' + id, patch); setErr(''); t.reload(); } catch (e) { setErr(e.message); } };
   const remove = async l => {
     if (!(await confirmBox('Delete ' + l.name + ' (' + l.phone + ') from the chat leads list?', { danger: true, confirmLabel: 'Delete lead' }))) return;
-    try { await adm.del('/chat-leads/' + l.id); t.reload(); } catch (e) { setErr(e.message); }
+    try { await adm.del('/chat-leads/' + l.id); setErr(''); t.reload(); } catch (e) { setErr(e.message); }
   };
   const exportCsv = async () => {
     try {

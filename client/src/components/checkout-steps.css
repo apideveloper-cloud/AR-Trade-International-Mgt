@@ -1,11 +1,11 @@
 /* checkout progress tracker: Cart > Details > Confirmation */
 .cks { --cks-green: oklch(0.62 0.15 150); --cks-ink: var(--navy, #0b1631); display: flex; align-items: center; gap: 8px; list-style: none; margin: 0; padding: 0; font-size: 12.5px; font-weight: 700; }
-.cks-i { display: flex; align-items: center; gap: 8px; color: #7a8296; transition: color .3s; }
-.cks-dot { position: relative; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: #eef1f7; color: #7a8296; font-size: 12px; font-weight: 800; transition: background .3s, color .3s; }
+.cks-i { display: flex; align-items: center; gap: 8px; color: #5b6778; transition: color .3s; }
+.cks-dot { position: relative; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: #eef1f7; color: #5b6778; font-size: 12px; font-weight: 800; transition: background .3s, color .3s; }
 .cks-i.done { color: oklch(0.42 0.13 150); }
 .cks-i.done .cks-dot { background: var(--cks-green); color: #fff; animation: cks-pop .45s cubic-bezier(.3, 1.6, .5, 1) both; }
 .cks-i.cur { color: var(--cks-ink); }
-.cks-i.cur .cks-dot { background: var(--cks-ink); color: #fff; animation: cks-ring 1.8s ease-out infinite; }
+.cks-i.cur .cks-dot { background: var(--cks-ink); color: #fff; animation: cks-ring 1.8s ease-out 4; }
 
 /* the road between two steps */
 .cks-line { position: relative; flex: none; width: 44px; height: 3px; border-radius: 3px; background: #e3e7f0; overflow: hidden; }
@@ -24,13 +24,12 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .cks-i.cur .cks-dot, .cks-i.done .cks-dot, .cks-line.done::before, .cks-line.next::before { animation: none; }
-  .cks-line.next::before { width: 100%; opacity: .25; }
 }
 
 /* v2: the tracker as a floating card-pill with icons and a colour flow */
 .cks { gap: 10px; padding: 8px 20px 8px 10px; background: #fff; border: 1px solid #e3e9f3; border-radius: 999px; box-shadow: 0 16px 34px -24px rgba(11, 22, 49, .55), 0 1px 0 rgba(255, 255, 255, .9) inset; }
 .cks-i { gap: 9px; font-size: 13.5px; }
-.cks-dot { width: 36px; height: 36px; background: #f1f4fa; color: #93a0ba; box-shadow: inset 0 0 0 1.5px #e0e6f1; }
+.cks-dot { width: 36px; height: 36px; background: #f1f4fa; color: #5b6778; box-shadow: inset 0 0 0 1.5px #e0e6f1; }
 .cks-i.done .cks-dot { background: linear-gradient(135deg, oklch(0.68 0.15 152), oklch(0.52 0.14 156)); color: #fff; box-shadow: 0 6px 14px -6px oklch(0.5 0.14 155 / .7); }
 .cks-i.cur .cks-dot { background: linear-gradient(135deg, oklch(0.5 0.17 258), var(--cks-ink)); color: #fff; box-shadow: 0 8px 18px -8px oklch(0.4 0.16 260 / .8); }
 .cks-i.cur .cks-t { font-weight: 800; }
@@ -41,3 +40,23 @@
 
 /* the circles and roads keep their size when the title row is narrow */
 .cks-dot, .cks-line, .cks-i { flex: none; }
+
+/* v3: the steps light up one after another, the ticks draw themselves and, when everything is done, the pill shines */
+.cks { position: relative; overflow: hidden; animation: cks-in .5s cubic-bezier(.3, 1.3, .5, 1) backwards; }
+@keyframes cks-in { from { opacity: 0; transform: translateY(-8px) scale(.96); } to { opacity: 1; transform: none; } }
+.cks-i.done .cks-dot { animation: cks-pop .5s calc(var(--i) * .5s + .15s) cubic-bezier(.3, 1.6, .5, 1) backwards; }
+.cks-i.done .cks-dot svg path { stroke-dasharray: 20; stroke-dashoffset: 0; animation: cks-draw .4s calc(var(--i) * .5s + .35s) ease-out backwards; }
+.cks-i.done .cks-t { animation: cks-txt .4s calc(var(--i) * .5s + .25s) ease-out backwards; }
+.cks-line.done::before { animation: cks-fill .5s calc(var(--i) * .5s - .2s) ease-out backwards; }
+@keyframes cks-draw { from { stroke-dashoffset: 20; } to { stroke-dashoffset: 0; } }
+@keyframes cks-txt { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: none; } }
+/* all done: a light sweeps over the pill and the last step glows */
+.cks.all::after { content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 38%; background: linear-gradient(105deg, transparent, rgba(255, 255, 255, .85), transparent); transform: translateX(-130%); animation: cks-sweep 3.6s 1.8s ease-in-out 3; pointer-events: none; }
+@keyframes cks-sweep { 0% { transform: translateX(-130%); } 45%, 100% { transform: translateX(380%); } }
+.cks.all .cks-i:last-child .cks-dot { animation: cks-pop .5s calc(var(--i) * .5s + .15s) cubic-bezier(.3, 1.6, .5, 1) backwards, cks-glow 2.2s calc(var(--i) * .5s + .8s) ease-in-out 4; }
+@keyframes cks-glow { 0%, 100% { box-shadow: 0 6px 14px -6px oklch(0.5 0.14 155 / .7), 0 0 0 0 oklch(0.7 0.16 150 / .5); } 50% { box-shadow: 0 6px 14px -6px oklch(0.5 0.14 155 / .7), 0 0 0 9px oklch(0.7 0.16 150 / 0); } }
+.cks.all .cks-i:last-child .cks-t { background: linear-gradient(90deg, oklch(0.42 0.13 150), oklch(0.55 0.17 160), oklch(0.42 0.13 150)); background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: cks-txt .4s calc(var(--i) * .5s + .25s) ease-out backwards, cks-shimmer 3s linear 3; }
+@keyframes cks-shimmer { to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .cks, .cks-i.done .cks-dot, .cks-i.done .cks-dot svg path, .cks-i.done .cks-t, .cks-line.done::before, .cks.all::after, .cks.all .cks-i:last-child .cks-dot, .cks.all .cks-i:last-child .cks-t { animation: none; } .cks.all::after { display: none; } .cks.all .cks-i:last-child .cks-t { background: none; color: oklch(0.42 0.13 150); } }
+/* reduced motion, last so it wins over the width: 45% above: a still, soft bar */
+@media (prefers-reduced-motion: reduce) { .cks-line.next::before { animation: none; width: 100%; opacity: .25; } }

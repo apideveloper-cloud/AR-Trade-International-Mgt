@@ -2,14 +2,14 @@ import { useEffect, useState } from 'react';
 import { mktApi as api } from '../admin/adminApi.js';
 import { fmt, fmtTime } from '../api.js';
 import { CampaignForm } from './CampaignForm.jsx';
-import { card, dash, inp, lbl, pct, TAG } from './emailShared.js';
+import { act, card, dash, inp, lbl, pct, TAG } from './emailShared.js';
 
 function ResultsForm({ c, onDone }) {
   const [open, setOpen] = useState(false);
   const submit = async e => {
     e.preventDefault();
     const d = Object.fromEntries(new FormData(e.target).entries());
-    await api.put(`/campaigns/${c.id}/results`, d); setOpen(false); onDone();
+    await act(() => api.put(`/campaigns/${c.id}/results`, d), () => { setOpen(false); onDone(); });
   };
   if (!open) return <button onClick={() => setOpen(true)} className="em-s41">Enter results from provider</button>;
   return (
@@ -63,8 +63,8 @@ export default function Campaigns() {
               )}
               {c.status === 'Scheduled' && (
                 <div className="em-s58">
-                  <button onClick={async () => { await api.post(`/campaigns/${c.id}/send`); load(); }} className="em-s59">Send now</button>
-                  <button onClick={async () => { await api.del('/campaigns/' + c.id); load(); }} className="em-s15">Cancel</button>
+                  <button onClick={() => act(() => api.post(`/campaigns/${c.id}/send`), load)} className="em-s59">Send now</button>
+                  <button onClick={() => act(() => api.del('/campaigns/' + c.id), load)} className="em-s15">Cancel</button>
                 </div>
               )}
             </div>

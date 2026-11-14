@@ -60,7 +60,7 @@ export async function mailContact({ name, contact, company, msg, subject }, shop
   const jobs = [];
   if (to) {
     jobs.push(sendMail({
-      to, replyTo: isEmail ? contact : undefined, subject: `New website message from ${name}`,
+      to, replyTo: isEmail ? contact : undefined, subject: `New website message from ${String(name || '').replace(/\s+/g, ' ').trim().slice(0, 120)}`,
       text: rows.map(r => r.join(': ')).join('\n') + '\n\n' + msg,
       html: `<table cellpadding="6">${rows.map(r => `<tr><td><b>${esc(r[0])}</b></td><td>${esc(r[1])}</td></tr>`).join('')}</table><p style="white-space:pre-wrap">${esc(msg)}</p>`
     }));

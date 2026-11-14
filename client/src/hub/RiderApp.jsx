@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { hubApi as hub } from '../admin/adminApi.js';
+import { can, hubApi as hub } from '../admin/adminApi.js';
 import { FLOW_COLOR } from '../components/LiveTrack.jsx';
 import { fmt } from '../api.js';
 import { isRiderOnly } from './hubUtils.js';
@@ -16,9 +16,11 @@ export default function RiderApp({ staff, reload }) {
   const [err, setErr] = useState('');
   const canvas = useRef(null);
   const signed = useRef(false);
+  const liveRider = useRef(riderId); // ignore a slow response for a rider tab the user already left
 
   const loadRiders = useCallback(() => hub.get('/riders').then(r => { setRiders(r); setRiderId(id => id ?? r[0]?.id); }).catch(e => setErr(e.message)), []);
-  const loadMe = useCallback(() => (riderId ? hub.get('/riders/' + riderId).then(setData).catch(e => setErr(e.message)) : Promise.resolve()), [riderId]);
+  const loadMe = useCallback(() => (riderId ? hub.get('/riders/' + riderId).then(d => { if (liveRider.current === riderId) setData(d); }).catch(e => setErr(e.message)) : Promise.resolve()), [riderId]);
+  liveRider.current = riderId;
   useEffect(() => { loadRiders(); }, [loadRiders]);
   useEffect(() => { loadMe(); }, [loadMe]);
   const refresh = () => { loadMe(); loadRiders(); reload?.(); };
@@ -28,12 +30,13 @@ export default function RiderApp({ staff, reload }) {
     canvas.current = el;
     if (!el || el._bound) return;
     el._bound = true;
+    signed.current = false; // a freshly mounted canvas is blank
     const ctx = el.getContext('2d');
     let down = false;
     const pt = e => { const r = el.getBoundingClientRect(); return [(e.clientX - r.left) * el.width / r.width, (e.clientY - r.top) * el.height / r.height]; };
     el.onpointerdown = e => { down = true; el.setPointerCapture(e.pointerId); ctx.beginPath(); ctx.moveTo(...pt(e)); ctx.lineWidth = 2.2; ctx.lineCap = 'round'; ctx.strokeStyle = '#0b1631'; };
     el.onpointermove = e => { if (!down) return; ctx.lineTo(...pt(e)); ctx.stroke(); signed.current = true; };
-    el.onpointerup = () => { down = false; };
+    el.onpointerup = el.onpointercancel = () => { down = false; };
   };
   const clearSig = () => { const el = canvas.current; if (el) el.getContext('2d').clearRect(0, 0, el.width, el.height); signed.current = false; };
   const openPod = j => { signed.current = false; setPod(j.id); setOtp(''); setSigName(j.name); setCod(false); setErr(''); setMode('otp'); };
@@ -110,7 +113,7 @@ export default function RiderApp({ staff, reload }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div className="hcard">
             <h4>COD cash with riders</h4>
-            {cashRows.map(c => <div key={c.id} className="hrow"><b>{c.name}</b><span style={{ display: 'flex', gap: 10, alignItems: 'center' }}><b style={{ color: c.cash ? 'oklch(0.45 0.12 70)' : '#7a8299' }}>{fmt(c.cash)}</b>{c.cash > 0 && <button className="a-btn sm ghost" onClick={() => run(() => hub.post(`/riders/${c.id}/deposit`))}>Mark deposited</button>}</span></div>)}
+            {cashRows.map(c => <div key={c.id} className="hrow"><b>{c.name}</b><span style={{ display: 'flex', gap: 10, alignItems: 'center' }}><b style={{ color: c.cash ? 'oklch(0.45 0.12 70)' : '#7a8299' }}>{fmt(c.cash)}</b>{c.cash > 0 && can(staff, 'hub.cash') && <button className="a-btn sm ghost" onClick={() => run(() => hub.post(`/riders/${c.id}/deposit`))}>Mark deposited</button>}</span></div>)}
           </div>
           <div className="hcard" style={{ fontSize: 13, lineHeight: 1.5, color: '#3a4256', gap: 8 }}>
             <h4>Proof of delivery rules</h4>

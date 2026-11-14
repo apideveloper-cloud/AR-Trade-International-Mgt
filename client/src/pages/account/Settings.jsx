@@ -16,8 +16,12 @@ export default function Settings({ profile, setProfile }) {
     try { await acc.put('/profile', { ...profile, notifs }); } catch (e) { say(e.message); }
   };
   const download = async () => {
-    const d = await acc.get('/export');
-    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(d, null, 2)], { type: 'application/json' })); a.download = 'ar-trade-my-data.json'; a.click();
+    try {
+      const d = await acc.get('/export');
+      const url = URL.createObjectURL(new Blob([JSON.stringify(d, null, 2)], { type: 'application/json' }));
+      const a = document.createElement('a'); a.href = url; a.download = 'ar-trade-my-data.json'; a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (er) { say(er.message); }
   };
   const del = async e => {
     e.preventDefault();

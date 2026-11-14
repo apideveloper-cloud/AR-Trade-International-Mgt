@@ -26,9 +26,10 @@ export function mountCareersRoutes(app) {
   app.post('/api/jobs/:id/apply', limit('apply', 5, 3600000), wrap(async (req, res) => {
     const [[job]] = await pool.query('SELECT * FROM jobs WHERE id = ?', [req.params.id]);
     if (!job || !jobOut(job).open) throw fail(400, 'This role is no longer accepting applications.');
-    const { name, phone, email, exp, salary, link, note, cvName, cvData } = req.body;
+    const s = (v, n) => (typeof v === 'string' || typeof v === 'number' ? String(v) : '').slice(0, n); // objects would be expanded into broken SQL; long text would fail the column size
+    const { phone, cvData } = req.body, name = s(req.body.name, 120);
     if (!name || !/^01[3-9]\d{8}$/.test(digits(phone).slice(-11))) throw fail(400, 'Enter a valid Bangladeshi mobile number.');
-    const m = /^data:([\w/+.-]+);base64,(.+)$/.exec(cvData || '');
+    const m = /^data:([\w/+.-]+);base64,(.+)$/.exec(typeof cvData === 'string' ? cvData : '');
     if (!m) throw fail(400, 'Please attach your CV (PDF or Word).');
     const ext = CV_TYPES[m[1]];
     if (!ext) throw fail(400, 'CV must be a PDF or Word file.');
@@ -38,7 +39,7 @@ export function mountCareersRoutes(app) {
     const file = `${id}${ext}`;
     fs.writeFileSync(path.join(UPLOADS, file), buf);
     await pool.query('INSERT INTO applications (id,job_id,name,phone,email,exp,salary,link,note,cv_name,cv_file) VALUES (?,?,?,?,?,?,?,?,?,?,?)',
-      [id, job.id, name, digits(phone), email || '', exp || '', salary || '', link || '', note || '', String(cvName || file).slice(0, 255), file]);
+      [id, job.id, name, digits(phone), s(req.body.email, 160), s(req.body.exp, 60), s(req.body.salary, 40), s(req.body.link, 255), s(req.body.note, 5000), s(req.body.cvName || file, 255), file]);
     res.json({ id });
   }));
 }

@@ -46,8 +46,10 @@ export function mountTeamRoutes(router, guard) {
       const [[o]] = await pool.query('SELECT COUNT(*) n FROM staff WHERE role = ? AND status = "Active" AND id <> ?', [MASTER, t.id]);
       if (!o.n) throw fail(400, 'There must always be one active Master Admin');
     }
-    if (role) { if (!ROLE_NAMES.includes(role)) throw fail(400, 'Unknown role'); await pool.query('UPDATE staff SET role = ? WHERE id = ?', [role, t.id]); }
-    if (status) { if (!STAFF_STATUSES.includes(status)) throw fail(400, 'Unknown status'); await pool.query('UPDATE staff SET status = ? WHERE id = ?', [status, t.id]); }
+    if (role && !ROLE_NAMES.includes(role)) throw fail(400, 'Unknown role');
+    if (status && !STAFF_STATUSES.includes(status)) throw fail(400, 'Unknown status');
+    if (role) { await pool.query('UPDATE staff SET role = ? WHERE id = ?', [role, t.id]); }
+    if (status) { await pool.query('UPDATE staff SET status = ? WHERE id = ?', [status, t.id]); }
     res.json({ ok: true });
   }));
 

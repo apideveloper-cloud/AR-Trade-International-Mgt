@@ -3,7 +3,7 @@ import { adm } from '../../adminApi.js';
 import { Modal, Switch } from '../../ui.jsx';
 import './categoryForm.css';
 
-const readFile = f => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(f); });
+import { readFileAsDataUrl as readFile } from '../../hooks/download.js';
 const svg = d => <svg viewBox="0 0 24 24">{d}</svg>;
 const TAG = svg(<><path d="M3.5 12.5V4.5h8l9 9-8 8-9-9z" /><circle cx="8" cy="9" r="1.4" /></>);
 const TEXT = svg(<path d="M4 7h16M4 12h16M4 17h10" />);

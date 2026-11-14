@@ -23,6 +23,6 @@ export function mountClient(app) {
   if (!fs.existsSync(dist)) return;
   app.get('/index.html', (req, res) => res.redirect(301, '/')); // the home page has one address
   // Vite names built files by their content (assets/index-AbC123.js), so they can be kept by the browser for a year; the HTML shell is never cached
-  app.use(express.static(dist, { index: false, setHeaders: (res, file) => { if (/[\/]assets[\/]/.test(file)) res.setHeader('Cache-Control', 'public, max-age=31536000, immutable'); } }));
+  app.use(express.static(dist, { index: false, setHeaders: (res, file) => { if (/[\\/]assets[\\/]/.test(file)) res.setHeader('Cache-Control', 'public, max-age=31536000, immutable'); } }));
   mountSeo(app, dist); // robots.txt, sitemap.xml and the HTML shell with per-page meta tags
 }

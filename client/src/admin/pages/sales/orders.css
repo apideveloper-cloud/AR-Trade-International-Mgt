@@ -1,7 +1,6 @@
 /* Orders page: the advanced search (os-*) and the order details drawer (od-*). */
 
 /* ---------- order details drawer ---------- */
-.a-drawer:has(.od-card) { width: min(720px, 100%); }
 .a-drawer:has(.od-card) .bd { gap: 12px; }
 
 /* hero: customer, payment badges, total */
@@ -26,8 +25,8 @@
 .od-track-h em { font-style: normal; font-size: 11px; font-weight: 800; color: #b3261e; background: #fdecea; border-radius: 99px; padding: 2px 10px; }
 .od-steps { display: flex; }
 .od-step { flex: 1; position: relative; display: flex; flex-direction: column; align-items: center; gap: 5px; border: 0; background: none; padding: 0; cursor: pointer; font: inherit; }
-.od-dot { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 800; z-index: 1; background: #fff; border: 2px solid #d5dbe7; color: #8a8f9b; transition: transform .15s; }
-.od-lab { font-size: 11.5px; font-weight: 700; color: #8a8f9b; }
+.od-dot { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 800; z-index: 1; background: #fff; border: 2px solid #d5dbe7; color: #5b6778; transition: transform .15s; }
+.od-lab { font-size: 11.5px; font-weight: 700; color: #5b6778; }
 .od-line { position: absolute; top: 13px; left: calc(50% + 17px); right: calc(-50% + 17px); height: 2px; background: #e4e2dc; }
 .od-step.done .od-dot, .od-step.now .od-dot { background: var(--c); border-color: var(--c); color: #fff; }
 .od-step.done .od-lab { color: #0b1631; }
@@ -61,7 +60,7 @@
 .od-rows > div.wide { grid-column: 1 / -1; }
 .od-rows > div:last-child, .od-rows > div:nth-last-child(-n+2):not(.wide) { border-bottom: 0; }
 .od-rows > div > div { display: flex; flex-direction: column; min-width: 0; line-height: 1.35; }
-.od-rows small { font-size: 10.5px; font-weight: 700; color: #8a8f9b; text-transform: uppercase; letter-spacing: .05em; }
+.od-rows small { font-size: 10.5px; font-weight: 700; color: #5b6778; text-transform: uppercase; letter-spacing: .05em; }
 .od-rows span, .od-rows a { overflow-wrap: anywhere; color: #0b1631; }
 .od-ic { width: 30px; height: 30px; flex: none; border-radius: 10px; display: grid; place-items: center; background: #eef3fc; color: #173a7a; }
 .od-ic svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
@@ -72,7 +71,7 @@
 .od-item:last-child { border-bottom: 0; }
 .od-item .a-thumb { width: 46px; height: 46px; border-radius: 12px; background-color: #f4f6fa; border: 1px solid #eceae4; }
 .od-nm { display: flex; flex-direction: column; line-height: 1.3; min-width: 0; font-weight: 600; color: #0b1631; }
-.od-nm small { font-weight: 500; color: #8a8f9b; font-size: 11.5px; }
+.od-nm small { font-weight: 500; color: #5b6778; font-size: 11.5px; }
 .od-bo { color: oklch(0.5 0.15 60); font-weight: 700; font-size: 11px; }
 .od-q { font-style: normal; font-size: 11.5px; font-weight: 800; background: #eef3fc; color: #173a7a; border-radius: 99px; padding: 2px 9px; white-space: nowrap; }
 .od-item > b { font-size: 13px; white-space: nowrap; }
@@ -81,7 +80,7 @@
 .od-sum .tot { margin: 8px -14px -12px; padding: 11px 14px; border-radius: 0 0 14px 14px; color: #fff; font-weight: 800; font-size: 16px; background: linear-gradient(120deg, #0b1631, #15367a); }
 
 /* remarks dialog, comments and timeline */
-.od-move { display: flex; align-items: center; gap: 10px; font-weight: 800; color: #8a8f9b; }
+.od-move { display: flex; align-items: center; gap: 10px; font-weight: 800; color: #5b6778; }
 .od-quick { display: flex; gap: 6px; flex-wrap: wrap; }
 .od-quick button { border: 1px solid #d5dbe7; background: #fff; color: #173a7a; border-radius: 99px; padding: 4px 11px; font-size: 11.5px; font-weight: 700; cursor: pointer; }
 .od-quick button:hover { background: #eef3fc; }
@@ -89,7 +88,7 @@
 .od-cm textarea { border: 1px solid #d3d8e3; border-radius: 12px; padding: 9px 12px; font: inherit; font-size: 13px; line-height: 1.45; height: 78px; resize: none; overflow-y: auto; background: #fafbfd; }
 .od-cm textarea:focus { outline: 2px solid #c9d6ee; background: #fff; }
 .od-cm > div { display: flex; justify-content: space-between; align-items: center; }
-.od-cm small { color: #8a8f9b; font-size: 11px; }
+.od-cm small { color: #5b6778; font-size: 11px; }
 .od-hist { list-style: none; margin: 0; padding: 0 0 0 14px; border-left: 2px solid #e4e2dc; display: flex; flex-direction: column; gap: 7px; font-size: 12px; }
 .od-hist li { position: relative; display: flex; flex-direction: column; gap: 2px; padding-bottom: 2px; }
 .od-hist li::before { content: ''; position: absolute; left: -20px; top: 4px; width: 8px; height: 8px; border-radius: 50%; background: var(--c, #13306b); box-shadow: 0 0 0 2px #fff; }
@@ -98,7 +97,7 @@
 .od-hist span { color: #6b7388; }
 .od-hist li p { margin: 2px 0 0; font-size: 12.5px; color: #26304a; line-height: 1.4; overflow-wrap: anywhere; }
 .od-hist li.cmt p { background: #f3f5fa; border-radius: 10px; padding: 7px 10px; }
-.od-hist li small { font-size: 11px; color: #8a8f9b; }
+.od-hist li small { font-size: 11px; color: #5b6778; }
 
 /* ---- Orders list ---- */
 .ord .head, .ord .row { padding: 6px 14px; gap: 10px; }
@@ -117,9 +116,9 @@
 .dq-av { width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; font: 800 13px var(--disp); color: #fff; background: linear-gradient(135deg, oklch(0.62 0.17 var(--h)), oklch(0.45 0.14 calc(var(--h) + 40))); }
 .dq-who { display: flex; flex-direction: column; line-height: 1.35; min-width: 0; }
 .dq-who b { font-size: 13.5px; color: #0b1631; }
-.dq-who b em { font-style: normal; font-weight: 600; font-size: 11.5px; color: #8a8f9b; margin-left: 6px; }
+.dq-who b em { font-style: normal; font-weight: 600; font-size: 11.5px; color: #5b6778; margin-left: 6px; }
 .dq-who span { font-size: 12.5px; color: #4b5263; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.dq-who small { font-size: 11.5px; color: #8a8f9b; }
+.dq-who small { font-size: 11.5px; color: #5b6778; }
 .dq-amt { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.3; }
 .dq-amt b { font-size: 14px; color: #0b1631; }
 .dq-amt small { font-size: 11px; font-weight: 700; }
@@ -143,9 +142,110 @@
 .cu-ic svg, .cu-i svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
 .cu-i { display: inline-grid; place-items: center; font-style: normal; margin-right: 4px; vertical-align: -3px; }
 .cu-tools { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; padding-top: 10px; border-top: 1px solid #f1efe9; }
-.cu-none { margin: 8px 0 0; color: #8a8f9b; font-size: 12.5px; }
+.cu-none { margin: 8px 0 0; color: #5b6778; font-size: 12.5px; }
 .cu-orders { display: flex; flex-direction: column; }
 .cu-orders button { display: grid; grid-template-columns: 96px 1fr auto auto; gap: 10px; align-items: center; text-align: left; border: 0; border-bottom: 1px solid #f1efe9; background: none; padding: 8px 2px; font: inherit; font-size: 12.5px; cursor: pointer; color: #0b1631; }
 .cu-orders button:last-child { border-bottom: 0; }
 .cu-orders button:hover { background: #f7f9fd; }
 .cu-orders span { color: #6b7388; }
+
+/* invoice VAT & taxes, typed per order */
+.od-vat .od-vat-r { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 6px 0 8px; }
+.od-vat label { display: inline-flex; align-items: center; gap: 6px; border: 1px solid #d5dbe7; border-radius: 10px; padding: 0 10px; background: #fff; font-weight: 700; }
+.od-vat input { border: 0; outline: 0; width: 150px; height: 36px; background: transparent; font: inherit; }
+.od-vat button { height: 36px; padding: 0 16px; border-radius: 10px; border: 1px solid #d5dbe7; background: #fff; font-weight: 700; cursor: pointer; }
+.od-vat button.hot { background: #173a7a; border-color: #173a7a; color: #fff; }
+.od-vat button:disabled { opacity: .6; cursor: default; }
+.od-vat small { color: #5b6778; font-size: 12.5px; }
+.od-vat-err { color: #b42318; }
+
+/* animated order progress: steps pop in one after another, finished lines fill up, the current step pulses and a light runs along the next line */
+.od-step { animation: odpop .45s cubic-bezier(.3,1.4,.5,1) backwards; }
+.od-step:nth-child(2) { animation-delay: .08s; } .od-step:nth-child(3) { animation-delay: .16s; } .od-step:nth-child(4) { animation-delay: .24s; } .od-step:nth-child(5) { animation-delay: .32s; }
+@keyframes odpop { from { opacity: 0; transform: translateY(8px) scale(.9); } to { opacity: 1; transform: none; } }
+.od-line { overflow: hidden; }
+.od-line::after { content: ""; position: absolute; inset: 0; transform-origin: left center; transform: scaleX(0); background: var(--c); }
+.od-step.done .od-line { background: #e4e2dc; }
+.od-step.done .od-line::after { animation: odfill .6s .25s ease-out forwards; }
+.od-step:nth-child(2).done .od-line::after { animation-delay: .4s; } .od-step:nth-child(3).done .od-line::after { animation-delay: .55s; } .od-step:nth-child(4).done .od-line::after { animation-delay: .7s; }
+@keyframes odfill { to { transform: scaleX(1); } }
+.od-step.now .od-line::after { transform: scaleX(1); background: linear-gradient(90deg, transparent, var(--c) 45%, transparent 90%); background-size: 60% 100%; background-repeat: no-repeat; animation: odrun 1.6s linear infinite; }
+@keyframes odrun { from { background-position: -80% 0; } to { background-position: 180% 0; } }
+.od-step.now .od-dot { animation: odpulse 1.8s ease-in-out infinite; }
+@keyframes odpulse { 0%, 100% { box-shadow: 0 0 0 4px color-mix(in oklab, var(--c) 24%, transparent); } 50% { box-shadow: 0 0 0 9px color-mix(in oklab, var(--c) 0%, transparent); } }
+.od-step.done .od-dot { animation: odtick .5s cubic-bezier(.3,1.6,.5,1) backwards; }
+@keyframes odtick { from { transform: scale(.4); } to { transform: scale(1); } }
+.od-step:hover .od-dot { transform: scale(1.12); }
+@media (prefers-reduced-motion: reduce) { .od-step, .od-step.now .od-dot, .od-step.done .od-dot, .od-step.now .od-line::after { animation: none; } .od-step.done .od-line::after { animation: none; transform: scaleX(1); } .od-step.now .od-line::after { background: none; } }
+
+/* invoice VAT & taxes: a clean input group */
+.od-vat { overflow: hidden; }
+.od-vat h4 { display: flex; align-items: center; gap: 8px; }
+.od-vat h4::before { content: "%"; display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 7px; background: linear-gradient(135deg, #173a7a, #2f6fe0); color: #fff; font-size: 12px; font-weight: 800; letter-spacing: 0; }
+.od-vat .od-vat-r { gap: 10px; }
+.od-vat label { padding: 0; overflow: hidden; border: 1.5px solid #d5dbe7; border-radius: 12px; transition: border-color .2s, box-shadow .2s; font-weight: 800; color: #0b1631; }
+.od-vat label:focus-within { border-color: #2f6fe0; box-shadow: 0 0 0 4px rgba(47,111,224,.14); }
+.od-vat label::before { content: "৳"; align-self: stretch; display: grid; place-items: center; width: 38px; background: #eef3fc; color: #173a7a; font-size: 16px; }
+.od-vat label { gap: 0; }
+.od-vat input { width: 170px; height: 40px; padding: 0 12px; font-weight: 700; }
+.od-vat input::placeholder { font-weight: 600; color: #5b6778; }
+.od-vat button { height: 40px; border-radius: 12px; font-size: 14px; transition: transform .15s, box-shadow .2s; }
+.od-vat button.hot { background: linear-gradient(135deg, #173a7a, #2f6fe0); border: 0; box-shadow: 0 8px 18px -8px rgba(23,58,122,.7); }
+.od-vat button.hot:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 12px 22px -8px rgba(23,58,122,.7); }
+.od-vat small { display: block; line-height: 1.45; }
+@keyframes odsaved { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.od-vat small { animation: odsaved .3s ease; }
+
+/* read-only steps (role without orders.status), keyboard focus and small screens */
+.od-step.ro { cursor: default; }
+.od-step.ro:hover .od-dot { transform: none; }
+.od-step:focus-visible { outline: none; }
+.od-step:focus-visible .od-dot { outline: 3px solid #2f6fe0; outline-offset: 2px; }
+.od-cancel:focus-visible { outline: 3px solid #2f6fe0; outline-offset: 2px; }
+.od-lab { text-align: center; overflow-wrap: anywhere; }
+@media (max-width: 520px) {
+  .od-rows { grid-template-columns: 1fr; }
+  .od-rows > div:nth-last-child(-n+2):not(.wide) { border-bottom: 1px solid #f1efe9; }
+  .od-rows > div:last-child { border-bottom: 0; }
+}
+@media (max-width: 420px) {
+  .od-lab { font-size: 10px; line-height: 1.15; padding: 0 1px; }
+  .od-dot { width: 24px; height: 24px; font-size: 11px; }
+  .od-line { top: 11px; left: calc(50% + 14px); right: calc(-50% + 14px); }
+}
+
+/* status tabs attached to the top of the orders datagrid */
+.oc-gridwrap { display: flex; flex-direction: column; }
+.oc-tabs { display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; padding: 6px 8px 0; background: #f3f6fb; border: 1px solid #e3e9f3; border-bottom: 0; border-radius: 14px 14px 0 0; }
+.oc-tabs::-webkit-scrollbar { display: none; }
+.oc-tab { position: relative; flex: none; display: inline-flex; align-items: center; gap: 7px; border: 0; background: transparent; padding: 10px 14px 11px; font: inherit; font-size: 13px; font-weight: 700; color: #5b6778; cursor: pointer; border-radius: 10px 10px 0 0; white-space: nowrap; transition: color .2s, background .2s; }
+.oc-tab:hover { color: #0b1631; background: rgba(255,255,255,.65); }
+.oc-tab:focus-visible { outline: 2px solid #2f6fe0; outline-offset: -2px; }
+.oc-tab b { min-width: 22px; text-align: center; padding: 1px 7px; border-radius: 999px; font-size: 11.5px; font-weight: 800; background: #e4eaf4; color: #44526a; transition: background .2s, color .2s; }
+.oc-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
+.oc-tab.on { color: #0b1631; background: #fff; box-shadow: 0 -1px 0 #e3e9f3, 1px 0 0 #e3e9f3, -1px 0 0 #e3e9f3; }
+.oc-tab.on b { background: var(--c); color: #fff; }
+.oc-tab::after { content: ""; position: absolute; left: 10px; right: 10px; bottom: 0; height: 3px; border-radius: 3px 3px 0 0; background: var(--c); transform: scaleX(0); transform-origin: center; transition: transform .25s cubic-bezier(.3, 1.2, .5, 1); }
+.oc-tab.on::after { transform: scaleX(1); }
+.oc-gridwrap > .a-table.ord { border-top-left-radius: 0; border-top-right-radius: 0; }
+@media (prefers-reduced-motion: reduce) { .oc-tab, .oc-tab b, .oc-tab::after { transition: none; } }
+
+/* "Generated by" lives inside the Filter orders panel */
+.os-src { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; padding: 8px 0 14px; margin-bottom: 14px; border-bottom: 1px dashed #dfe5ef; }
+.os-src-l { font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: #5b6778; margin-right: 6px; }
+.os-src-b { border: 1px solid #d5dbe7; background: #fff; color: #0b1631; border-radius: 999px; padding: 6px 12px; font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; transition: background .2s, color .2s, border-color .2s; }
+.os-src-b:hover { border-color: #9db8e0; background: #f3f7ff; }
+.os-src-b.on { background: #16181d; border-color: #16181d; color: #fff; }
+.os-src-b:focus-visible { outline: 2px solid #2f6fe0; outline-offset: 2px; }
+
+/* compact order panel header: order number and date on one line, a slimmer bar, a tighter hero card */
+.a-drawer:has(.od-hero) .hd { padding: 8px 14px 8px 18px; flex: none; min-height: 50px; box-sizing: border-box; }
+.a-drawer:has(.od-hero) .hd > div { flex-direction: row !important; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.a-drawer:has(.od-hero) .hd > div > span:first-child { font-size: 18px !important; }
+.a-drawer:has(.od-hero) .hd > div > span:last-child { font-size: 12.5px !important; color: #5b6778; }
+.a-drawer:has(.od-hero) .hd button { width: 30px; height: 30px; flex: none; }
+.a-drawer:has(.od-hero) .bd { padding-top: 10px; }
+.od-hero { padding: 12px 16px; gap: 12px; }
+.od-av { width: 42px; height: 42px; border-radius: 13px; font-size: 15px; }
+.od-badges { margin-top: 4px; }
+@media (max-width: 560px) { .a-drawer:has(.od-hero) .hd { padding: 8px 10px 8px 14px; } }

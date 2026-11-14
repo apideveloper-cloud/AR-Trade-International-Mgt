@@ -23,7 +23,7 @@ async function call(method, url, body, base = '/api/admin') {
   let res;
   try { res = await fetch(base + url, { method, headers, body: body ? JSON.stringify(body) : undefined }); } catch { throw Object.assign(new Error("Can't reach the server. Check your internet connection and try again."), { status: 0 }); }
   const data = await res.json().catch(() => ({}));
-  if (res.status === 401 && t) onUnauthorized();
+  if (res.status === 401 && t) { if (data.code === 'session_replaced') { try { sessionStorage.setItem('ar_admin_notice', data.error); } catch { /* storage unavailable */ } } onUnauthorized(); }
   if (!res.ok) {
     const fallback = res.status >= 502 && res.status <= 504 ? 'The server is restarting or busy. Please try again in a moment.' : res.status >= 500 ? 'The server had a problem with this request. Please try again.' : res.status === 404 ? 'We could not find what you asked for.' : 'Something went wrong';
     throw Object.assign(new Error(data.error || fallback), { status: res.status });

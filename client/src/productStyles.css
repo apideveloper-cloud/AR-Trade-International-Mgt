@@ -1,3 +1,4 @@
+/* product page only: loaded together with pages/Product.jsx (the shared pd-best-sellers.css stays in the main bundle) */
 @import './styles/pd-base.css';
 @import './styles/pd-buy-box.css';
 @import './styles/pd-gallery.css';
@@ -5,4 +6,3 @@
 @import './styles/pd-order-tree.css';
 @import './styles/pd-lower-area.css';
 @import './styles/pd-reviews.css';
-@import './styles/pd-best-sellers.css';

@@ -76,7 +76,8 @@ export function Login({ onDone }) {
   const [role, setRole] = useState(() => { try { const r = localStorage.getItem('ar_login_role'); return LOGIN_ROLES.some(x => x[0] === r) ? r : ''; } catch { return ''; } });
   const [remember, setRemember] = useState(() => { try { return localStorage.getItem('ar_login_remember') === '1'; } catch { return false; } });
   const [lastUser] = useState(() => { try { return localStorage.getItem('ar_login_user') || ''; } catch { return ''; } });
-  const [err, setErr] = useState('');
+  // set when another device signed in with this account and ended the old session
+  const [err, setErr] = useState(() => { try { const n = sessionStorage.getItem('ar_admin_notice') || ''; sessionStorage.removeItem('ar_admin_notice'); return n; } catch { return ''; } });
   const [busy, setBusy] = useState(false);
   const submit = async e => {
     e.preventDefault(); setErr('');

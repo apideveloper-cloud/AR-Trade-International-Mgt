@@ -28,7 +28,7 @@ export default function ClientLogos({ title = 'Corporate clients', eyebrow, vari
       <section className={'clients-sec ' + className} aria-label={title}>
         {head}
         <div className="clients-g">
-          {logos.map(c => <div className="client" key={c}><div role="img" aria-label="Client logo" style={{ backgroundImage: `url('${c}')` }} /></div>)}
+          {logos.map((c, i) => <div className="client" key={i + c}><div role="img" aria-label="Client logo" style={{ backgroundImage: `url('${c}')` }} /></div>)}
         </div>
       </section>
     );

@@ -3,9 +3,8 @@
 //   GET /api/field/modules/config  -> every module with enabled + roles              (admin only)
 //   PUT /api/field/modules/config/:key { enabled?, roles? }                          (admin only)
 import { Router } from 'express';
-import { guard, wrap, fail, roleKey } from '../common.js';
+import { pool, guard, wrap, fail, roleKey } from '../common.js';
 import { MODULES, ALL_ROLES, moduleConfig, moduleAllowed, dropModuleCache } from '../gate.js';
-import { pool } from '../common.js';
 
 const router = Router();
 

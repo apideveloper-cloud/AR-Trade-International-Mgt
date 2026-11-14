@@ -124,6 +124,49 @@ export function quote(dest, delivery) {
   return { km, fee, free: fee === 0, within: d.freeKm };
 }
 
+/** True when a district value was really chosen (not missing, null or blank). */
+export const hasDistrict = d => d != null && String(d).trim() !== '';
+
+/** Zone name for a request. New checkout (district given): 'inside' for Dhaka, else 'outside'.
+ *  Old checkout (no district): the `area` when it is one of `areas` ('inside' | 'suburb' | 'outside'), else 'inside'. */
+export function zoneOf({ district, area }, areas = ['inside', 'suburb', 'outside']) {
+  if (hasDistrict(district)) return String(district).trim().toLowerCase() === 'dhaka' ? 'inside' : 'outside';
+  return areas.includes(area) ? area : 'inside';
+}
+
+/** The zone's flat fee from the shop settings (`outsideFee`, `suburbFee`, `insideFee`). Used for couriers and for the old checkout. */
+export function baseFee(zone, s) {
+  return zone === 'outside' ? s.outsideFee : zone === 'suburb' ? s.suburbFee : s.insideFee;
+}
+
+/** Works out zone, base fee and distance data for an order request. Pure; throws fail(400) on bad input.
+ *  `staff` = the order was placed by staff (source other than 'Customer'): only they may omit the district (old flat fees).
+ *  `preview` = a cart-page price preview: with no district it returns delivery-by-distance with no charge instead of failing.
+ *  Returns { zone, base, distanceKm, shipPartner, dest, byDistance, pending }. `byDistance` = priced from a map pin (never free-over-spend);
+ *  `pending` = preview without a district, delivery not charged yet. */
+export function resolveDelivery({ district, area, dest, partner, staff = false, preview = false, areas }, s, dl) {
+  const out = { zone: 'inside', base: 0, distanceKm: null, shipPartner: '', dest: null, byDistance: false, pending: false };
+  if (!hasDistrict(district)) {
+    if (staff) { out.zone = zoneOf({ area }, areas); out.base = baseFee(out.zone, s); return out; } // call-center / admin orders: flat fees
+    if (!preview) throw fail(400, 'Please select your district');
+    out.byDistance = true; out.pending = true; return out;
+  }
+  out.zone = zoneOf({ district }, areas);
+  if (out.zone === 'inside') {
+    if (!validCoord(dest)) throw fail(400, 'Pick your delivery location on the map');
+    out.dest = { lat: Number(dest.lat), lng: Number(dest.lng) };
+    out.distanceKm = quote(out.dest, dl).km;
+    out.base = feeForKm(out.distanceKm, dl);
+    out.byDistance = true;
+  } else {
+    const pt = dl.partners.find(x => x.id === String(partner ?? ''));
+    if (!pt) throw fail(400, 'Choose a shipping partner');
+    out.shipPartner = pt.name;
+    out.base = baseFee('outside', s);
+  }
+  return out;
+}
+
 /** The delivery charge for an order. `zone` is 'inside' | 'outside' | 'suburb' (old checkout). `fee` is the zone's base fee (tier fee, outsideFee, ...).
  *  Free delivery over a spend applies to inside-Dhaka orders only, and only when freeOver is a positive number. */
 export function deliveryCharge({ subtotal, zone, base, freeOver, express = 0 }) {

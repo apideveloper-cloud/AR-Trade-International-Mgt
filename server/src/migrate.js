@@ -21,7 +21,7 @@ export async function ensureSchema() {
     if (!haveO.has('source')) await pool.query("ALTER TABLE orders ADD COLUMN source VARCHAR(16) NOT NULL DEFAULT 'Customer'");
     if (!haveO.has('placed_by')) await pool.query("ALTER TABLE orders ADD COLUMN placed_by VARCHAR(120) NOT NULL DEFAULT ''");
     // distance-based delivery: where the order goes, the estimated road km and (outside Dhaka) the courier chosen
-    for (const [c, def] of [['dest_lat', 'DECIMAL(9,6) NULL'], ['dest_lng', 'DECIMAL(9,6) NULL'], ['distance_km', 'DECIMAL(5,1) NULL'], ['ship_partner', "VARCHAR(60) NOT NULL DEFAULT ''"]]) {
+    for (const [c, def] of [['dest_lat', 'DECIMAL(9,6) NULL'], ['dest_lng', 'DECIMAL(9,6) NULL'], ['distance_km', 'DECIMAL(5,1) NULL'], ['ship_partner', "VARCHAR(60) NOT NULL DEFAULT ''"], ['vat_amount', 'INT NULL DEFAULT NULL']]) { // vat_amount: VAT / taxes shown on the invoice, typed by staff (NULL = excluded)
       if (!haveO.has(c)) await pool.query(`ALTER TABLE orders ADD COLUMN ${c} ${def}`);
     }
   }
@@ -44,6 +44,9 @@ export async function ensureSchema() {
   if (sc.length) {
     const have = new Set(sc.map(r => r.c));
     for (const [c, def] of STAFF_COLS) if (!have.has(c)) { await pool.query(`ALTER TABLE staff ADD COLUMN ${c} ${def} NOT NULL DEFAULT ''`); console.log('Added staff.' + c); }
+    // one admin-console session per user: the id of the newest sign-in (an older device's token stops working)
+    if (!have.has('app_session_id')) { await pool.query('ALTER TABLE staff ADD COLUMN app_session_id VARCHAR(40) NULL'); console.log('Added staff.app_session_id'); } // the mobile app has its own one-device session
+    if (!have.has('session_id')) { await pool.query('ALTER TABLE staff ADD COLUMN session_id VARCHAR(40) NULL'); console.log('Added staff.session_id'); }
   }
   const [cols] = await pool.query("SELECT COLUMN_NAME c FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'categories'");
   if (cols.length && !cols.some(r => r.c === 'img')) {

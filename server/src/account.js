@@ -4,6 +4,7 @@ import { pool } from './db.js';
 import { digits, fail, parseJson, wrap, checkPassword, readCustomer, sessionCookie, str, verifyPassword } from './util.js';
 import { limit } from './middleware/security.js';
 import { cancelOrder } from './flow.js';
+import { normPhone } from './routes/auth.js';
 
 const router = Router();
 
@@ -48,7 +49,7 @@ router.put('/profile', wrap(async (req, res) => {
     const [ex] = await pool.query('SELECT id FROM users WHERE email = ? AND id <> ?', [email, req.user.id]);
     if (ex.length) throw fail(409, 'That email is already used by another account');
   }
-  const phone = b.phone != null ? digits(b.phone) : req.user.phone;
+  const phone = digits(b.phone) ? normPhone(b.phone) : req.user.phone; // same stored form as sign-up and sign-in (01XXXXXXXXX); an empty box keeps the number, so a phone-only account cannot lock itself out
   if (phone && phone !== req.user.phone) {
     const [ex] = await pool.query('SELECT id FROM users WHERE phone = ? AND id <> ?', [phone, req.user.id]);
     if (ex.length) throw fail(409, 'That mobile number is already used by another account');

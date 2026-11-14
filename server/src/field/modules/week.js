@@ -4,18 +4,13 @@
 // Week = Saturday..Friday in Bangladesh time (UTC+6). Friday is the weekly off. Shift 09:00-18:00; late = first clock-in after 09:15.
 // Day status: present | late | leave | absent | today | off | upcoming
 import { Router } from 'express';
-import { pool, wrap, guard, UTC, mysqlDate, todayBD } from '../common.js';
+import { pool, wrap, guard, UTC, mysqlDate, todayBD, distKm } from '../common.js';
 
 const router = Router();
 const H = 3600e3, DAY = 864e5, BD = 6 * H;
 const SHIFT_START = 9 * H, SHIFT_END = 18 * H, LATE_AFTER = 9 * H + 15 * 60e3;
 const OFFICE = { lat: Number(process.env.FIELD_OFFICE_LAT || 23.7465), lng: Number(process.env.FIELD_OFFICE_LNG || 90.4124) };
 const ZONE_KM = Number(process.env.FIELD_ZONE_KM || 10), ZONE_NAME = process.env.FIELD_ZONE_NAME || 'Santinagar';
-const rad = d => (d * Math.PI) / 180;
-const distKm = (a, b) => {
-  const h = Math.sin(rad(b.lat - a.lat) / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(rad(b.lng - a.lng) / 2) ** 2;
-  return 12742 * Math.asin(Math.sqrt(h));
-};
 const LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 const dayStartUtc = d => Date.parse(d + 'T00:00:00Z') - BD; // instant when the BD date d begins

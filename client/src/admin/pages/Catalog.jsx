@@ -292,4 +292,3 @@ export function Categories({ onChanged }) {
   );
 }
 
-export { fmtMoney };

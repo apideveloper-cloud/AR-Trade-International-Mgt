@@ -1,5 +1,6 @@
 // Admin console sign-in, registration, the signed-in user and the header notifications.
 import bcrypt from 'bcryptjs';
+import crypto from 'node:crypto';
 import { pool } from '../db.js';
 import { digits, fail, wrap, checkPassword, str, verifyPassword } from '../util.js';
 import { unpublishedProducts } from '../productImages.js';
@@ -16,7 +17,10 @@ export function mountAuthRoutes(router, guard) {
     if (want && want !== s.role) throw fail(403, `This account is not ${/^[AEIOU]/i.test(want) ? 'an' : 'a'} ${want}. It is registered as ${s.role}. Pick ${s.role} and sign in again.`);
     if (s.status === 'Pending') throw fail(403, 'Your account is waiting for an admin to approve it.');
     if (s.status !== 'Active') throw fail(403, 'This account is disabled.');
-    res.json({ token: sign(s, req.body.remember === true), staff: meOut(s) });
+    // a new sign-in replaces the user's previous session, so one account is never open on two devices at once
+    const sj = crypto.randomBytes(16).toString('hex');
+    await pool.query('UPDATE staff SET session_id = ? WHERE id = ?', [sj, s.id]);
+    res.json({ token: sign(s, req.body.remember === true, sj), staff: meOut(s) });
   }));
 
   router.post('/register', wrap(async (req, res) => {

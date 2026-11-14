@@ -6,6 +6,13 @@ export const FLOW = ['Placed', 'Verification', 'Confirmed', 'Packed', 'Out for d
 /** `orders.status` keeps the simple six-state value the admin console and account pages use. */
 export const LEGACY = { Placed: 'Pending', Verification: 'Pending', Confirmed: 'Confirmed', Packed: 'Packed', 'Out for delivery': 'Shipped', Delivered: 'Delivered', Cancelled: 'Cancelled', Returned: 'Cancelled' };
 export const FROM_STATUS = { Pending: 'Placed', Confirmed: 'Confirmed', Packed: 'Packed', Shipped: 'Out for delivery', Delivered: 'Delivered', Cancelled: 'Cancelled' };
+/** Status moves the admin may not make: a cancelled order stays cancelled (its stock is already back), a delivered one cannot go back. Returns an error message, or '' when allowed. */
+export function reopenError(from, to) {
+  if (from === 'Cancelled' && to !== 'Cancelled') return 'A cancelled order cannot be reopened. Create a new order.';
+  if (from === 'Delivered' && to !== 'Delivered') return 'A delivered order cannot be moved back';
+  return '';
+}
+export const canReopen = (from, to) => !reopenError(from, to);
 export const DONE = ['Delivered', 'Cancelled', 'Returned'];
 export const COURIERS = [
   { id: 'Pathao', color: '#e11b22', eta: '1–2 days', fee: 120 },

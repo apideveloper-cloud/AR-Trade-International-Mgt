@@ -42,8 +42,8 @@ export default function Footer() {
             <img src="/ar-icon-round.png" alt="AR Trade" />
             <div><b>{content.labels.needToner}</b><span style={{ fontSize: 13.5 }}>Order before 2 PM for same-day delivery inside Dhaka.</span></div>
           </div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <button className="ghost" onClick={openChat}>Start live chat</button>
+          <div className="foot-acts">
+            <button className="ghost" onClick={openChat}>💬 Start live chat</button>
             <a className="call" href="tel:+8801977554401">☏ Call {site.phone}</a>
           </div>
         </div>
@@ -73,7 +73,7 @@ export default function Footer() {
             <span className="foot-info"><i>⌖</i>{site.address}</span>
             <span className="foot-info" style={{ color: '#8f9bb8', fontSize: 13 }}><i>◷</i>{ft.hours}</span>
             <a href="tel:+8801977554401" className="foot-info" style={{ color: '#fff', fontWeight: 700 }}><i>☏</i>{site.phone}</a>
-            <a href="mailto:info@artradeinternational.com" className="foot-info"><i>@</i>{site.email}</a>
+            <a href={'mailto:' + site.email} className="foot-info"><i>@</i>{site.email}</a>
           </div>
         </div>
         <div className="pay-row">

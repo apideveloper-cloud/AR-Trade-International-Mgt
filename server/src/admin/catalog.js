@@ -77,6 +77,8 @@ export function mountCatalogRoutes(router, guard) {
     res.json({ ...prodOut(p), specs, short: p.short_desc || '', sku: p.sku || '' });
   }));
   router.put('/products/:id/specs', guard('products.manage'), wrap(async (req, res) => {
+    const [[ex]] = await pool.query('SELECT id FROM products WHERE id = ?', [req.params.id]);
+    if (!ex) throw fail(404, 'Product not found');
     const rows = (Array.isArray(req.body.specs) ? req.body.specs : []).map(s => [String(s.name || '').trim().slice(0, 80), String(s.value || '').trim().slice(0, 500)]).filter(s => s[0] && s[1]).slice(0, 40);
     await pool.query('DELETE FROM product_specs WHERE product_id = ?', [req.params.id]);
     for (const [i, [n, v]] of rows.entries()) await pool.query('INSERT INTO product_specs (product_id, position, name, value) VALUES (?,?,?,?)', [req.params.id, i, n, v]);

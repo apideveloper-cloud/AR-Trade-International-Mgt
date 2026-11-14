@@ -143,9 +143,9 @@ export function Team({ me }) {
             <div className="tm-form">
               <h4 className="cx-h">Account</h4>
               <label className="a-lbl">Full name<input className="a-input" required value={add.name} onChange={e => setAdd(x => ({ ...x, name: e.target.value }))} placeholder="e.g. Nusrat Jahan" /></label>
-              <label className="a-lbl">NID number<input className="a-input" inputMode="numeric" maxLength={17} value={add.nid} onChange={e => setAdd(x => ({ ...x, nid: e.target.value.replace(/D/g, '') }))} placeholder="10, 13 or 17 digits" /></label>
+              <label className="a-lbl">NID number<input className="a-input" inputMode="numeric" maxLength={17} value={add.nid} onChange={e => setAdd(x => ({ ...x, nid: e.target.value.replace(/\D/g, '') }))} placeholder="10, 13 or 17 digits" /></label>
               <label className="a-lbl">Work email<input className="a-input" type="email" required value={add.email} onChange={e => setAdd(x => ({ ...x, email: e.target.value }))} placeholder="name@company.com" /></label>
-              <label className="a-lbl">Mobile number<input className="a-input" type="tel" required maxLength={11} value={add.phone} onChange={e => setAdd(x => ({ ...x, phone: e.target.value.replace(/D/g, '') }))} placeholder="01XXXXXXXXX" /></label>
+              <label className="a-lbl">Mobile number<input className="a-input" type="tel" required maxLength={11} value={add.phone} onChange={e => setAdd(x => ({ ...x, phone: e.target.value.replace(/\D/g, '') }))} placeholder="01XXXXXXXXX" /></label>
               {!add.id && (
                 <>
                   <label className="a-lbl">Role<select className="a-input" required value={add.role} onChange={e => setAdd(x => ({ ...x, role: e.target.value }))}>{roles.filter(r => r.assignable).map(r => <option key={r.name} value={r.name}>{r.name}{r.legacy ? ' (existing role)' : ''}</option>)}</select>
@@ -170,7 +170,7 @@ export function Team({ me }) {
               </label>
               <h4 className="cx-h">Reference contact</h4>
               <label className="a-lbl">Reference contact person<input className="a-input" value={add.refName} onChange={e => setAdd(x => ({ ...x, refName: e.target.value }))} placeholder="Name of someone who can vouch for this person" /></label>
-              <label className="a-lbl">Reference person's cell<input className="a-input" type="tel" maxLength={11} value={add.refPhone} onChange={e => setAdd(x => ({ ...x, refPhone: e.target.value.replace(/D/g, '') }))} placeholder="01XXXXXXXXX" /></label>
+              <label className="a-lbl">Reference person's cell<input className="a-input" type="tel" maxLength={11} value={add.refPhone} onChange={e => setAdd(x => ({ ...x, refPhone: e.target.value.replace(/\D/g, '') }))} placeholder="01XXXXXXXXX" /></label>
               {add.err && <div className="a-msg err full">{add.err}</div>}
             </div>
           )}

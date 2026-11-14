@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
 import { mktApi as api } from '../admin/adminApi.js';
 import { Note, Switch } from './EmailParts.jsx';
-import { card, dash } from './emailShared.js';
+import { act, card, dash } from './emailShared.js';
 
 export default function Automations() {
   const [rows, setRows] = useState(null);
   const load = () => api.get('/automations').then(setRows).catch(() => {});
   useEffect(() => { load(); }, []);
-  const toggle = async a => { await api.put('/automations/' + a.id, { active: !a.active }); load(); };
+  const toggle = a => act(() => api.put('/automations/' + a.id, { active: !a.active }), load);
   if (!rows) return <span className="spin" />;
   return (
     <>
