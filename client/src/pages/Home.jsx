@@ -43,7 +43,7 @@ function ImageSlide({ s }) {
     return (
       <div className="slide-d">
         <span className="orb" />
-        <div className="col"><span className="tag">AR Trade</span><h1>{s.alt}</h1><p>Original products, cash on delivery across Bangladesh.</p><div className="ctas"><Link to={to(s.href)}>Shop now →</Link></div></div>
+        <div className="col"><span className="tag">AR Trade</span><h2>{s.alt}</h2><p>Original products, cash on delivery across Bangladesh.</p><div className="ctas"><Link to={to(s.href)}>Shop now →</Link></div></div>
         <div className="pic"><div className="card"><div style={{ backgroundImage: `url('${pic}')` }} /></div></div>
       </div>
     );
@@ -76,6 +76,7 @@ function Hero() {
 
   return (
     <div className="hero" onMouseEnter={() => { paused.current = true; }} onMouseLeave={() => { paused.current = false; }}>
+      <h1 className="seo-h1">AR Trade International: genuine toner, printers and copiers in Bangladesh</h1>{/* the one page heading, whatever the first slide is (an image slide has none) */}
       <div key={tick} className={'sweep' + (tick ? ' go' : '')} />
       {slides.map((s, k) => (
         <div key={k} className={'slide' + (k === i ? ' on' : k === prev ? ' was' : '')} aria-hidden={k !== i}>
@@ -86,7 +87,7 @@ function Hero() {
               <span className="orb" /><span className="num">{String(k + 1).padStart(2, '0')}</span>
               <div className="col">
                 <span className="tag">{tk(s.tag)}</span>
-                <h1>{tk(s.title)}</h1>
+                <h2>{tk(s.title)}</h2>
                 <p>{tk(s.sub)}</p>
                 <div className="ctas"><Link to={to(s.h1)}>{s.c1} →</Link><Link to={to(s.h2)}>{s.c2}</Link></div>
               </div>
@@ -248,7 +249,7 @@ function Fresh() {
           <div className="spot">
             <span className="glow" />
             <div className="top"><span className="tag">NEW ARRIVAL · {spot.brand}</span>{off > 0 && <span className="save">Save {off}%</span>}</div>
-            <Link to={productPath(spot)} className="pic">{spot.img && <img src={spot.img} alt={spot.name} />}</Link>
+            <Link to={productPath(spot)} className="pic">{spot.img && <img src={spot.img} alt={spot.name} loading="lazy" decoding="async" />}</Link>
             <div className="info">
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0, maxWidth: 420 }}>
                 <Link to={productPath(spot)} className="nm">{spot.name}</Link>
@@ -402,11 +403,11 @@ export default function Home() {
           )}
           <div className="mini2">
             <Link to="/shop/copier-toner" className="mini" style={{ background: 'oklch(0.95 0.03 235)', color: '#0b1631' }}>
-              <div className="im"><img src="/api/uploads/site/toshiba-5018p-photocopier-toner.jpg" alt="" /></div>
+              <div className="im"><img src="/api/uploads/site/toshiba-5018p-photocopier-toner.jpg" alt="" loading="lazy" decoding="async" /></div>
               <b>Copier toner</b><span style={{ color: '#5d6270' }}>Up to 18% off</span>
             </Link>
             <Link to="/shop/printer" className="mini" style={{ background: '#0b1631', color: '#fff' }}>
-              <div className="im"><img src="/api/uploads/site/cp1100-01-500x500-1.png" alt="" style={{ transform: 'scale(1.35)' }} /></div>
+              <div className="im"><img src="/api/uploads/site/cp1100-01-500x500-1.png" alt="" loading="lazy" decoding="async" style={{ transform: 'scale(1.35)' }} /></div>
               <b>New: Pantum</b><span style={{ color: '#b8c2da' }}>From ৳ 20,000</span>
             </Link>
           </div>

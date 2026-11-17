@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { productPath } from '../slug.js';
 import { matchProducts } from '../search.js';
-import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom';
+import { Link, Navigate, useLocation, useParams, useSearchParams } from 'react-router-dom';
 import ProductCard, { BuyAction } from '../components/ProductCard.jsx';
 import { fmt, offPct } from '../api.js';
 import { useStore } from '../store.jsx';
@@ -40,27 +40,34 @@ function ListRow({ p }) {
 
 export default function Shop() {
   const { cat = 'all' } = useParams();
-  const { search } = useLocation();
+  const { search, pathname } = useLocation();
   const [sp] = useSearchParams();
   const { products, cats } = useStore();
   const q = (sp.get('q') || '').trim();
   const onlyNew = sp.get('new') === '1';
+  const page = Math.max(1, parseInt(sp.get('page'), 10) || 1);
+  const offset = (page - 1) * PG;
 
   const [f, setF] = useState(FILTERS0);
   const [sort, setSort] = useState('pop');
   const [view, setView] = useState(() => { try { return localStorage.getItem('arShopView') || 'grid'; } catch { return 'grid'; } });
-  const [limit, setLimit] = useState(PG);
-  const [loading, setLoading] = useState(false);
   const [boot, setBoot] = useState(true);
-  const more = useRef(null);
   const set = patch => setF(s => ({ ...s, ...patch }));
 
   // the design resets filters and shows a short skeleton whenever the category or search changes
   useEffect(() => {
-    setF(FILTERS0); setLimit(PG); setBoot(true);
+    setF(FILTERS0); setBoot(true);
     const t = setTimeout(() => setBoot(false), 200);
     return () => clearTimeout(t);
   }, [cat, search]);
+
+  // real page links: scroll to the top when only the page number changed
+  const prevPg = useRef({ page, cat, q });
+  useEffect(() => {
+    const p = prevPg.current;
+    if (p.page !== page && p.cat === cat && p.q === q) window.scrollTo(0, 0);
+    prevPg.current = { page, cat, q };
+  }, [page, cat, q]);
 
   const base = useMemo(() => {
     const hit = q.trim() ? new Set(matchProducts(products, q).map(p => p.id)) : null; // the same matching as the header live search
@@ -84,21 +91,29 @@ export default function Shop() {
     return [...r].sort(SORT_FN[sort]);
   }, [afterBrand, f, sort]);
 
-  const shown = boot ? [] : items.slice(0, limit);
-  const hasMore = !boot && items.length > limit;
+  const shown = boot ? [] : items.slice(offset, offset + PG); // one page of 24; the page links below and above move between pages
+  const pageCount = Math.ceil(items.length / PG);
+  const pageHref = n => {
+    const u = new URLSearchParams(sp);
+    if (n > 1) u.set('page', String(n)); else u.delete('page');
+    const qs = u.toString();
+    return pathname + (qs ? '?' + qs : '');
+  };
+  const pageNums = [];
+  for (let n = 1; n <= pageCount; n++) if (n === 1 || n === pageCount || Math.abs(n - page) <= 2) pageNums.push(n);
 
-  const loadMore = useCallback(() => {
-    if (loading) return;
-    setLoading(true);
-    setTimeout(() => { setLimit(l => l + PG); setLoading(false); }, 250);
-  }, [loading]);
-  useEffect(() => {
-    const el = more.current;
-    if (!el || !hasMore) return undefined;
-    const io = new IntersectionObserver(e => { if (e[0].isIntersecting) loadMore(); }, { rootMargin: '300px 0px' });
-    io.observe(el);
-    return () => io.disconnect();
-  }, [hasMore, loadMore, shown.length]);
+  const pager = where => pageCount > 1 && (
+    <nav className={'shop-pg ' + where} aria-label={where === 'top' ? 'Pagination (top)' : 'Pagination'}>
+              {page > 1 && page <= pageCount && <Link className="shop-pg-a shop-pg-nav" rel="prev" to={pageHref(page - 1)}>‹ Previous</Link>}
+              {pageNums.map((n, i) => (
+                <span key={n} className="shop-pg-item">
+                  {i > 0 && n - pageNums[i - 1] > 1 && <span className="shop-pg-gap" aria-hidden="true">…</span>}
+                  <Link className={'shop-pg-a' + (n === page ? ' on' : '')} to={pageHref(n)} aria-current={n === page ? 'page' : undefined} aria-label={'Page ' + n}>{n}</Link>
+                </span>
+              ))}
+              {page < pageCount && <Link className="shop-pg-a shop-pg-nav" rel="next" to={pageHref(page + 1)}>Next ›</Link>}
+            </nav>
+  );
 
   const current = cats.find(c => c.id === cat);
   const title = q ? `Results for “${q}”` : onlyNew ? 'New arrivals' : current ? current.t : 'All products';
@@ -106,7 +121,13 @@ export default function Shop() {
   const bands = [[0, 5000], [5000, 15000], [15000, 50000], [50000, null]].filter(([a]) => a < pHi || a === 0);
   const sideCats = [{ id: 'all', t: 'All products' }, ...cats];
   const setV = v => { setView(v); try { localStorage.setItem('arShopView', v); } catch { /* storage unavailable */ } };
-  const skels = boot ? Array.from({ length: Math.min(PG, items.length || 8) }, (_, i) => i) : loading ? Array.from({ length: Math.min(PG, items.length - limit) }, (_, i) => i) : [];
+  const skels = boot ? Array.from({ length: Math.min(PG, items.length || 8) }, (_, i) => i) : [];
+
+  if (!boot && page > 1 && items.length > 0 && offset >= items.length && f === FILTERS0) {
+    const u = new URLSearchParams(sp); u.delete('page');
+    const qs = u.toString();
+    return <Navigate replace to={pathname + (qs ? '?' + qs : '')} />;
+  }
 
   return (
     <section className="page" style={{ padding: '24px 28px 40px' }}>
@@ -167,6 +188,7 @@ export default function Shop() {
               <a href="tel:+8801977554401" className="btn btn-dark btn-pill" style={{ padding: '12px 20px' }}>Call +880 1977-554401</a>
             </div>
           )}
+          {pager('top')}
           {view === 'grid' ? (
             <div className="p-grid">
               {shown.map(p => <div key={p.id}><ProductCard p={p} /></div>)}
@@ -181,16 +203,12 @@ export default function Shop() {
           ) : (
             <div className="p-list">{shown.map(p => <ListRow key={p.id} p={p} />)}{skels.map(i => <div key={'s' + i} className="lrow"><div className="shimmer" style={{ aspectRatio: 1, borderRadius: 14 }} /><div className="shimmer" style={{ height: 60, borderRadius: 8 }} /><div className="shimmer" style={{ height: 40, width: 140, borderRadius: 999 }} /></div>)}</div>
           )}
-          <div ref={more} className="loadmore">
-            {(boot || hasMore) && (
-              <>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#5d6270', fontSize: 13, fontWeight: 600 }}><span className="spin sm" />Loading more products…</div>
-                <div className="bar"><i style={{ width: items.length ? Math.round(shown.length / items.length * 100) + '%' : '0%' }} /></div>
-                <span style={{ fontFamily: 'var(--mono)', fontSize: 11, color: '#8a93a6' }}>Showing {shown.length} of {items.length}</span>
-              </>
-            )}
-            {!boot && !hasMore && items.length > PG && <span style={{ fontFamily: 'var(--mono)', fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', color: '#8a93a6' }}>✓ All {items.length} products loaded</span>}
-          </div>
+          {!boot && items.length > 0 && (
+            <div className="loadmore">
+              <span style={{ fontFamily: 'var(--mono)', fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', color: '#5b6778' }}>Showing {offset + 1}–{offset + shown.length} of {items.length}</span>
+            </div>
+          )}
+          {pager('bottom')}
         </div>
       </div>
     </section>

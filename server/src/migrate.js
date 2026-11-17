@@ -28,6 +28,8 @@ export async function ensureSchema() {
   // product warranty available: Yes (1, the default for every existing product) or No (0), set in the admin Product Entry form
   const [prc] = await pool.query("SELECT COLUMN_NAME c FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'products'");
   if (prc.length && !prc.some(r => r.c === 'warranty')) await pool.query('ALTER TABLE products ADD COLUMN warranty TINYINT(1) NOT NULL DEFAULT 1');
+  // last change of a product, for the sitemap's <lastmod>: stays NULL (no lastmod) until a product is really changed
+  if (prc.length && !prc.some(r => r.c === 'updated_at')) { await pool.query('ALTER TABLE products ADD COLUMN updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP'); console.log('Added products.updated_at'); }
   // search-engine fields the admin fills in for blog articles and site pages (title, description, keywords, hide from Google)
   for (const table of ['blog_posts', 'site_pages']) {
     const [tc] = await pool.query('SELECT COLUMN_NAME c FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?', [table]);

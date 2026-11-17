@@ -64,3 +64,6 @@
 .sec.crails { padding-top: 40px; gap: 18px; }
 .sec.crails > .sec-hd { margin-bottom: 4px; }
 @media (max-width: 700px) { .sec.crails { padding-top: 28px; gap: 14px; } }
+
+/* storefront: while a page's code loads the footer must stay below the fold, or it jumps down when the page arrives (layout shift) */
+.site .ld.inline { min-height: 100vh; }

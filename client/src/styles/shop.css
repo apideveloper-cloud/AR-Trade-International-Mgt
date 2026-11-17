@@ -85,3 +85,15 @@
 .bar { width: 220px; height: 4px; border-radius: 999px; background: #e7ecf4; overflow: hidden; }
 .bar i { display: block; height: 100%; background: linear-gradient(90deg, oklch(0.6 0.15 245), oklch(0.45 0.17 262)); border-radius: 999px; transition: width .4s; }
 
+
+/* crawlable pagination */
+.shop-pg { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px; margin: 22px 0 6px; }
+.shop-pg-item { display: inline-flex; align-items: center; gap: 6px; }
+.shop-pg-gap { color: #8a93a6; font-size: 13px; padding: 0 2px; }
+.shop-pg-a { display: inline-flex; align-items: center; justify-content: center; min-width: 36px; height: 36px; padding: 0 12px; box-sizing: border-box; border: 1px solid var(--line2); background: #fff; color: var(--navy); border-radius: 999px; font-size: 13px; font-weight: 700; text-decoration: none; box-shadow: 0 8px 20px -14px rgba(11,22,49,.4); }
+.shop-pg-a:hover { background: #f2f6fc; }
+.shop-pg-a.on { background: var(--navy); border-color: var(--navy); color: #fff; }
+@media (max-width: 480px) { .shop-pg { gap: 4px; } .shop-pg-a { min-width: 32px; height: 32px; padding: 0 9px; font-size: 12px; } }
+
+/* page links above the list: close to the product count, no extra top gap */
+.shop-pg.top { margin: 0 0 16px; justify-content: flex-start; }

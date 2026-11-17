@@ -8,10 +8,8 @@ import { mergeDelivery } from './delivery.js';
 import { parseJson, wrap } from './util.js';
 import { legacySlug, productIdOf, productPath, productSlug } from './slug.js';
 
-const NAME = 'AR Trade International';
-const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-const plain = h => String(h || '').replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
-const clip = (s, n) => (s.length <= n ? s : s.slice(0, n).replace(/\s+\S*$/, ''));
+import { NAME, PER_PAGE, SHORT, breadcrumbLd, clip, collectionLd, esc, isAutoDesc, isAutoTitle, listTitle, pageUrl, pagesOf, parsePage, plain, productDescription, productTitle } from './seoHelpers.js';
+import { linkBlock, link, listFallback, pageFallback, productFallback, productLine, textBlock } from './seoFallback.js';
 const baseUrl = req => (process.env.SITE_URL || `${req.get('x-forwarded-proto') || req.protocol}://${req.get('host')}`).replace(/\/$/, '');
 const LOGO = '/api/uploads/site/artrade-logo.png';
 const money = v => (v !== '' && v !== null && v !== undefined && Number.isFinite(Number(v)) ? String(Number(v)) : null);
@@ -27,14 +25,24 @@ const PRIVATE = /^\/(cart|checkout|success|account|login|track|wishlist|compare|
 const STATIC = {
   '/': ['AR Trade International | Printers, Toner & Copiers in Dhaka', 'Buy genuine printer toner, ink, copiers, printers and computer accessories online in Bangladesh. Printer servicing and fast delivery in Dhaka.'],
   '/shop': ['Toner, Ink, Printers & Copiers in Bangladesh | AR Trade', 'Browse genuine toner cartridges, ink, printers, photocopiers and parts with best prices in Bangladesh. Fast delivery in Dhaka.'],
-  '/services': ['Printer & Photocopier Servicing in Dhaka | AR Trade International', 'Printer, photocopier and office-machine repair, servicing and maintenance contracts in Dhaka, Bangladesh.'],
+  '/services': ['Printer & Photocopier Servicing in Dhaka | AR Trade', 'Printer, photocopier and office-machine repair, servicing and maintenance contracts in Dhaka, Bangladesh.'],
   '/about': ['About AR Trade International — Since 2011, Dhaka', 'AR Trade International supplies genuine toner, printers, copiers and office equipment and offers servicing in Dhaka, Bangladesh since 2011.'],
   '/contact': ['Contact AR Trade International — Santinagar, Dhaka', 'Call, WhatsApp, email or visit AR Trade International at 159 Santinagar, Dhaka-1217 for quotes, orders and printer servicing.'],
   '/faq': ['Frequently Asked Questions | AR Trade International', 'Answers about ordering, delivery, payment, warranty and servicing at AR Trade International.'],
   '/offers': ['Offers & Deals on Toner and Printers | AR Trade International', 'Current offers and discounts on genuine toner, ink, printers and copiers in Bangladesh.'],
-  '/blog': ['Blog — Printer, Toner & Office Tips | AR Trade International', 'Guides and articles on printers, toner cartridges, copiers and office equipment from AR Trade International.'],
+  '/blog': ['Blog — Printer, Toner & Office Tips | AR Trade', 'Guides and articles on printers, toner cartridges, copiers and office equipment from AR Trade International.'],
   '/careers': ['Careers at AR Trade International', 'Open positions and internships at AR Trade International, Dhaka.']
 };
+
+/** Categories and published products for the plain-HTML pages. Kept for 30 seconds: crawlers ask for many pages in a row. */
+let memo = { t: 0, cats: [], prods: [] };
+async function catalog() {
+  if (Date.now() - memo.t < 30000) return memo;
+  const [cats] = await pool.query('SELECT id, title, description FROM categories WHERE hidden = 0 ORDER BY sort_order');
+  const [rows] = await pool.query('SELECT id, category_id, name, slug, img, price, stock, popular, brand FROM products WHERE active = 1 ORDER BY popular DESC, id DESC');
+  memo = { t: Date.now(), cats, prods: published(rows) };
+  return memo;
+}
 
 let shell = { t: 0, html: '' };
 function template(dist) {
@@ -46,22 +54,31 @@ function template(dist) {
 
 const ld = o => `<script type="application/ld+json">${JSON.stringify(o).replace(/</g, '\\u003c')}</script>`;
 
+// the plain-HTML copy is invisible to people (React replaces it at start-up) but readable by crawlers that do not run JavaScript
+const FB_CSS = '<style>#root>.seo-fb{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap}</style>';
+
 function inject(html, base, m) {
   const url = base + m.path;
   m = { ...m, desc: clip(m.desc, 160) }; // Google shows about 160 characters
   const tags = [
     `<meta name="description" content="${esc(m.desc)}">`,
     m.keywords ? `<meta name="keywords" content="${esc(m.keywords)}">` : '',
-    `<meta name="robots" content="${m.noindex ? 'noindex, nofollow' : 'index, follow, max-image-preview:large'}">`,
+    `<meta name="robots" content="${m.noindex ? (m.follow ? 'noindex, follow' : 'noindex, nofollow') : 'index, follow, max-image-preview:large'}">`,
     m.noindex ? '' : `<link rel="canonical" href="${esc(url)}">`,
+    m.prev ? `<link rel="prev" href="${esc(m.prev)}">` : '', m.next ? `<link rel="next" href="${esc(m.next)}">` : '',
+    m.preload ? `<link rel="preload" as="image" href="${esc(abs(base, m.preload))}" fetchpriority="high">` : '', // the product picture is a CSS background, so the browser would find it late
     `<meta property="og:site_name" content="${NAME}">`, `<meta property="og:type" content="${m.type || 'website'}">`,
     `<meta property="og:title" content="${esc(m.title)}">`, `<meta property="og:description" content="${esc(m.desc)}">`, `<meta property="og:url" content="${esc(url)}">`,
     m.image ? `<meta property="og:image" content="${esc(abs(base, m.image))}">` : '',
     `<meta name="twitter:card" content="${m.image ? 'summary_large_image' : 'summary'}">`, `<meta name="twitter:title" content="${esc(m.title)}">`, `<meta name="twitter:description" content="${esc(m.desc)}">`,
     m.image ? `<meta name="twitter:image" content="${esc(abs(base, m.image))}">` : '',
+    m.fallback ? FB_CSS : '',
     ...(m.ld || []).map(ld)
   ].filter(Boolean).join('\n');
-  return html.replace(/<title>[^<]*<\/title>/, `<title>${esc(m.title)}</title>`).replace('</head>', tags + '\n</head>');
+  // the shell carries a generic description: remove it, the page has its own (two descriptions make Google pick one)
+  let out = html.replace(/<meta name="description"[^>]*>\s*/g, '').replace(/<title>[^<]*<\/title>/, `<title>${esc(m.title)}</title>`).replace('</head>', tags + '\n</head>');
+  if (m.fallback) out = out.replace('<div id="root"></div>', `<div id="root">${m.fallback}</div>`);
+  return out;
 }
 
 export function mountSeo(app, dist) {
@@ -73,16 +90,16 @@ export function mountSeo(app, dist) {
   app.get('/sitemap.xml', wrap(async (req, res) => {
     const base = baseUrl(req);
     const [cats] = await pool.query('SELECT id FROM categories WHERE hidden = 0');
-    const [allProds] = await pool.query('SELECT id, name, slug, img FROM products WHERE active = 1 ORDER BY id DESC');
+    const [allProds] = await pool.query('SELECT id, name, slug, img, DATE_FORMAT(updated_at, "%Y-%m-%d") lm FROM products WHERE active = 1 ORDER BY id DESC');
     const prods = published(allProds); // a product whose picture is missing is not published, so it is not offered to search engines either
     const [posts] = await pool.query('SELECT slug, DATE_FORMAT(COALESCE(updated_at, published), "%Y-%m-%d") d FROM blog_posts WHERE status = "Published" AND noindex = 0');
     const [pages] = await pool.query('SELECT slug FROM site_pages WHERE status = "Published" AND grp = "servicing" AND noindex = 0');
-    const u = (loc, pri, extra = '') => `<url><loc>${esc(base + loc)}</loc><priority>${pri}</priority>${extra}</url>`;
+    const u = (loc, pri, extra = '', lm = '') => `<url><loc>${esc(base + loc)}</loc>${lm ? `<lastmod>${lm}</lastmod>` : ''}<priority>${pri}</priority>${extra}</url>`;
     const out = [
       ...Object.keys(STATIC).map(p => u(p, p === '/' ? '1.0' : '0.8')),
       ...cats.map(c => u('/shop/' + c.id, '0.8')),
-      ...prods.map(p => u(productPath(p), '0.7', p.img ? `<image:image><image:loc>${esc(abs(base, p.img))}</image:loc></image:image>` : '')),
-      ...posts.map(p => u('/blog/' + p.slug, '0.6', `<lastmod>${p.d}</lastmod>`)),
+      ...prods.map(p => u(productPath(p), '0.7', p.img ? `<image:image><image:loc>${esc(abs(base, p.img))}</image:loc></image:image>` : '', p.lm)),
+      ...posts.map(p => u('/blog/' + p.slug, '0.6', '', p.d)),
       ...pages.map(p => u('/services/' + p.slug, '0.7'))
     ];
     res.type('application/xml').send(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n${out.join('\n')}\n</urlset>`);
@@ -94,8 +111,9 @@ export function mountSeo(app, dist) {
     const p = req.path.replace(/\/+$/, '') || '/';
     let m = null, status = 200;
     const site = parseJson((await pool.query('SELECT v FROM settings WHERE k = "site"'))[0][0]?.v) || {};
+    const { cats, prods } = await catalog();
     const org = {
-      '@context': 'https://schema.org', '@type': 'Store', name: NAME, url: base, logo: base + '/api/uploads/site/artrade-logo.png', image: base + '/api/uploads/site/artrade-logo.png',
+      '@context': 'https://schema.org', '@type': 'Store', '@id': base + '/#store', name: NAME, url: base, logo: base + '/api/uploads/site/artrade-logo.png', image: base + '/api/uploads/site/artrade-logo.png',
       telephone: site.phone, email: site.email, address: { '@type': 'PostalAddress', streetAddress: site.address || '159 Santinagar', addressLocality: 'Dhaka', postalCode: '1217', addressCountry: 'BD' },
       priceRange: '৳', areaServed: 'BD'
     };
@@ -111,6 +129,35 @@ export function mountSeo(app, dist) {
     const shown = dec(p);
     if (PUBLIC_PAGE.test(shown) && shown !== shown.toLowerCase()) return res.redirect(301, encodeURI(shown.toLowerCase()) + search(req));
     if (PUBLIC_PAGE.test(req.path) && req.path.length > 1 && req.path.endsWith('/')) return res.redirect(301, p + search(req));
+
+    /** A category / all-products page: products of the requested page, canonical, prev/next, structured data and the plain-HTML copy. */
+    const listing = cat => {
+      const path = cat ? p : '/shop';
+      const { page, bad } = parsePage(req.query.page);
+      if ('page' in req.query && (bad || page === 1)) { // one address for page 1: the plain one
+        const rest = new URLSearchParams(Object.entries(req.query).filter(([k]) => k !== 'page').flatMap(([k, v]) => [].concat(v).map(x => [k, String(x)]))).toString();
+        return { redirect: p + (rest ? '?' + rest : '') };
+      }
+      const rows = cat ? prods.filter(x => x.category_id === cat.id) : prods;
+      const pages = pagesOf(rows.length), offset = (page - 1) * PER_PAGE;
+      if (page > pages) return { status: 404, m: { path: p, title: 'Page not found | ' + NAME, desc: STATIC['/'][1], noindex: true } };
+      const slice = rows.slice(offset, offset + PER_PAGE);
+      const search = !!(req.query.q || req.query.new); // search results are not pages to rank: noindex, but their links may be followed
+      const heading = cat ? cat.title : 'All products';
+      const title = listTitle(page, cat ? [`${cat.title} Price in Bangladesh | ${SHORT}`, `${cat.title} | ${SHORT}`] : [STATIC['/shop'][0], `Shop All Products | ${SHORT}`], cat ? cat.title : 'All Products');
+      const intro = cat ? `Buy genuine ${cat.title.toLowerCase()} online in Bangladesh. ${cat.description || ''} Best prices and fast delivery in Dhaka.` : STATIC['/shop'][1];
+      const desc = clip((page > 1 ? `Page ${page} of ${pages}. ` : '') + intro.replace(/\s+/g, ' ').trim(), 155);
+      const url = base + pageUrl(path, page);
+      const trail = cat ? [['Home', '/'], ['Shop', '/shop'], [cat.title]] : [['Home', '/'], ['Shop']];
+      return { m: {
+        path: pageUrl(path, page), title, desc, noindex: search, follow: search,
+        prev: page > 1 ? base + pageUrl(path, page - 1) : undefined, next: page < pages ? base + pageUrl(path, page + 1) : undefined,
+        ld: search ? undefined : [
+          collectionLd({ name: heading, url, description: desc, total: rows.length, offset, items: slice.map(x => ({ name: x.name, url: base + productPath(x) })) }),
+          breadcrumbLd(trail.map(([n, h]) => [n, base + (h || path)]))],
+        fallback: listFallback({ title: heading, intro: cat?.description, trail, rows: slice, page, pages, path, cats, site })
+      } };
+    };
 
     let r;
     if ((r = p.match(/^\/product\/([^/]+)$/))) {
@@ -158,27 +205,39 @@ export function mountSeo(app, dist) {
         if (rv.n > 0) prod.aggregateRating = { '@type': 'AggregateRating', ratingValue: Number(rv.a).toFixed(1), reviewCount: Number(rv.n) };
         const crumbs = { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [
           { '@type': 'ListItem', position: 1, name: 'Home', item: base + '/' }, { '@type': 'ListItem', position: 2, name: cat?.title || 'Shop', item: `${base}/shop/${x.category_id}` }, { '@type': 'ListItem', position: 3, name: x.name, item: url }] };
-        // two products must not share a title or description: fall back to the full name, then add the SKU (the same item can be listed twice)
-        let title = x.meta_title || `${x.name} | ${NAME}`, desc = x.meta_desc || clip(plain(x.description), 155) || x.name;
-        const [[dup]] = await pool.query('SELECT SUM(COALESCE(NULLIF(meta_title, ""), CONCAT(name, " | ", ?)) = ?) t, SUM(name = ?) n FROM products WHERE active = 1 AND id <> ?', [NAME, title, x.name, x.id]);
-        if (Number(dup.t) > 0) title = `${x.name} | AR Trade`;
-        if (Number(dup.t) > 0 && Number(dup.n) > 0) { title = `${x.name} (${x.sku || x.id}) | AR Trade`; desc = clip(desc, 140) + ` (${x.sku || x.id})`; }
-        m = { path: p, type: 'product', title, desc, keywords: x.meta_keywords, image: imgs[0], ld: [prod, crumbs] };
+        // generated from the product data; a title or description written by hand in the admin is kept, the import's generated ones are replaced
+        const priced = x.price > 0;
+        const [[dn]] = await pool.query('SELECT COUNT(*) n FROM products WHERE active = 1 AND name = ? AND id <> ?', [x.name, x.id]);
+        const label = Number(dn.n) > 0 ? `${x.name} (${x.sku || x.id})` : x.name; // the same item listed twice must not share a title
+        const title = isAutoTitle(x.meta_title) ? productTitle(label, priced) : x.meta_title;
+        const desc = isAutoDesc(x.meta_desc) ? productDescription({ name: label, price: x.price, cod: site.payments?.COD !== false }) : x.meta_desc;
+        const related = prods.filter(q => q.category_id === x.category_id && q.id !== x.id).slice(0, 8);
+        m = {
+          path: p, type: 'product', title, desc, keywords: x.meta_keywords, image: imgs[0], preload: imgs[0], ld: [prod, crumbs],
+          fallback: productFallback({ x, cat: cat ? { id: x.category_id, title: cat.title } : null, price: x.price, related, cats, site, desc: clip(plain(x.short_desc) || plain(x.description), 1500) })
+        };
       }
     } else if ((r = p.match(/^\/blog\/([^/]+)$/))) {
       const [[x]] = await pool.query('SELECT slug, title, excerpt, cover, author, body, meta_title, meta_desc, meta_keywords, noindex, DATE_FORMAT(published, "%Y-%m-%d") d, DATE_FORMAT(COALESCE(updated_at, published), "%Y-%m-%d") dm FROM blog_posts WHERE slug = ? AND status = "Published"', [dec(r[1])]);
       if (x) {
         const desc = x.meta_desc || x.excerpt || clip(plain(x.body), 155);
         m = { path: p, type: 'article', title: x.meta_title || `${x.title} | ${NAME}`, desc, keywords: x.meta_keywords, noindex: !!x.noindex, image: x.cover, ld: [{ '@context': 'https://schema.org', '@type': 'BlogPosting', headline: clip(String(x.title || ''), 110), description: clip(plain(desc), 300) || undefined, image: abs(base, x.cover || LOGO), datePublished: x.d, dateModified: x.dm || x.d, author: { '@type': !x.author || x.author === NAME ? 'Organization' : 'Person', name: x.author || NAME }, publisher: { '@type': 'Organization', name: NAME, logo: { '@type': 'ImageObject', url: base + '/api/uploads/site/artrade-logo.png' } }, mainEntityOfPage: base + p }] };
+        m.ld.push(breadcrumbLd([['Home', base + '/'], ['Blog', base + '/blog'], [x.title, base + p]]));
+        m.fallback = pageFallback({ title: x.title, intro: clip(plain(x.excerpt), 300), blocks: [textBlock('', clip(plain(x.body), 4000)), linkBlock('More from the blog', [link('/blog', 'All articles')])], cats, site });
       }
     } else if ((r = p.match(/^\/services\/([^/]+)$/))) {
       const [[x]] = await pool.query('SELECT title, excerpt, cover, body, meta_title, meta_desc, meta_keywords, noindex FROM site_pages WHERE slug = ? AND status = "Published"', [dec(r[1])]);
       if (x) m = { path: p, title: x.meta_title || `${x.title} | ${NAME}`, desc: x.meta_desc || x.excerpt || clip(plain(x.body), 155), keywords: x.meta_keywords, noindex: !!x.noindex, image: x.cover };
+      if (x) m.fallback = pageFallback({ title: x.title, intro: clip(plain(x.excerpt), 300), blocks: [textBlock('', clip(plain(x.body), 4000)), linkBlock('Our servicing', [link('/services', 'Printer & photocopier servicing')])], cats, site });
     } else if ((r = p.match(/^\/shop\/([^/]+)$/)) && r[1] !== 'all') {
-      const [[x]] = await pool.query('SELECT title, description FROM categories WHERE id = ?', [r[1]]);
-      if (x) m = { path: p, title: `${x.title} Price in Bangladesh | ${NAME}`, desc: `Buy genuine ${x.title.toLowerCase()} online in Bangladesh. ${x.description || ''} Best prices and fast delivery in Dhaka.`.replace(/\s+/g, ' ').trim() };
-    } else if (STATIC[p] || p === '/shop/all') {
-      let [t, d] = STATIC[p === '/shop/all' ? '/shop' : p];
+      const [[x]] = await pool.query('SELECT id, title, description FROM categories WHERE id = ?', [r[1]]);
+      if (x) { const L = listing(x); if (L.redirect) return res.redirect(301, L.redirect); m = L.m; status = L.status || 200; }
+    } else if (p === '/shop' || p === '/shop/all') {
+      const L = listing(null);
+      if (L.redirect) return res.redirect(301, L.redirect);
+      m = L.m; status = L.status || 200;
+    } else if (STATIC[p]) {
+      let [t, d] = STATIC[p];
       let kw = '', hide = false;
       if (p === '/about') {
         // the About page is built from three admin pages; the Company profile leads, the keywords of all three are merged
@@ -189,7 +248,12 @@ export function mountSeo(app, dist) {
         hide = !!lead?.noindex;
         kw = [...new Set(ap.flatMap(a => String(a.meta_keywords || '').split(',')).map(k => k.trim()).filter(Boolean))].join(', ');
       }
-      m = { path: p === '/shop/all' ? '/shop' : p, title: t, desc: d, keywords: kw || undefined, noindex: hide, ld: p === '/' ? [org, { '@context': 'https://schema.org', '@type': 'WebSite', name: NAME, url: base, potentialAction: { '@type': 'SearchAction', target: `${base}/shop/all?q={search_term_string}`, 'query-input': 'required name=search_term_string' } }] : undefined };
+      // plain-HTML copy: the heading, the text and real links (categories, popular products, articles, servicing pages)
+      const blocks = [];
+      if (p === '/') blocks.push(linkBlock('Shop by category', cats.map(c => link('/shop/' + c.id, c.title))), linkBlock('Popular products', prods.slice(0, 24).map(productLine)));
+      if (p === '/blog') blocks.push(linkBlock('Articles', (await pool.query('SELECT slug, title FROM blog_posts WHERE status = "Published" AND noindex = 0 ORDER BY published DESC LIMIT 40'))[0].map(x => link('/blog/' + x.slug, x.title))));
+      if (p === '/services') blocks.push(linkBlock('Servicing', (await pool.query('SELECT slug, title FROM site_pages WHERE status = "Published" AND grp = "servicing" AND noindex = 0'))[0].map(x => link('/services/' + x.slug, x.title))));
+      m = { path: p, title: t, desc: d, keywords: kw || undefined, noindex: hide, fallback: hide ? undefined : pageFallback({ title: p === '/' ? `${NAME}: genuine toner, printers and copiers in Bangladesh` : t.split(/ [|—] /)[0], intro: d, blocks, cats, site }), ld: p === '/' ? [org, { '@context': 'https://schema.org', '@type': 'WebSite', '@id': base + '/#website', name: NAME, url: base, publisher: { '@id': base + '/#store' }, potentialAction: { '@type': 'SearchAction', target: `${base}/shop/all?q={search_term_string}`, 'query-input': 'required name=search_term_string' } }] : undefined };
     }
     if (!m) {
       // a page that does not exist must answer 404, not 200 (Google treats a 200 "not found" page as a soft 404)

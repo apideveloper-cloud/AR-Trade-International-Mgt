@@ -11,7 +11,7 @@
 .slide-d .col { position: relative; display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 .slide-d .tag { align-self: flex-start; display: flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: oklch(0.45 0.15 250); background: #fff; border: 1px solid oklch(0.88 0.04 240); border-radius: 999px; padding: 6px 12px; box-shadow: 0 6px 14px -10px rgba(11,22,49,.4); }
 .slide-d .tag::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: oklch(0.6 0.13 240); }
-.slide-d h1 { font-weight: 800; font-size: clamp(24px, 2.6vw, 38px); line-height: 1.04; letter-spacing: -.035em; margin: 0; text-wrap: balance; }
+.slide-d h1, .slide-d h2 { font-weight: 800; font-size: clamp(24px, 2.6vw, 38px); line-height: 1.04; letter-spacing: -.035em; margin: 0; text-wrap: balance; }
 .slide-d p { font-size: 15px; line-height: 1.55; color: #4d5466; margin: 0; max-width: 430px; }
 .slide-d .ctas { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 6px; }
 .slide-d .ctas a:first-child { background: var(--navy); color: #fff; padding: 13px 22px; border-radius: 12px; font-weight: 800; font-size: 14px; box-shadow: 0 12px 24px -12px rgba(11,22,49,.7); }
@@ -55,3 +55,6 @@
 .perk b { display: block; font-family: var(--disp); font-weight: 800; font-size: 16px; letter-spacing: -.01em; color: var(--navy); }
 .perk span { font-size: 13px; color: var(--muted); }
 
+
+/* the home page's single <h1>: kept for search engines and screen readers, not shown (the hero slides carry the visible headlines) */
+.seo-h1 { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
