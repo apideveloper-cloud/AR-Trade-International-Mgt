@@ -1,0 +1,31 @@
+/* Fixed styles that used to be inline in the Products and Categories pages. The selectors are deliberately specific so they win over the generic rules, as the inline styles did. */
+
+/* Popular / New chips */
+.adm .fl-chips { display: flex; gap: 4px; flex-wrap: wrap; }
+.adm .a-chip.fl-chip { padding: 3px 8px; font-size: 11px; background: #fff; cursor: pointer; }
+.adm .a-chip.fl-chip.is-on { background: oklch(0.95 0.04 150); }
+.adm .a-chip.fl-chip:disabled { cursor: default; }
+
+/* Product table */
+.adm .a-table .head.prod-cols, .adm .a-table .row.prod-cols { grid-template-columns: 44px 52px minmax(200px, 1fr) 120px 110px 110px 80px 150px 70px; }
+.adm .a-table .prod-wrap { min-width: 904px; }
+.adm .a-table button.prod-name { text-align: left; border: 0; background: transparent; padding: 0; display: flex; flex-direction: column; gap: 2px; cursor: pointer; color: inherit; }
+.adm .a-table button.prod-name:disabled { cursor: default; }
+.adm .a-table .prod-sub { color: #5d6270; font-size: 12px; }
+.adm .a-table span.prod-cat { color: #5d6270; }
+.adm .a-table span.ro-val.prod-low { color: oklch(0.55 0.2 350); font-weight: 800; }
+
+/* Product cards (grid view) */
+.adm .pg-card button.pg-img { cursor: pointer; }
+.adm .pg-card button.pg-img:disabled { cursor: default; }
+.adm .pg-card button.pg-name { cursor: pointer; color: inherit; }
+.adm .pg-card button.pg-name:disabled { cursor: default; }
+
+/* Categories */
+.adm .vw.cats.acat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+.adm .vw.cats > .a-card.acat-card { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 14px; }
+.adm .acat-card .acat-body { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.adm .acat-card span.acat-meta { font-size: 12px; color: #5d6270; }
+.adm .acat-card .acat-acts { display: flex; flex-wrap: wrap; gap: 2px 10px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.adm .acat-card label.acat-link { color: oklch(0.48 0.16 254); cursor: pointer; }
+.adm .acat-card button.acat-rm { border: 0; background: transparent; color: #b3261e; font-weight: 700; padding: 0; cursor: pointer; }

@@ -3,17 +3,14 @@ import { can, invApi, slNo, useTable } from '../../adminApi.js';
 import { Drawer, Modal, Summary, Toolbar } from '../../ui.jsx';
 import { ListFilter } from '../../ListFilter.jsx';
 import { Chip, Fact, Grid, Notice, fDate, taka } from '../../fieldKit.jsx';
-import { useInv, Foot, ProdThumb } from './shared.jsx';
+import { useInv, useSaveForm, Foot, ProdThumb } from './shared.jsx';
 
+/** Correct a product's stock to the quantity really counted. */
 function AdjustForm({ product, onClose, onSaved }) {
   const [counted, setCounted] = useState(product.stock); const [note, setNote] = useState('');
-  const [err, setErr] = useState(''); const [busy, setBusy] = useState(false);
-  const submit = async e => {
-    e.preventDefault(); setBusy(true); setErr('');
-    try { await invApi.post('/stock/adjust', { productId: product.id, counted, note }); onSaved(); onClose(); } catch (er) { setErr(er.message); setBusy(false); }
-  };
+  const { busy, err, submit } = useSaveForm(onSaved, onClose);
   return (
-    <Modal narrow kicker="Stock count" title="Correct the stock" onClose={onClose} onSubmit={submit} footer={<Foot onClose={onClose} busy={busy} label="Save count" />}>
+    <Modal narrow kicker="Stock count" title="Correct the stock" onClose={onClose} onSubmit={submit(() => invApi.post('/stock/adjust', { productId: product.id, counted, note }))} footer={<Foot onClose={onClose} busy={busy} label="Save count" />}>
       <div className="iv-form"><Notice err={err} />
         <b>{product.name}</b><small className="fd-sub">The system shows {product.stock}. Enter the quantity you really counted on the shelf.</small>
         <label className="a-lbl">Counted quantity<input className="a-input" type="number" min="0" required value={counted} onChange={e => setCounted(e.target.value)} /></label>
@@ -23,6 +20,7 @@ function AdjustForm({ product, onClose, onSaved }) {
   );
 }
 const KIND_TONE = { Purchase: 'ok', Damage: 'bad', Return: 'amber', Adjust: 'blue' };
+/** One product: facts, count button and its recorded stock movements. */
 function StockDrawer({ p, canEdit, onClose, onChanged }) {
   const m = useInv('/stock/' + p.id + '/moves'); const [adj, setAdj] = useState(false);
   return (
@@ -32,13 +30,14 @@ function StockDrawer({ p, canEdit, onClose, onChanged }) {
       <h4 className="iv-h">Recorded movements</h4>
       <div className="iv-led">
         <div className="iv-lrow head m"><span>When</span><span>What</span><span>Qty</span><span>Stock after</span></div>
-        {(m.data?.items || []).map(x => <div key={x.id} className="iv-lrow m"><span>{fDate(x.at)}</span><span><Chip tone={KIND_TONE[x.kind] || 'off'}>{x.kind}</Chip> <span className="mono">{x.ref}</span><small>{x.note}{x.by ? ' · ' + x.by : ''}</small></span><b style={{ color: x.qty < 0 ? '#b3261e' : '#1a8a5a' }}>{x.qty > 0 ? '+' : ''}{x.qty}</b><span>{x.balance}</span></div>)}
+        {(m.data?.items || []).map(x => <div key={x.id} className="iv-lrow m"><span>{fDate(x.at)}</span><span><Chip tone={KIND_TONE[x.kind] || 'off'}>{x.kind}</Chip> <span className="mono">{x.ref}</span><small>{x.note}{x.by ? ' · ' + x.by : ''}</small></span><b className={x.qty < 0 ? 'iv-out' : 'iv-in'}>{x.qty > 0 ? '+' : ''}{x.qty}</b><span>{x.balance}</span></div>)}
         {m.data && !m.data.items.length && <div className="a-empty">No movements recorded here yet. Purchases, damage, returns and counts made on these pages appear in this list.</div>}
       </div>
       {adj && <AdjustForm product={p} onClose={() => setAdj(false)} onSaved={() => { m.reload(); onChanged(); }} />}
     </Drawer>
   );
 }
+/** Stock page: summary, filters and the stock grid. */
 export function InvStock({ staff }) {
   const t = useTable('/stock', { q: '', filter: '', brand: '' }, [], invApi);
   const [open, setOpen] = useState(null);
@@ -59,7 +58,7 @@ export function InvStock({ staff }) {
       <section className="a-card">
         <div className="card-hd"><div><h3>Stock</h3><small className="fd-sub">Click a product for its stock history</small></div></div>
         <Grid server={t} cols="44px 56px minmax(240px,2fr) 120px 120px 130px 110px" head={['SL', 'Image', 'Product', 'Brand', 'Selling price', 'Last buying price', 'In stock']} onRow={setOpen} empty="No product matches."
-          rows={t.data.rows.map((p, i) => ({ key: p.id, item: p, cells: [slNo(t, i), <ProdThumb key="im" src={p.img} name={p.name} />, <span key="n"><b>{p.name}</b>{!p.active && <small style={{ display: 'block', color: '#6b7388' }}>hidden from the shop</small>}</span>, p.brand, taka(p.price), p.lastCost ? taka(p.lastCost) : '—', <Chip key="s" tone={p.stock <= 0 ? 'bad' : p.stock <= (t.data.low ?? 5) ? 'amber' : 'ok'}>{p.stock}</Chip>] }))} />
+          rows={t.data.rows.map((p, i) => ({ key: p.id, item: p, cells: [slNo(t, i), <ProdThumb key="im" src={p.img} name={p.name} />, <span key="n"><b>{p.name}</b>{!p.active && <small className="iv-subline">hidden from the shop</small>}</span>, p.brand, taka(p.price), p.lastCost ? taka(p.lastCost) : '—', <Chip key="s" tone={p.stock <= 0 ? 'bad' : p.stock <= (t.data.low ?? 5) ? 'amber' : 'ok'}>{p.stock}</Chip>] }))} />
       </section>
       {open && <StockDrawer p={open} canEdit={canEdit} onClose={() => setOpen(null)} onChanged={t.reload} />}
     </>

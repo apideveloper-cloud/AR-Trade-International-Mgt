@@ -26,9 +26,9 @@ export default function EmailApp() {
   }, []);
   useEffect(() => { if (staff) api.get('/setup').then(setSetup).catch(() => {}); }, [staff, loc.pathname]);
 
-  if (!ready) return <div className="em-s110"><span className="spin" /></div>;
+  if (!ready) return <div className="em-loading"><span className="spin" /></div>;
   if (!staff) return <Login onDone={setStaff} />;
-  if (!can(staff, 'marketing.manage')) return <div className="em-s111"><div className="a-msg err">Your role cannot open the Email Center.</div></div>;
+  if (!can(staff, 'marketing.manage')) return <div className="em-denied"><div className="a-msg err">Your role cannot open the Email Center.</div></div>;
   const cur = loc.pathname.split('/')[2] || 'reports';
   const title = (TABS.find(t => t[0] === cur) || TABS[0])[1];
   const dnsOk = setup?.dns.every(r => r.ok);
@@ -40,17 +40,17 @@ export default function EmailApp() {
       <aside className="adm-side">
         <div className="adm-brand logo"><img src="/admin-logo-light.png" alt="AR Trade International" /><small>Email Center</small></div>
         <nav className="adm-nav">
-          <div className="em-s38">
+          <div className="em-col-2">
             <h6>Email</h6>
             {TABS.map(([k, l]) => <NavLink key={k} to={'/email/' + k} className={({ isActive }) => (isActive ? 'on' : '')}><span className="ic">{ICON[k]}</span><span className="tx">{l}</span></NavLink>)}
           </div>
-          <div className="em-s38">
+          <div className="em-col-2">
             <h6>Go to</h6>
             <Link to="/admin/marketing"><span className="ic">←</span><span className="tx">Admin console</span></Link>
           </div>
         </nav>
         <div className="em-status"><i className={setup?.hasKey && dnsOk ? 'ok' : 'warn'} />{status}</div>
-        <div className="adm-user"><span className="av">{staff.name[0]}</span><div className="em-s112"><b>{staff.name}</b><small>{staff.role}</small></div><button onClick={logout} title="Sign out">⏻</button></div>
+        <div className="adm-user"><span className="av">{staff.name[0]}</span><div className="em-user-meta"><b>{staff.name}</b><small>{staff.role}</small></div><button onClick={logout} title="Sign out">⏻</button></div>
       </aside>
       <main className="adm-main">
         <TopBar staff={staff} groups={groups} page={cur} title={title} go={k => nav('/email/' + k)} logout={logout} />

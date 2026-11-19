@@ -1,0 +1,43 @@
+/* Home page: styles moved out of inline style props. `.hm-page .x.x` (three classes' worth) beats the shared rules the inline styles used to override. */
+.hm-page .hm-sec-title.hm-sec-title { display: flex; flex-direction: column; gap: 8px; }
+.hm-page .hm-sec-h2.hm-sec-h2 { margin: 0; }
+.hm-page .hm-browse-btn.hm-browse-btn { background: #0d1220; font-weight: 700; }
+.hm-page .hm-cat-grid.hm-cat-grid { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.hm-page .hm-cat-wide.hm-cat-wide { grid-column: span 2; }
+.hm-page .hm-pt-28.hm-pt-28 { padding-top: 28px; }
+.hm-page .hm-pt-36.hm-pt-36 { padding-top: 36px; }
+.hm-page .hm-pt-16.hm-pt-16 { padding-top: 16px; }
+.hm-page .hm-alert-sec.hm-alert-sec { padding-top: 20px; padding-bottom: 0; }
+
+/* hero side */
+.hm-page .hm-mini-copier.hm-mini-copier { background: oklch(0.95 0.03 235); color: #0b1631; }
+.hm-page .hm-mini-copier.hm-mini-copier span { color: #5d6270; }
+.hm-page .hm-mini-printer.hm-mini-printer { background: #0b1631; color: #fff; }
+.hm-page .hm-mini-printer.hm-mini-printer span { color: #b8c2da; }
+.hm-page .hm-mini-printer .im img.hm-img-zoom { transform: scale(1.35); }
+
+/* offer */
+.hm-page .hm-col-18.hm-col-18 { display: flex; flex-direction: column; gap: 18px; }
+.hm-page .hm-col-12.hm-col-12 { display: flex; flex-direction: column; gap: 12px; }
+.hm-page .hm-offer-sub.hm-offer-sub { margin: 0; font-size: 15.5px; line-height: 1.55; max-width: 460px; color: #c3cbe0; }
+.hm-page .hm-offer-btns.hm-offer-btns { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
+.hm-page .hm-offer-btn.hm-offer-btn { padding: 14px 22px; border-radius: 12px; }
+.hm-page .hm-offer-btn.hm-offer-white { background: #fff; color: #0b1631; }
+.hm-page .hm-offer-btn.hm-offer-ghost { background: transparent; border: 1px solid rgba(255,255,255,.3); font-weight: 700; }
+.hm-page .hm-ticket-blue.hm-ticket-blue { color: oklch(0.5 0.15 248); }
+.hm-page .hm-ticket-navy.hm-ticket-navy { color: #0b1631; }
+
+/* fresh */
+.hm-page .hm-view-new.hm-view-new { font-weight: 700; font-size: 14px; color: #0b1631; }
+.hm-page .hm-spot-info.hm-spot-info { display: flex; flex-direction: column; gap: 6px; min-width: 0; max-width: 420px; }
+.hm-page .hm-spot-spec.hm-spot-spec { font-size: 13px; color: #5d6270; }
+.hm-page .hm-mini-info.hm-mini-info { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+
+/* price alert */
+.hm-page .hm-alert-copy.hm-alert-copy { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.hm-page .hm-alert-accent.hm-alert-accent { color: oklch(0.5 0.16 252); }
+.hm-page .hm-alert-note.hm-alert-note { color: #56607a; font-size: 13.5px; }
+.hm-page .hm-rel.hm-rel { position: relative; }
+.hm-page .hm-sent.hm-sent { display: flex; flex-direction: column; gap: 8px; background: #fff; border: 1.5px solid #cfdcef; border-radius: 18px; padding: 14px 18px; }
+.hm-page .hm-sent-title.hm-sent-title { font-size: 15px; color: #0b1631; }
+.hm-page .hm-sent-note.hm-sent-note { font-size: 13px; color: #56607a; }

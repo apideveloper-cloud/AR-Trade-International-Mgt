@@ -1,9 +1,12 @@
 export { Av, Chip, initials } from '../../fieldKit.jsx';
 
 // Small helpers shared by the field pages (team map, attendance, approvals, module switches).
-const BD = 'Asia/Dhaka';
-export const hhmm = iso => (iso ? new Date(iso).toLocaleTimeString('en-GB', { timeZone: BD, hour: '2-digit', minute: '2-digit' }) : '—');
-export const dayTime = iso => (iso ? new Date(iso).toLocaleString('en-GB', { timeZone: BD, day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—');
+import { fDateTime, fTime } from '../../fieldKit.jsx';
+
+/** Clock time in Bangladesh time (same as fTime). */
+export const hhmm = fTime;
+/** Day, month and time in Bangladesh time (same as fDateTime). */
+export const dayTime = fDateTime;
 export const hours = m => (m > 0 ? `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, '0')}m` : '—');
 export const ago = sec => (sec == null ? 'no signal yet' : sec < 90 ? 'just now' : sec < 3600 ? Math.round(sec / 60) + ' min ago' : sec < 86400 ? Math.round(sec / 3600) + ' h ago' : Math.round(sec / 86400) + ' d ago');
 export const Ic = ({ d }) => <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{d}</svg>;

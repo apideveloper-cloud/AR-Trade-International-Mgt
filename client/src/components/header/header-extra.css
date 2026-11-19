@@ -1,0 +1,5 @@
+/* Rules that used to be inline styles in Header.jsx. Extra selectors keep them stronger than styles/header.css. */
+.nav .nav-l .hdx-item { position: relative; }
+.nav .mega.hdx-mega { left: 28px; right: 28px; }
+.mega-l a .hdx-chev { opacity: 0; }
+.mega-l a.on .hdx-chev { opacity: 1; }

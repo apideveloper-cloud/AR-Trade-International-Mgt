@@ -53,7 +53,9 @@ CREATE TABLE IF NOT EXISTS users (
   area ENUM('inside','suburb','outside') NOT NULL DEFAULT 'inside',
   role ENUM('customer','admin') NOT NULL DEFAULT 'customer',
   profile JSON NULL,
+  member_code VARCHAR(16) NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_member_code (member_code),
   KEY idx_phone (phone)
 );
 

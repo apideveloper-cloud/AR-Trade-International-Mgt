@@ -1,0 +1,31 @@
+/* Email preferences page (prf- prefix) */
+.prf.prf { min-height: 100vh; display: grid; place-items: center; padding: 32px 18px; background: radial-gradient(90% 60% at 50% 0%,#dbe6f7 0%,#eef1f6 70%); }
+.prf .prf-card.prf-card { width: 100%; max-width: 520px; background: #fff; border-radius: 24px; box-shadow: 0 30px 70px -40px rgba(11,22,49,.5); overflow: hidden; }
+.prf .prf-hd.prf-hd { background: #0b1631; color: #fff; padding: 22px 26px; display: flex; align-items: center; gap: 14px; }
+.prf .prf-logo.prf-logo { width: 44px; height: 44px; border-radius: 50%; }
+.prf .prf-hd-txt.prf-hd-txt { display: flex; flex-direction: column; gap: 2px; }
+.prf .prf-title.prf-title { font-family: var(--disp); font-size: 20px; }
+.prf .prf-mail.prf-mail { font-size: 12.5px; color: #a9b6d3; }
+.prf .prf-err.prf-err { padding: 30px 26px; color: oklch(0.5 0.18 25); font-weight: 600; }
+.prf .prf-load.prf-load { padding: 40px; text-align: center; }
+.prf .prf-body.prf-body { padding: 24px 26px; display: flex; flex-direction: column; gap: 14px; }
+.prf .prf-welcome.prf-welcome { border: 2px dashed oklch(0.7 0.1 240); border-radius: 14px; padding: 12px 16px; font-size: 14px; color: #0b1631; }
+.prf .prf-code.prf-code { font-family: var(--mono); letter-spacing: .1em; }
+.prf .prf-lead.prf-lead { font-size: 14px; color: #56607a; line-height: 1.55; }
+.prf .prf-row.prf-row { display: flex; align-items: center; gap: 14px; text-align: left; border: 1.5px solid #e3e8f2; background: #fff; border-radius: 16px; padding: 14px 16px; }
+.prf .prf-row.prf-row.prf-on { border-color: oklch(0.75 0.1 250); background: oklch(0.97 0.02 250); }
+.prf .prf-row-txt.prf-row-txt { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.prf .prf-row-t.prf-row-t { font-size: 14.5px; color: #0b1631; }
+.prf .prf-row-d.prf-row-d { font-size: 12.5px; color: #6b7080; }
+.prf .prf-sw.prf-sw { width: 44px; height: 26px; border-radius: 999px; background: #cfd5e1; position: relative; flex-shrink: 0; }
+.prf .prf-on .prf-sw.prf-sw { background: oklch(0.52 0.16 252); }
+.prf .prf-knob.prf-knob { position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.25); transition: left .2s; }
+.prf .prf-on .prf-knob.prf-knob { left: 21px; }
+.prf .prf-saved.prf-saved { font-size: 13px; font-weight: 700; color: oklch(0.42 0.12 150); }
+.prf .prf-foot-row.prf-foot-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; border-top: 1px solid #eef0f4; padding-top: 16px; }
+.prf .prf-unsub.prf-unsub { border: 1.5px solid oklch(0.6 0.17 25); background: #fff; color: oklch(0.5 0.18 25); border-radius: 999px; padding: 11px 18px; font-size: 13.5px; font-weight: 800; }
+.prf .prf-back.prf-back { font-size: 13px; font-weight: 700; }
+.prf .prf-off.prf-off { padding: 30px 26px; display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
+.prf .prf-off-t.prf-off-t { font-family: var(--disp); font-size: 24px; color: #0b1631; }
+.prf .prf-resub.prf-resub { border: 0; background: #0b1631; color: #fff; border-radius: 999px; padding: 11px 18px; font-size: 13.5px; font-weight: 700; }
+.prf .prf-note.prf-note { padding: 14px 26px; background: #f7f8fb; font-size: 11.5px; color: #7a8090; }

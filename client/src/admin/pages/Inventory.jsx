@@ -2,6 +2,7 @@
 // Each page lives in ./inventory; this file keeps the import path the menu uses.
 import '../field.css';
 import './inventory/inventory.css';
+import './inventory/pageInline.css';
 
 export { InvVendors } from './inventory/Vendors.jsx';
 export { InvPurchases } from './inventory/Purchases.jsx';

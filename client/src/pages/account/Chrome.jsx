@@ -14,15 +14,15 @@ export function AccountHero({ user, profile, orders }) {
   return (
   <section className="ac-hero">
     <div className="in">
-      <div className="ac-s139">
-        <div className="ac-s140">
+      <div className="ac-hero-row">
+        <div className="ac-hero-who">
           <div className="ac-av"><div>{String(user.name || '?')[0].toUpperCase()}</div></div>
-          <div className="ac-s141">
-            <span className="ac-eyebrow"><i />Member since {new Date(profile.since).getFullYear()}</span>
+          <div className="ac-hero-text">
+            <span className="ac-eyebrow"><i />Member since {new Date(profile.since).getFullYear()}{profile.memberCode ? ` · ID ${profile.memberCode}` : ''}</span>
             <h1>{greet}</h1>
           </div>
         </div>
-        <div className="ac-s142">
+        <div className="ac-hero-actions">
           <Link to="/services" className="ac-hbtn">Book servicing</Link>
           <Link to="/shop/toner" className="ac-hbtn solid">Re-order toner →</Link>
         </div>
@@ -44,7 +44,7 @@ export function AccountSidebar({ orders, rems }) {
           <i /><span>{t}</span>{c > 0 && <em>{c}</em>}
         </NavLink>
       ))}
-      <div className="ac-s143" />
+      <div className="ac-nav-divider" />
       <button className="ac-nav out" onClick={logout}><i />Sign out</button>
     </aside>
   );

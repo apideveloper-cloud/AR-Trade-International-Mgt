@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
 import { fld } from '../../adminApi.js';
-import { Modal, Summary } from '../../ui.jsx';
-import { Facts, Notice, usePaged } from '../../fieldKit.jsx';
+import { Summary } from '../../ui.jsx';
+import { Notice, usePaged } from '../../fieldKit.jsx';
 import { saveTextFile } from '../../hooks/download.js';
-import { hhmm, hours, Av, Chip, osm } from './shared.jsx';
+import { hhmm, hours, Av, Chip } from './shared.jsx';
+import { ATT, AttendanceModal } from './attendance/AttendanceModal.jsx';
 import '../../field.css';
 
-const ATT = { Present: 'ok', 'On duty': 'blue', 'On leave': 'violet', Absent: 'bad', 'Weekly off': 'off', '—': 'off' };
-
+/** Daily attendance report: pick a day, filter by status, export CSV, open a person for the clock-in log. */
 export function FieldAttendance() {
   const [date, setDate] = useState('');
   const [d, setD] = useState(null);
@@ -70,19 +70,7 @@ export function FieldAttendance() {
         {pg.bar}
         <small className="fd-sub">Times are Bangladesh time. A person counts as present once they hold-to-clock-in on the phone. Click a row for the details.</small>
       </section>
-      {sel && (
-        <Modal kicker="Attendance" title={sel.name} narrow cls="att-modal" onClose={() => setSel(null)} footer={<button type="button" className="a-btn" onClick={() => setSel(null)}>Close</button>}>
-          <div className="att-hd"><Av name={sel.name} /><div><b>{sel.name}</b><small>{sel.roleLabel} · {d.date}</small></div><Chip tone={ATT[sel.status] || "off"}>{sel.status}</Chip></div>
-          <Facts cols="att-facts" items={[['Clock in', hhmm(sel.firstIn)], ['Clock out', hhmm(sel.lastOut)], ['Hours', hours(sel.minutes)], ['Days this month', sel.monthDays]]} />
-          {sel.phone && <div className="att-call"><a className="a-mini" href={"tel:" + sel.phone}>Call {sel.phone}</a><a className="a-mini" href={"sms:" + sel.phone}>Message</a></div>}
-          <h4 className="att-h4">Clock-in and clock-out on {d.date}</h4>
-          {sel.punches.length ? (
-            <ol className="att-log">{sel.punches.map((p, i) => (
-              <li key={i} className={p.type === "Clocked In" ? "in" : "out"}><b>{hhmm(p.at)}</b><span>{p.type}</span>{p.lat != null ? <a href={osm(p.lat, p.lng)} target="_blank" rel="noreferrer">Location ↗</a> : <em>no location</em>}</li>
-            ))}</ol>
-          ) : <p className="fd-sub">{sel.status === "On leave" ? "On approved leave this day." : "No clock-in or clock-out this day."}</p>}
-        </Modal>
-      )}
+      {sel && <AttendanceModal sel={sel} date={d.date} onClose={() => setSel(null)} />}
     </>
   );
 }

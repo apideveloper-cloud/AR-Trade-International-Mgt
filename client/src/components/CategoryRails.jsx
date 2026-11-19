@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import ProductCard from './ProductCard.jsx';
 import { useStore } from '../store.jsx';
+import './category-rails-head.css';
 
 const MAX = 20;
 const SEED = 4; // cards (and their links) rendered up front in a row that is still far below the fold
@@ -94,7 +95,7 @@ export default function CategoryRails() {
   if (site.homeRails === false || !rows.length) return null;
   return (
     <section className="sec crails">
-      <div className="sec-hd"><div><span className="mono" style={{ fontSize: 12, letterSpacing: '.1em', color: '#6b7080' }}>PRODUCTS BY CATEGORY</span><h2 style={{ fontWeight: 800, fontSize: 28, letterSpacing: '-.02em', margin: '2px 0 0' }}>Browse every category</h2></div></div>
+      <div className="sec-hd"><div><span className="mono cmpx-crhd-k">PRODUCTS BY CATEGORY</span><h2 className="cmpx-crhd-h">Browse every category</h2></div></div>
       {rows.map(r => <Rail key={r.cat.id} {...r} />)}
     </section>
   );

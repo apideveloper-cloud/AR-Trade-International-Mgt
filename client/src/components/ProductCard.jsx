@@ -3,6 +3,7 @@ import { productPath } from '../slug.js';
 import { Link } from 'react-router-dom';
 import { fmt, offPct, waLink } from '../api.js';
 import { useStore } from '../store.jsx';
+import './product-card-extra.css';
 
 /** The add / in-cart / ask-price / out-of-stock action used on cards, lists and spotlight blocks. */
 export function BuyAction({ p, cls = 'add', label = '+ Add' }) {
@@ -34,7 +35,7 @@ export default function ProductCard({ p }) {
       <Link to={productPath(p)} className="pc-img" ref={box}>
         {p.img && !failed ? (
           <>
-            {!loaded && <div className="shimmer" style={{ position: 'absolute', inset: 0 }} />}
+            {!loaded && <div className="shimmer cmpx-fill" />}
             {near && <img src={p.img} alt={p.name} loading="lazy" decoding="async" onLoad={() => setLoaded(true)} onError={() => setFailed(true)} style={{ opacity: loaded ? 1 : 0 }} />}
           </>
         ) : <div className="ph">No photo yet</div>}
@@ -51,7 +52,7 @@ export default function ProductCard({ p }) {
           <b style={p.price ? undefined : { fontSize: 15 }}>{p.price ? fmt(p.price) : 'On request'}</b>
           {off > 0 && <s>{fmt(p.old)}</s>}
         </div>
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}><BuyAction p={p} cls="add" label="+ Add" /></div>
+        <div className="cmpx-actions"><BuyAction p={p} cls="add" label="+ Add" /></div>
       </div>
     </article>
   );

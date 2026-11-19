@@ -24,8 +24,8 @@ export default function Account() {
   const [rems, setRems] = useState(null);
   const loadRems = useCallback(() => acc.get('/reminders').then(setRems).catch(() => setRems([])), []);
   useEffect(() => { if (user) { acc.get('/profile').then(setProfile).catch(() => {}); loadRems(); } }, [user, loadRems]);
-  if (!user) return authReady ? <Navigate to="/login" replace /> : <div className="ac-s138"><span className="spin" /></div>; // a reload must not bounce a signed-in customer to /login before the session check finishes
-  if (!profile) return <div className="ac-s138"><span className="spin" /></div>;
+  if (!user) return authReady ? <Navigate to="/login" replace /> : <div className="ac-loading"><span className="spin" /></div>; // a reload must not bounce a signed-in customer to /login before the session check finishes
+  if (!profile) return <div className="ac-loading"><span className="spin" /></div>;
 
   return (
     <div className="ac-page">

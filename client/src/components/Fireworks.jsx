@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import './fireworks.css';
 
 const COLORS = ['#ffd24a', '#ff5c8a', '#4ad7ff', '#8cff6b', '#c58bff', '#ff9a3c', '#ffffff'];
 const rand = (a, b) => a + Math.random() * (b - a);
@@ -75,5 +76,5 @@ export default function Fireworks({ seconds = 7 }) {
     return () => { cancelAnimationFrame(raf); window.removeEventListener('resize', size); };
   }, [seconds]);
 
-  return <canvas ref={ref} aria-hidden="true" style={{ position: 'fixed', inset: 0, width: '100vw', height: '100vh', pointerEvents: 'none', zIndex: 60 }} />;
+  return <canvas ref={ref} className="cmpx-fireworks" aria-hidden="true" />;
 }

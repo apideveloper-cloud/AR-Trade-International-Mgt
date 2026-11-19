@@ -1,0 +1,37 @@
+import { fmtMoney, viewFieldFile } from '../../../adminApi.js';
+import { Modal } from '../../../ui.jsx';
+import { Facts } from '../../../fieldKit.jsx';
+import { dayTime, Av, Chip } from '../shared.jsx';
+
+/** A claim waits for a decision while it is "pending" (expenses) or "open" (leave). */
+export const isPending = (kind, it) => (kind === 'expenses' ? it.status === 'pending' : it.status === 'open');
+/** Chip tone for a claim / leave request. */
+export const statusTone = (pending, it) => (pending ? 'amber' : it.status === 'approved' ? 'ok' : it.status === 'rejected' ? 'bad' : 'off');
+
+/** Review popup for one expense claim or leave request. `rv` is { kind, it, text, err }; `setRv` edits it; `decide(kind, id, status, remarks)` saves. */
+export function ReviewModal({ rv, setRv, busy, decide }) {
+  const { kind, it } = rv;
+  const exp = kind === 'expenses';
+  const pending = isPending(kind, it);
+  const who = it.employeeName || it.name;
+  const working = busy === kind + it.id;
+  return (
+    <Modal kicker={exp ? 'Expense claim' : 'Leave request'} title={who} narrow cls="ap-modal" onClose={() => !working && setRv(null)}
+      footer={pending
+        ? <><button type="button" className="a-btn ap-rej" disabled={!!busy || !rv.text.trim()} title={rv.text.trim() ? 'Reject with these remarks' : 'Write the remarks first: the person will see why'} onClick={() => decide(kind, it.id, 'rejected', rv.text.trim())}>{working ? '…' : 'Reject'}</button><button type="button" className="a-btn ap-ok" disabled={!!busy} onClick={() => decide(kind, it.id, 'approved', rv.text.trim())}>{working ? '…' : 'Approve'}</button></>
+        : <button type="button" className="a-btn" onClick={() => setRv(null)}>Close</button>}>
+      <div className="att-hd"><Av name={who} /><div><b>{who}</b><small>{exp ? 'Submitted ' + dayTime(it.date) : 'Requested leave'}</small></div><Chip tone={statusTone(pending, it)}>{pending ? 'Waiting' : it.status}</Chip></div>
+      {exp ? (
+        <Facts items={[['Amount', fmtMoney(it.amount)], ['Category', it.category], ['What for', it.title, true], it.voucher && ['Voucher', <button key="v" type="button" className="fd-lnk" onClick={() => viewFieldFile(it.voucher).catch(e => setRv(r => ({ ...r, err: e.message })))}>View voucher</button>, true]]} />
+      ) : (
+        <Facts items={[['Type', it.type], ['Days', it.days], ['Dates', it.dates, true], ['Reason', it.reason || '—', true]]} />
+      )}
+      {pending ? (
+        <label className="ap-rm">Remarks <em>(required to reject, optional to approve)</em>
+          <textarea className="a-input" rows={3} placeholder="Write the remarks. The person will see them in the mobile app." value={rv.text} onChange={e => setRv({ ...rv, text: e.target.value })} autoFocus />
+        </label>
+      ) : (it.decidedBy || it.remarks) && <div className="fd-apd">{it.decidedBy && <>Decided by {it.decidedBy}. </>}{it.remarks}</div>}
+      {rv.err && <p className="bk-bad ap-err">{rv.err}</p>}
+    </Modal>
+  );
+}

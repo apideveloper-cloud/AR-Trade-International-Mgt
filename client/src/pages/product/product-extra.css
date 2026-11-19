@@ -1,0 +1,21 @@
+/* Product page: rules that used to be inline styles (prefix pfx-). Specificity is raised so they win like the inline styles did. */
+.pdp2 .crumbs.pfx-crumbs { margin-bottom: 18px; }
+.pdp2 .crumbs .pfx-crumb-cur { color: #16181d; }
+
+.pdp2 .pd-tags .mono.pfx-sku { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: #8a8f9b; }
+
+.pdp2 .meter .bar i.pfx-fill-low { background: linear-gradient(90deg, oklch(0.7 0.18 40), oklch(0.58 0.22 350)); }
+.pdp2 .meter .bar i.pfx-fill-ok { background: linear-gradient(90deg, oklch(0.72 0.15 160), oklch(0.55 0.15 150)); }
+
+.pdp2 .buybox .sqbtn.on.pfx-cmp-on { color: #fff; background: var(--navy); border-color: var(--navy); }
+.pdp2 .buybox a.cta.buy.pfx-ask { display: grid; place-items: center; }
+
+.pdp2 .sec-hd.pfx-offers-hd { margin-bottom: 12px; }
+.pdp2 .pfx-offers-hd h2 { font-weight: 800; font-size: 22px; letter-spacing: -.02em; margin: 0; }
+
+.pdp2 .pfx-share-row { display: flex; align-items: center; gap: 10px; }
+.pdp2 .pfx-share-row .pfx-share-label { font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: #7a8296; }
+.pdp2 .pfx-share-row .pfx-share-btns { display: flex; gap: 6px; }
+
+.pdp2 .pfx-related { margin-top: 6px; display: flex; flex-direction: column; gap: 20px; }
+.pdp2 .pfx-related h2 { font-weight: 800; font-size: 26px; letter-spacing: -.025em; margin: 0; }

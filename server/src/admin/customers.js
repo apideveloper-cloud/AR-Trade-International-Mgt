@@ -17,12 +17,12 @@ export function mountCustomerRoutes(router, guard) {
   router.get('/customers', guard('customers.view'), wrap(async (req, res) => {
     const { size, p } = page(req);
     const [orders] = await pool.query('SELECT customer_name name, customer_phone phone, MAX(customer_email) email, COUNT(*) n, SUM(total) ltv, MAX(created_at) last FROM orders WHERE status <> "Cancelled" GROUP BY customer_phone, customer_name');
-    const [users] = await pool.query('SELECT id, name, phone, email FROM users');
+    const [users] = await pool.query('SELECT id, name, phone, email, member_code FROM users');
     const map = new Map(orders.map(o => [digits(o.phone).slice(-10), { name: o.name, phone: o.phone, email: o.email, n: o.n, ltv: Number(o.ltv), last: o.last }]));
-    users.forEach(u => { const k = digits(u.phone).slice(-10); if (!map.has(k)) map.set(k, { name: u.name, phone: u.phone, email: u.email, userId: u.id, n: 0, ltv: 0, last: null }); else { const c = map.get(k); if (!c.email) c.email = u.email; c.userId = u.id; } });
+    users.forEach(u => { const k = digits(u.phone).slice(-10); if (!map.has(k)) map.set(k, { name: u.name, phone: u.phone, email: u.email, userId: u.id, memberCode: u.member_code || '', n: 0, ltv: 0, last: null }); else { const c = map.get(k); if (!c.email) c.email = u.email; c.userId = u.id; c.memberCode = u.member_code || ''; } });
     const q = String(req.query.q || '').toLowerCase();
     const ranged = !!(day(req.query.from) || day(req.query.to));
-    const list = [...map.values()].filter(c => (!q || `${c.name} ${c.phone} ${c.email}`.toLowerCase().includes(q)) && (!ranged || (c.last && inRange(c.last, req))));
+    const list = [...map.values()].filter(c => (!q || `${c.name} ${c.phone} ${c.email} ${c.memberCode || ''}`.toLowerCase().includes(q)) && (!ranged || (c.last && inRange(c.last, req))));
     list.sort((a, b) => b.ltv - a.ltv);
     const everyone = [...map.values()], buyers = everyone.filter(c => c.n > 0);
     const revenue = buyers.reduce((t, c) => t + c.ltv, 0);

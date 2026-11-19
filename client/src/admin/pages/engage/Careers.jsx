@@ -5,6 +5,7 @@ import { IconBtn } from '../../IconBtn.jsx';
 import { useApiData } from '../../hooks/useApiData.js';
 import { useBusy } from '../../hooks/useBusy.js';
 import { withAlert } from '../../hooks/withAlert.js';
+import './engage.css';
 
 const STAGES = ['New', 'Shortlisted', 'Interview', 'Offered', 'Hired', 'Rejected'];
 
@@ -21,7 +22,7 @@ function JobForm({ job, onClose, onSaved }) {
   const L = a => (a || []).join('\n');
   return (
     <Modal side kicker="Careers" title={job ? 'Edit job' : 'Post a job'} onClose={onClose} onSubmit={submit} footer={<><button type="button" className="a-btn ghost" onClick={onClose}>Cancel</button><button className="a-btn grad" disabled={busy}>{busy ? 'Saving…' : 'Save job'}</button></>}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div className="eg-job-form">
         {err && <div className="a-msg err">{err}</div>}
         <label className="a-lbl">Job title<input className="a-input" name="title" required defaultValue={job?.title} /></label>
         <div className="a-fields">
@@ -32,7 +33,7 @@ function JobForm({ job, onClose, onSaved }) {
           <label className="a-lbl">Salary<input className="a-input" name="salary" defaultValue={job?.salary} /></label>
           <label className="a-lbl">Vacancies<input className="a-input" type="number" min="1" name="vacancies" defaultValue={job?.vacancies || 1} /></label>
           <label className="a-lbl">Deadline<input className="a-input" type="date" name="deadline" defaultValue={job ? String(job.deadline).slice(0, 10) : ''} /></label>
-          <label className="a-lbl" style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingTop: 22 }}><input type="checkbox" name="open" defaultChecked={job ? job.open : true} />Accepting applications</label>
+          <label className="a-lbl eg-job-open"><input type="checkbox" name="open" defaultChecked={job ? job.open : true} />Accepting applications</label>
         </div>
         <label className="a-lbl">About the role<textarea className="a-input" name="about" rows={2} defaultValue={job?.about} /></label>
         <div className="a-fields">
@@ -67,9 +68,9 @@ export function Careers() {
         ['Hired', apps.filter(a => a.stage === 'Hired').length, 'joined the team', 'green', 'check']
       ]} />
       {(jobsQ.error || appsQ.error) && <div className="a-msg err">{jobsQ.error || appsQ.error}</div>}
-      <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-        {[['apps', 'Applications'], ['jobs', 'Jobs']].map(([k, l]) => <button key={k} className={'a-chip' + (tab === k ? ' on' : '')} style={{ padding: '8px 16px', fontSize: 13 }} onClick={() => setTab(k)}>{l}</button>)}
-        <span style={{ flex: 1 }} /><button className="a-btn sm grad" style={{ padding: '10px 16px', borderRadius: 10 }} onClick={() => setEdit('new')}>+ Post a job</button>
+      <div className="eg-tabs-row">
+        {[['apps', 'Applications'], ['jobs', 'Jobs']].map(([k, l]) => <button key={k} className={'a-chip eg-tab' + (tab === k ? ' on' : '')} onClick={() => setTab(k)}>{l}</button>)}
+        <span className="eg-grow" /><button className="a-btn sm grad eg-post" onClick={() => setEdit('new')}>+ Post a job</button>
       </div>
       {tab === 'apps' && (
         <>
@@ -79,26 +80,26 @@ export function Careers() {
           </div>
           {!shown.length && <div className="a-empty">No applications here yet.</div>}
           {shown.map(a => (
-            <div key={a.id} className="a-card" style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto', gap: 14, alignItems: 'center', padding: '16px 18px' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                <b style={{ fontSize: 14 }}>{a.name} <span className="mono" style={{ color: '#8a8f9b', fontWeight: 500, fontSize: 11 }}>{a.id}</span></b>
+            <div key={a.id} className="a-card eg-row-card eg-gap14">
+              <div className="eg-stack3">
+                <b className="eg-title">{a.name} <span className="mono eg-app-id">{a.id}</span></b>
                 <span>{a.jobTitle} · {a.exp || '—'} · expects ৳{a.salary || '—'}</span>
                 <span><a href={'tel:' + a.phone}>{a.phone}</a>{a.email && <> · {a.email}</>}{a.link && <> · <a href={a.link} target="_blank" rel="noreferrer">link</a></>}</span>
-                {a.note && <span style={{ color: '#5d6270' }}>“{a.note}”</span>}
-                <span style={{ color: '#8a8f9b', fontSize: 12 }}>CV: <button type="button" className="a-btn sm ghost" style={{ padding: '2px 8px' }} onClick={() => downloadFile('/applications/' + a.id + '/cv', a.cv).catch(e => alertBox(e.message))}>{a.cv || 'Download'}</button> · applied {dateF(a.at)}</span>
+                {a.note && <span className="eg-app-note">“{a.note}”</span>}
+                <span className="eg-app-cv">CV: <button type="button" className="a-btn sm ghost eg-cv-btn" onClick={() => downloadFile('/applications/' + a.id + '/cv', a.cv).catch(e => alertBox(e.message))}>{a.cv || 'Download'}</button> · applied {dateF(a.at)}</span>
               </div>
-              <select className="a-input" value={a.stage} onChange={e => setSt(a.id, e.target.value)} style={{ borderRadius: 999, fontWeight: 700, width: 'auto' }}>{STAGES.map(s => <option key={s}>{s}</option>)}</select>
+              <select className="a-input eg-stage-select" value={a.stage} onChange={e => setSt(a.id, e.target.value)}>{STAGES.map(s => <option key={s}>{s}</option>)}</select>
             </div>
           ))}
         </>
       )}
       {tab === 'jobs' && (
-        <div className="a-table"><div style={{ minWidth: 744 }}>
-          <div className="head" style={{ gridTemplateColumns: '44px minmax(200px,1fr) 120px 110px 90px 90px 140px' }}><span>SL</span><span>Role</span><span>Department</span><span>Deadline</span><span>Open</span><span>Applied</span><span /></div>
+        <div className="a-table"><div className="eg-jobs-wrap">
+          <div className="head eg-job-cols"><span>SL</span><span>Role</span><span>Department</span><span>Deadline</span><span>Open</span><span>Applied</span><span /></div>
           {jobs.map((j, i) => (
-            <div key={j.id} className="row" style={{ gridTemplateColumns: '44px minmax(200px,1fr) 120px 110px 90px 90px 140px' }}>
+            <div key={j.id} className="row eg-job-cols">
               <span className="sl">{i + 1}</span>
-              <span style={{ display: 'flex', flexDirection: 'column' }}><b>{j.title}</b><span style={{ color: '#5d6270', fontSize: 12 }}>{j.id} · {j.type} · {j.salary}</span></span>
+              <span className="eg-job-name"><b>{j.title}</b><span className="eg-job-sub">{j.id} · {j.type} · {j.salary}</span></span>
               <span>{j.dept}</span><span>{dateF(j.deadline)}</span><Pill s={isOpen(j) ? 'Active' : 'Disabled'} label={isOpen(j) ? 'Open' : 'Closed'} /><b>{j.apps}</b>
               <span className="ic-row"><IconBtn icon="edit" title="Edit the job" onClick={() => setEdit(j)} /><IconBtn icon="trash" tone="bad" title="Delete the job and its applications" onClick={() => delJob(j)} /></span>
             </div>

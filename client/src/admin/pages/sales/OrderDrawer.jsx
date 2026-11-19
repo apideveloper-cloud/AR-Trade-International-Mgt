@@ -13,6 +13,7 @@ import { ContactCard } from './ContactCard.jsx';
 import { ItemsCard } from './ItemsCard.jsx';
 import { OrderTimeline } from './OrderTimeline.jsx';
 import { EmailInvoiceModal } from './EmailInvoiceModal.jsx';
+import './salesInline.css';
 
 /** Order details panel: summary, progress tracker with required remarks, invoice actions, contact, items and the timeline with comments.
  *  `canEdit` (VAT, status, cancel) defaults to the signed-in role's `orders.status` permission, or true when no session is provided. */
@@ -49,7 +50,7 @@ function OrderDrawerBody({ id, onClose, onChanged, canDelete, riderOnly, canEdit
           <ContactCard o={o} />
           <ItemsCard o={o} />
           <OrderTimeline id={id} o={o} setO={setO} />
-          {canDelete && o.status === 'Cancelled' && <button onClick={del} style={{ alignSelf: 'flex-start', border: 0, background: 'transparent', color: 'oklch(0.5 0.2 350)', fontSize: 13, fontWeight: 700, textDecoration: 'underline' }}>Delete order</button>}
+          {canDelete && o.status === 'Cancelled' && <button onClick={del} className="sinl-del">Delete order</button>}
         </>
       )}
       {chg && o && <StatusDialog id={id} from={o.status} to={chg} onClose={() => setChg(null)} onSaved={x => { setO(x); onChanged(); setChg(null); }} />}

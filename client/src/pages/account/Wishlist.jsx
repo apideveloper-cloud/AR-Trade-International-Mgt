@@ -8,7 +8,7 @@ export default function Wishlist() {
   return (
     <>
       <H2>Wishlist</H2>
-      <div className="ac-s68">{items.map(p => <ProductCard key={p.id} p={p} />)}</div>
+      <div className="ac-wish-grid">{items.map(p => <ProductCard key={p.id} p={p} />)}</div>
       {!items.length && <Empty>Tap ♡ on any product to save it here.</Empty>}
     </>
   );

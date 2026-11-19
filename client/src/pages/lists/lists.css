@@ -1,0 +1,16 @@
+/* Wishlist and compare pages (wsl- prefix) */
+.wsl-page.wsl-page { max-width: 1600px; margin: 0 auto; padding: 28px 28px 40px; }
+.wsl-page .wsl-head.wsl-head { display: flex; flex-direction: column; gap: 6px; margin-bottom: 22px; }
+.wsl-page .wsl-h1.wsl-h1 { font-weight: 800; font-size: clamp(28px,3.4vw,42px); letter-spacing: -.025em; margin: 0; color: #0b1631; }
+.wsl-page .wsl-sub.wsl-sub { color: #5d6270; font-size: 15px; }
+.wsl-page .wsl-empty.wsl-empty { display: block; }
+.wsl-page .wsl-grid.wsl-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(230px,1fr)); gap: 14px; }
+.wsl-page .wsl-side.wsl-side { display: flex; flex-direction: column; justify-content: flex-end; gap: 8px; }
+.wsl-page .wsl-count.wsl-count { font-size: 11px; letter-spacing: .1em; color: #7a8090; }
+.wsl-page .wsl-clear.wsl-clear { align-self: flex-start; padding: 7px 12px; font-size: 12px; }
+.wsl-page .wsl-rm.wsl-rm { position: absolute; top: 10px; right: 10px; width: 28px; height: 28px; border-radius: 50%; border: 1px solid #e1e5ec; background: #fff; color: #5d6270; }
+.wsl-page .wsl-thumb.wsl-thumb { position: relative; height: 150px; border-radius: 14px; background: #f4f7fc; display: grid; place-items: center; }
+.wsl-page .wsl-img.wsl-img { max-height: 96%; max-width: 96%; object-fit: contain; mix-blend-mode: multiply; }
+.wsl-page .wsl-name.wsl-name { color: #0b1631; font-weight: 700; font-size: 14px; line-height: 1.3; }
+.wsl-page .wsl-price.wsl-price { font-family: var(--disp); font-weight: 800; font-size: 22px; color: #0b1631; }
+.wsl-page .wsl-row.wsl-row { display: contents; }

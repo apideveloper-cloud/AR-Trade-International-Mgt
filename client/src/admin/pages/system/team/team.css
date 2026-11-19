@@ -1,0 +1,10 @@
+/* Team page: former inline styles. Doubled classes so they win over the base rules, as the inline styles did. */
+.pwm-note.xteam-note.xteam-note { color: #3a4558; font-size: 14px; }
+.a-card.xteam-flush.xteam-flush { padding: 0; gap: 0; }
+.mk-hd.xteam-hd.xteam-hd { padding: 12px 16px; }
+.xteam-grow.xteam-grow { flex: 1; }
+.a-input.xteam-rolesel.xteam-rolesel { width: auto; padding: 5px 8px; font-size: 12px; font-weight: 700; }
+.xteam-done.xteam-done { display: flex; flex-direction: column; gap: 14px; }
+.a-msg.xteam-ok.xteam-ok { font-size: 14px; }
+.a-btn.xteam-copy.xteam-copy { align-self: flex-start; }
+.xteam-give.xteam-give { font-size: 12.5px; color: #6b7388; line-height: 1.5; }

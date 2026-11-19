@@ -2,10 +2,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { mktApi as api } from '../admin/adminApi.js';
 import { fmtTime } from '../api.js';
 
-const card = { background: '#fff', borderRadius: 20, boxShadow: '0 1px 2px rgba(11,22,49,.05),0 10px 24px -18px rgba(11,22,49,.3)' };
-const inp = { border: '1px solid #d3d8e3', borderRadius: 12, padding: '10px 12px', fontSize: 14, background: '#fff', width: '100%', fontFamily: 'inherit' };
-const lbl = { display: 'flex', flexDirection: 'column', gap: 5, fontSize: 12, fontWeight: 700, color: '#56607a' };
-const hint = { fontWeight: 500, color: '#8a8f9b' };
 const HEROES = [['navy', 'Navy', '#0b1631'], ['pink', 'Rose', '#f4a9b8'], ['blue', 'Sky', '#bfe0f8'], ['green', 'Green', '#0f6b52'], ['red', 'Red', '#b3261e'], ['gold', 'Gold', '#b7791f']];
 const taka = n => '৳ ' + Number(n || 0).toLocaleString('en-US');
 const off = p => (p.old > p.price ? Math.round((p.old - p.price) / p.old * 100) : 0);
@@ -44,62 +40,62 @@ export function CampaignForm({ tpls, onDone }) {
   };
 
   return (
-    <div style={{ flex: '1 1 100%', display: 'flex', gap: 18, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-      <form onSubmit={create} style={{ ...card, flex: '1 1 380px', maxWidth: 520, padding: 20, display: 'flex', flexDirection: 'column', gap: 11 }}>
-        <b style={{ fontFamily: 'var(--disp)', fontSize: 20, color: '#0b1631' }}>New campaign</b>
-        <label style={lbl}>Campaign name<input required value={f.name} onChange={set('name')} placeholder="e.g. Victory Day toner sale" style={inp} /></label>
-        <label style={lbl}>Template<select value={f.tpl} onChange={set('tpl')} style={inp}>{tpls.map(t => <option key={t.id} value={t.id}>{t.name} · {t.kind}</option>)}</select></label>
-        <label style={lbl}>Subject line A<input required value={f.subjA} onChange={set('subjA')} placeholder="Eid Mubarak: office restock, 18% off" style={inp} /></label>
-        <label style={lbl}>Subject line B <span style={hint}>Optional, for an A/B test</span><input value={f.subjB} onChange={set('subjB')} placeholder="Your Eid toner deal is inside" style={inp} /></label>
+    <div className="em-cf">
+      <form onSubmit={create} className="em-cf-card em-cf-form">
+        <b className="em-cf-title">New campaign</b>
+        <label className="em-cf-lbl">Campaign name<input required value={f.name} onChange={set('name')} placeholder="e.g. Victory Day toner sale" className="em-cf-inp" /></label>
+        <label className="em-cf-lbl">Template<select value={f.tpl} onChange={set('tpl')} className="em-cf-inp">{tpls.map(t => <option key={t.id} value={t.id}>{t.name} · {t.kind}</option>)}</select></label>
+        <label className="em-cf-lbl">Subject line A<input required value={f.subjA} onChange={set('subjA')} placeholder="Eid Mubarak: office restock, 18% off" className="em-cf-inp" /></label>
+        <label className="em-cf-lbl">Subject line B <span className="em-cf-hint">Optional, for an A/B test</span><input value={f.subjB} onChange={set('subjB')} placeholder="Your Eid toner deal is inside" className="em-cf-inp" /></label>
 
-        <b style={{ fontSize: 13, color: '#0b1631', paddingTop: 6 }}>Email design</b>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-          <label style={lbl}>Small line above <span style={hint}>(kicker)</span><input value={f.kicker} onChange={set('kicker')} placeholder="Picks that stand out" style={inp} /></label>
-          <label style={lbl}>Big headline<input value={f.headline} onChange={set('headline')} placeholder={tplSel?.headline || 'Worth your attention'} style={inp} /></label>
+        <b className="em-cf-subhead">Email design</b>
+        <div className="em-cf-grid2">
+          <label className="em-cf-lbl">Small line above <span className="em-cf-hint">(kicker)</span><input value={f.kicker} onChange={set('kicker')} placeholder="Picks that stand out" className="em-cf-inp" /></label>
+          <label className="em-cf-lbl">Big headline<input value={f.headline} onChange={set('headline')} placeholder={tplSel?.headline || 'Worth your attention'} className="em-cf-inp" /></label>
         </div>
-        <label style={lbl}>Message <span style={hint}>Leave empty to use the template text</span><textarea rows={3} value={f.body} onChange={set('body')} placeholder={tplSel?.body} style={{ ...inp, resize: 'vertical' }} /></label>
-        <div style={lbl}>Banner colour
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {HEROES.map(([k, n, c]) => <button key={k} type="button" title={n} aria-label={n} onClick={() => setF(v => ({ ...v, hero: k }))} style={{ width: 30, height: 30, borderRadius: 99, background: c, border: f.hero === k ? '3px solid #e0245e' : '2px solid #fff', boxShadow: '0 0 0 1px #d3d8e3', cursor: 'pointer' }} />)}
+        <label className="em-cf-lbl">Message <span className="em-cf-hint">Leave empty to use the template text</span><textarea rows={3} value={f.body} onChange={set('body')} placeholder={tplSel?.body} className="em-cf-inp em-cf-inp--area" /></label>
+        <div className="em-cf-lbl">Banner colour
+          <div className="em-cf-swatches">
+            {HEROES.map(([k, n, c]) => <button key={k} type="button" title={n} aria-label={n} onClick={() => setF(v => ({ ...v, hero: k }))} className={'em-cf-swatch' + (f.hero === k ? ' em-cf-swatch--on' : '')} style={{ background: c }} />)}
           </div>
         </div>
 
-        <div style={lbl}>Products in the email <span style={hint}>Pick up to 8, shown two per row with price and discount badge</span>
+        <div className="em-cf-lbl">Products in the email <span className="em-cf-hint">Pick up to 8, shown two per row with price and discount badge</span>
           {!!picked.length && (
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              {picked.map(p => <button key={p.id} type="button" onClick={() => toggle(p)} title="Remove" style={{ border: 0, background: '#eaf0fb', color: '#173a7a', borderRadius: 99, padding: '5px 10px', fontSize: 12, fontWeight: 700, cursor: 'pointer', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name} ✕</button>)}
+            <div className="em-cf-picked">
+              {picked.map(p => <button key={p.id} type="button" onClick={() => toggle(p)} title="Remove" className="em-cf-chip">{p.name} ✕</button>)}
             </div>
           )}
-          <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search products by name or brand" style={inp} />
-          <div style={{ maxHeight: 190, overflow: 'auto', border: '1px solid #e6e9f0', borderRadius: 12 }}>
-            {!found.length && <div style={{ padding: 12, fontWeight: 500, color: '#8a8f9b' }}>No products found.</div>}
+          <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search products by name or brand" className="em-cf-inp" />
+          <div className="em-cf-results">
+            {!found.length && <div className="em-cf-none">No products found.</div>}
             {found.map(p => {
               const on = picked.some(x => x.id === p.id);
               return (
-                <button key={p.id} type="button" onClick={() => toggle(p)} style={{ display: 'flex', gap: 10, alignItems: 'center', width: '100%', textAlign: 'left', border: 0, borderBottom: '1px solid #f1f2f6', background: on ? '#eef6ff' : '#fff', padding: '6px 10px', cursor: 'pointer', fontFamily: 'inherit' }}>
-                  {p.img ? <img src={p.img} alt="" width="34" height="34" style={{ objectFit: 'contain', borderRadius: 6, background: '#f4f6fa' }} /> : <span style={{ width: 34, height: 34 }} />}
-                  <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, fontWeight: 600, color: '#0b1631', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
-                  <span style={{ fontSize: 12, fontWeight: 800, color: '#0b1631', whiteSpace: 'nowrap' }}>{off(p) ? <i style={{ fontStyle: 'normal', background: '#e0245e', color: '#fff', borderRadius: 4, padding: '1px 5px', marginRight: 5 }}>-{off(p)}%</i> : null}{taka(p.price)}</span>
-                  <span style={{ width: 16, color: '#1a8a5a', fontWeight: 800 }}>{on ? '✓' : ''}</span>
+                <button key={p.id} type="button" onClick={() => toggle(p)} className={'em-cf-row' + (on ? ' em-cf-row--on' : '')}>
+                  {p.img ? <img src={p.img} alt="" width="34" height="34" className="em-cf-thumb" /> : <span className="em-cf-thumb-blank" />}
+                  <span className="em-cf-name">{p.name}</span>
+                  <span className="em-cf-price">{off(p) ? <i className="em-cf-off">-{off(p)}%</i> : null}{taka(p.price)}</span>
+                  <span className="em-cf-check">{on ? '✓' : ''}</span>
                 </button>
               );
             })}
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-          <label style={lbl}>Button text<input value={f.cta} onChange={set('cta')} placeholder="Explore deals" style={inp} /></label>
-          <label style={lbl}>Button link <span style={hint}>(https, empty = shop)</span><input value={f.ctaUrl} onChange={set('ctaUrl')} placeholder="https://…" style={inp} /></label>
+        <div className="em-cf-grid2">
+          <label className="em-cf-lbl">Button text<input value={f.cta} onChange={set('cta')} placeholder="Explore deals" className="em-cf-inp" /></label>
+          <label className="em-cf-lbl">Button link <span className="em-cf-hint">(https, empty = shop)</span><input value={f.ctaUrl} onChange={set('ctaUrl')} placeholder="https://…" className="em-cf-inp" /></label>
         </div>
-        <label style={lbl}>Audience<select value={f.aud} onChange={set('aud')} style={inp}><option value="offers">Subscribers who want offers</option><option value="festivals">Subscribers who want festival campaigns</option><option value="tips">Subscribers who want health tips</option><option value="all">All confirmed subscribers</option></select></label>
-        <label style={lbl}>Schedule <span style={hint}>Leave empty to send now</span><input type="datetime-local" value={f.when} onChange={set('when')} style={inp} /></label>
-        {msg && <span style={{ fontSize: 13, fontWeight: 700, color: 'oklch(0.42 0.12 150)' }}>{msg}</span>}{err && <span style={{ fontSize: 13, fontWeight: 700, color: 'oklch(0.5 0.18 25)' }}>{err}</span>}
-        <button style={{ border: 0, background: 'linear-gradient(135deg,oklch(0.6 0.14 240),oklch(0.46 0.16 256))', color: '#fff', borderRadius: 999, padding: 13, fontSize: 14.5, fontWeight: 800, cursor: 'pointer' }}>Schedule / send campaign</button>
-        <span style={{ fontSize: 12, color: '#7a8090' }}>Logo, unsubscribe and preference links are added automatically. Only confirmed subscribers receive it.</span>
+        <label className="em-cf-lbl">Audience<select value={f.aud} onChange={set('aud')} className="em-cf-inp"><option value="offers">Subscribers who want offers</option><option value="festivals">Subscribers who want festival campaigns</option><option value="tips">Subscribers who want health tips</option><option value="all">All confirmed subscribers</option></select></label>
+        <label className="em-cf-lbl">Schedule <span className="em-cf-hint">Leave empty to send now</span><input type="datetime-local" value={f.when} onChange={set('when')} className="em-cf-inp" /></label>
+        {msg && <span className="em-cf-msg">{msg}</span>}{err && <span className="em-cf-msg em-cf-msg--err">{err}</span>}
+        <button className="em-cf-submit">Schedule / send campaign</button>
+        <span className="em-cf-foot">Logo, unsubscribe and preference links are added automatically. Only confirmed subscribers receive it.</span>
       </form>
-      <div style={{ ...card, flex: '999 1 420px', minWidth: 0, padding: 14, position: 'sticky', top: 12 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 4px 10px' }}><b style={{ fontSize: 14, color: '#0b1631' }}>Live preview</b><span style={{ fontSize: 12, color: '#7a8090' }}>{f.subjA || 'Subject line appears here'}</span></div>
-        <iframe title="Email preview" sandbox="allow-popups" srcDoc={html} style={{ width: '100%', height: 640, border: '1px solid #e6e9f0', borderRadius: 12, background: '#f1f3f8' }} />
+      <div className="em-cf-card em-cf-preview">
+        <div className="em-cf-pv-head"><b className="em-cf-pv-title">Live preview</b><span className="em-cf-pv-subj">{f.subjA || 'Subject line appears here'}</span></div>
+        <iframe title="Email preview" sandbox="allow-popups" srcDoc={html} className="em-cf-frame" />
       </div>
     </div>
   );

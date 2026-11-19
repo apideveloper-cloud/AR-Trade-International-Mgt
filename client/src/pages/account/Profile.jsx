@@ -16,7 +16,7 @@ export default function Profile({ profile, setProfile }) {
   return (
     <>
       <H2>Profile</H2>
-      <form className="ac-card ac-s81" onSubmit={submit} >
+      <form className="ac-card ac-form-card" onSubmit={submit} >
         <div className="ac-fields">
           <label className="ac-lbl">Full name<input className="ac-input" value={f.name || ''} onChange={on('name')} /></label>
           <label className="ac-lbl">Mobile<input className="ac-input" value={f.phone || ''} onChange={on('phone')} /></label>
@@ -29,7 +29,7 @@ export default function Profile({ profile, setProfile }) {
         </div>
         <label className="ac-lbl">Default address<textarea className="ac-input" rows={3} value={f.address || ''} onChange={on('address')} /></label>
         <label className="ac-lbl">My printer / copier models<input className="ac-input" value={f.devices || ''} onChange={on('devices')} placeholder="e.g. HP M12w, Toshiba 2508A" /></label>
-        <div className="ac-s82"><button className="ac-btn dark">Save changes</button>{saved && <span className="ac-s83">Changes saved</span>}</div>
+        <div className="ac-form-foot"><button className="ac-btn dark">Save changes</button>{saved && <span className="ac-ok-msg">Changes saved</span>}</div>
       </form>
       <PasswordForm />
     </>
@@ -44,10 +44,10 @@ function PasswordForm() {
     try { await acc.put('/password', d); setMsg('Password changed'); e.target.reset(); } catch (er) { setMsg(er.message); }
   };
   return (
-    <form className="ac-card ac-s84" onSubmit={submit} >
+    <form className="ac-card ac-form-card-sm" onSubmit={submit} >
       <b>Change password</b>
       <div className="ac-fields"><label className="ac-lbl">Current password<input className="ac-input" type="password" name="current" required /></label><label className="ac-lbl">New password<input className="ac-input" type="password" name="next" required minLength={8} /></label></div>
-      <div className="ac-s32"><button className="ac-btn ghost">Update password</button>{msg && <span className="ac-s85">{msg}</span>}</div>
+      <div className="ac-row-12"><button className="ac-btn ghost">Update password</button>{msg && <span className="ac-msg">{msg}</span>}</div>
     </form>
   );
 }

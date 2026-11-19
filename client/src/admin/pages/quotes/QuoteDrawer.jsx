@@ -6,6 +6,7 @@ import { Chip, Fact, PdfButton, Skeleton, fDate, taka } from '../../fieldKit.jsx
 import { QuoteForm } from './QuoteForm.jsx';
 import { EmailQuote, QuotePreview, sendWhatsApp } from './QuoteMail.jsx';
 import { Status } from './shared.jsx';
+import '../sales/salesInline.css';
 
 export function QuoteDrawer({ id, canEdit, staff, onClose, onChanged }) {
   const q = useApiData(() => quoteApi.get('/' + id), [id]);
@@ -29,7 +30,7 @@ export function QuoteDrawer({ id, canEdit, staff, onClose, onChanged }) {
             <Fact k="Mobile">{d.mobile}</Fact><Fact k="Email">{d.email}</Fact><Fact k="Address">{d.address}</Fact><Fact k="Valid for">{d.validDays} days</Fact><Fact k="Written by">{d.by}</Fact>
           </div>
           {d.subject && <p className="qt-subj">{d.subject}</p>}
-          <div className="fd-sub-row">{d.lines.map((l, i) => <div key={i}><span>{l.description}{l.warranty ? <small style={{ display: 'block', color: '#6b7388' }}>Warranty: {l.warranty}</small> : null}</span><em>{l.qty} {l.unit} × {taka(l.unitPrice)}</em><b>{taka(l.amount)}</b></div>)}</div>
+          <div className="fd-sub-row">{d.lines.map((l, i) => <div key={i}><span>{l.description}{l.warranty ? <small className="sinl-warranty">Warranty: {l.warranty}</small> : null}</span><em>{l.qty} {l.unit} × {taka(l.unitPrice)}</em><b>{taka(l.amount)}</b></div>)}</div>
           <dl className="qt-tot">
             <div><dt>Total amount</dt><dd>{taka(d.total)}</dd></div>
             {d.install > 0 && <div><dt>Installation / service</dt><dd>{taka(d.install)}</dd></div>}

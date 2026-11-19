@@ -1,0 +1,27 @@
+/* Sales area: rules moved out of inline styles. Tripled classes so they beat the table/row rules the inline styles used to beat. */
+.sinl-min804.sinl-min804.sinl-min804 { min-width: 804px; }
+.sinl-min904.sinl-min904.sinl-min904 { min-width: 904px; }
+.sinl-ordcols.sinl-ordcols.sinl-ordcols { grid-template-columns: 44px 100px minmax(160px,1fr) 120px 140px 120px 110px; }
+.sinl-cucols.sinl-cucols.sinl-cucols { grid-template-columns: 44px minmax(180px,1fr) 140px 70px 110px 110px 84px; }
+.sinl-right.sinl-right.sinl-right { text-align: right; }
+.sinl-stack.sinl-stack.sinl-stack { display: flex; flex-direction: column; }
+.sinl-name.sinl-name.sinl-name { font-weight: 600; }
+.sinl-sub.sinl-sub.sinl-sub { color: #5d6270; font-size: 12px; }
+.sinl-muted.sinl-muted.sinl-muted { color: #5d6270; }
+.sinl-noacct.sinl-noacct.sinl-noacct { color: #8a8f9b; font-size: 12px; text-align: right; }
+.sinl-spin.sinl-spin.sinl-spin { margin: 20px; }
+.sinl-reqcard.sinl-reqcard.sinl-reqcard { background: oklch(0.97 0.03 85); border-color: oklch(0.9 0.06 85); }
+.sinl-reqrow.sinl-reqrow.sinl-reqrow { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 6px 0; border-top: 1px solid oklch(0.9 0.05 85); }
+.sinl-reqwho.sinl-reqwho.sinl-reqwho { flex: 1; min-width: 200px; }
+.sinl-asked.sinl-asked.sinl-asked { color: #6b7080; }
+.sinl-col.sinl-col.sinl-col { display: flex; flex-direction: column; gap: 12px; }
+.sinl-note.sinl-note.sinl-note { font-size: 13px; color: #4b5263; line-height: 1.5; }
+.sinl-note14.sinl-note14.sinl-note14 { font-size: 13.5px; color: #4b5263; line-height: 1.5; }
+.sinl-mono.sinl-mono.sinl-mono { font-family: var(--mono); font-size: 12px; }
+.sinl-fs14.sinl-fs14.sinl-fs14 { font-size: 14px; }
+.sinl-fs125.sinl-fs125.sinl-fs125 { font-size: 12.5px; }
+.sinl-req.sinl-req.sinl-req { color: #b3261e; }
+.sinl-reqhint.sinl-reqhint.sinl-reqhint { font-weight: 500; color: #8a8f9b; }
+.sinl-cancelbtn.sinl-cancelbtn.sinl-cancelbtn { background: #b3261e; color: #fff; }
+.sinl-del.sinl-del.sinl-del { align-self: flex-start; border: 0; background: transparent; color: oklch(0.5 0.2 350); font-size: 13px; font-weight: 700; text-decoration: underline; }
+.sinl-warranty.sinl-warranty.sinl-warranty { display: block; color: #6b7388; }

@@ -10,6 +10,7 @@ import bcrypt from 'bcryptjs';
 import { pool } from './db.js';
 import { ensureIndexes } from './indexes.js';
 import { initPermissions } from './permissions.js';
+import { assignMemberCode } from './memberCode.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const TABLES = ['password_resets', 'site_pages', 'field_expenses', 'field_track', 'field_attendance', 'blog_posts', 'reviews', 'mkt_outbox', 'mkt_log', 'mkt_prefs', 'mkt_campaigns', 'mkt_automations', 'mkt_templates', 'order_returns', 'branches', 'user_reminders', 'user_family', 'user_addresses', 'campaigns', 'staff', 'applications', 'jobs', 'consents', 'subscribers', 'messages', 'service_requests', 'order_history', 'order_items', 'orders', 'users', 'products', 'categories', 'settings'];
@@ -149,8 +150,9 @@ async function main() {
   const PROD = process.env.NODE_ENV === 'production'; // demo logins (known passwords) are never created on the live server
   if (!n && !PROD) {
     const hash = await bcrypt.hash('demo123', 10);
-    await pool.query('INSERT INTO users (name,email,phone,password_hash,address,area) VALUES (?,?,?,?,?,?)',
+    const [demo] = await pool.query('INSERT INTO users (name,email,phone,password_hash,address,area) VALUES (?,?,?,?,?,?)',
       ['Shakil Ahmed', 'demo@artrade.com', '01711000000', hash, 'House 12, Road 4, Shantinagar, Dhaka-1217', 'inside']);
+    await assignMemberCode(pool, demo.insertId);
   }
 
   const [[{ ns }]] = await pool.query('SELECT COUNT(*) ns FROM staff');

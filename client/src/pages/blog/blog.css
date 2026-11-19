@@ -1,0 +1,9 @@
+/* Blog pages: classes moved out of inline styles (prefix blgx- is unique to this area). */
+.a-msg.err.blgx-err { margin: 40px; }
+.blgx-spin { padding: 80px; text-align: center; }
+.bpost .crumbs.blgx-crumbs { margin-bottom: 18px; }
+.bpost .crumbs .blgx-crumb-cur { color: #16181d; }
+.bpost .bp-hd .by .sh a.blgx-fb { background: #1877f2; }
+.bpost .bp-hd .by .sh a.blgx-x { background: #0f1419; }
+.bpost .bp-hd .by .sh a.blgx-in { background: #0a66c2; }
+.bpost .bp-hd .by .sh a.blgx-wa { background: #25d366; }

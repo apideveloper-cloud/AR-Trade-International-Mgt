@@ -21,8 +21,12 @@ export const H2 = ({ children, right }) => <div className="ac-h2"><h2>{children}
 export const Thumb = ({ src, size = 40 }) => <div className="ac-thumb" style={{ width: size, height: size }}>{src && <div style={{ width: size - 8, height: size - 8, backgroundImage: `url('${src}')` }} />}</div>;
 export const summary = o => { const n = o.items.reduce((a, i) => a + i.qty, 0); return `${o.items[0]?.name.split(' (')[0] || ''}${o.items.length > 1 ? ` + ${o.items.length - 1} more` : ''} · ${n} item${n > 1 ? 's' : ''}`; };
 export const isOpen = o => !['Delivered', 'Cancelled'].includes(o.status); // still being processed
-export const Loading = () => <div className="ac-s10"><span className="spin" /></div>;
-export const Empty = ({ children }) => <div className="ac-card ac-s46">{children}</div>;
+export const Loading = () => <div className="ac-loading-box"><span className="spin" /></div>;
+// Empty-state message. size: default = card with generous padding, card = compact card, plain = bare text block, sm = bare text block, tighter.
+const EMPTY_CLASS = { default: 'ac-card ac-empty', card: 'ac-card ac-empty-card', plain: 'ac-empty', sm: 'ac-empty-sm' };
+export const Empty = ({ children, size = 'default' }) => <div className={EMPTY_CLASS[size]}>{children}</div>;
+// Header strip of a card: bold title, then a hint (or any node passed as right) pushed to the far side.
+export const CardHead = ({ title, hint, right, className = '' }) => <div className={('ac-card-hd ' + className).trim()}><b>{title}</b>{right ?? (hint != null && <span className="ac-hint">{hint}</span>)}</div>;
 
 export function useOrders() {
   const [orders, setOrders] = useState(null);

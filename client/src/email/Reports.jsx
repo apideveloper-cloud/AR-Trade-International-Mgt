@@ -1,8 +1,17 @@
 import { useEffect, useState } from 'react';
 import { mktApi as api } from '../admin/adminApi.js';
 import { fmt, fmtDate } from '../api.js';
-import { Note, NoProvider } from './EmailParts.jsx';
-import { card, dash, pct } from './emailShared.js';
+import { Note, NoProvider, PanelHead } from './EmailParts.jsx';
+import { dash, pct } from './emailShared.js';
+
+const HEADS = ['Name', 'Sent', 'Open rate', 'Click rate', 'Unsubs', 'Revenue'];
+const OPEN_BAR = 'linear-gradient(90deg,oklch(0.7 0.12 230),oklch(0.5 0.16 254))';
+const CLICK_BAR = 'linear-gradient(90deg,oklch(0.78 0.12 160),oklch(0.55 0.13 160))';
+
+/** A percentage with a small progress bar; `max` is the value that fills the bar. */
+const bar = (v, max, c) => (v == null ? <span className="em-dim">{dash}</span> : (
+  <div className="em-bar-row"><span className="em-bar-track"><span className="em-bar-fill" style={{ width: Math.min(100, v * max) + '%', background: c }} /></span><b className="em-bar-val">{v}%</b></div>
+));
 
 export default function Reports() {
   const [d, setD] = useState(null);
@@ -14,30 +23,27 @@ export default function Reports() {
     const rows = [['name', 'type', 'sent', 'opens', 'clicks', 'unsubscribes', 'revenue_bdt'], ...d.rows.map(r => [r.name, r.kind, r.sent, r.opens ?? '', r.clicks ?? '', r.unsubs, r.revenue ?? ''])];
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([rows.map(x => x.map(y => { const s = String(y); return '"' + (/^[=+\-@\t\r]/.test(s) && !/^-?\d+(\.\d+)?$/.test(s) ? "'" : '') + s.replace(/"/g, '""') + '"'; }).join(',')).join('\n')], { type: 'text/csv' })); a.download = 'ar-email-report.csv'; a.click();
   };
-  const bar = (v, max, c) => (v == null ? <span className="em-s5">{dash}</span> : (
-    <div className="em-s6"><span className="em-s7"><span style={{ display: 'block', height: '100%', width: Math.min(100, v * max) + '%', background: c, borderRadius: 999 }} /></span><b className="em-s8">{v}%</b></div>
-  ));
   return (
     <>
       <NoProvider connected={d.connected} />
-      <div className="em-s9">
-        {kpis.map(([l, v, s]) => <div key={l} style={{ ...card, padding: 18, display: 'flex', flexDirection: 'column', gap: 6 }}><span className="em-s10">{l}</span><b className="em-s11">{v}</b><span className="em-s12">{s}</span></div>)}
+      <div className="em-kpi-grid">
+        {kpis.map(([l, v, s]) => <div key={l} className="em-card em-kpi"><span className="em-kpi-label">{l}</span><b className="em-kpi-value">{v}</b><span className="em-kpi-sub">{s}</span></div>)}
       </div>
-      <div style={{ ...card, overflow: 'hidden' }}>
-        <div className="em-s13"><b className="em-s14">Performance by campaign &amp; automation</b><button onClick={exportCsv} className="em-s15">Export CSV</button></div>
-        <div className="em-s16">
-          <table className="em-s17">
-            <thead className="em-s18"><tr>{['Name', 'Sent', 'Open rate', 'Click rate', 'Unsubs', 'Revenue'].map((h, i) => <th key={h} style={{ padding: '10px 16px', textAlign: i === 0 || i === 2 || i === 3 ? 'left' : 'right', fontSize: 11, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase', color: '#6b7080', width: i === 2 || i === 3 ? 200 : undefined }}>{h}</th>)}</tr></thead>
+      <div className="em-card em-card-clip">
+        <PanelHead center><b className="em-panel-title">Performance by campaign &amp; automation</b><button onClick={exportCsv} className="em-pill-btn">Export CSV</button></PanelHead>
+        <div className="em-scroll-x">
+          <table className="em-table">
+            <thead className="em-thead"><tr>{HEADS.map((h, i) => <th key={h} className={'em-th' + (i === 0 || i === 2 || i === 3 ? ' em-th--left' : '') + (i === 2 || i === 3 ? ' em-th--bar' : '')}>{h}</th>)}</tr></thead>
             <tbody>
-              {!d.rows.length && <tr><td colSpan={6} className="em-s19">Nothing sent yet.</td></tr>}
+              {!d.rows.length && <tr><td colSpan={6} className="em-empty-cell">Nothing sent yet.</td></tr>}
               {d.rows.map(r => (
                 <tr key={r.name + r.kind}>
-                  <td className="em-s20"><div className="em-s21"><b className="em-s22">{r.name}</b><span className="em-s23">{r.kind} · {r.when ? fmtDate(r.when) : r.running ? 'Running' : 'Paused'}{r.queued ? ` · ${r.queued} queued` : ''}</span></div></td>
-                  <td className="em-s24">{r.sent.toLocaleString('en-US')}</td>
-                  <td className="em-s20">{bar(pct(r.opens, r.sent), 1, 'linear-gradient(90deg,oklch(0.7 0.12 230),oklch(0.5 0.16 254))')}</td>
-                  <td className="em-s20">{bar(pct(r.clicks, r.sent), 3, 'linear-gradient(90deg,oklch(0.78 0.12 160),oklch(0.55 0.13 160))')}</td>
-                  <td className="em-s25">{r.unsubs}</td>
-                  <td className="em-s26">{r.revenue != null ? fmt(r.revenue) : dash}</td>
+                  <td className="em-cell"><div className="em-cell-stack"><b className="em-title-sm">{r.name}</b><span className="em-meta">{r.kind} · {r.when ? fmtDate(r.when) : r.running ? 'Running' : 'Paused'}{r.queued ? ` · ${r.queued} queued` : ''}</span></div></td>
+                  <td className="em-num em-num--bold">{r.sent.toLocaleString('en-US')}</td>
+                  <td className="em-cell">{bar(pct(r.opens, r.sent), 1, OPEN_BAR)}</td>
+                  <td className="em-cell">{bar(pct(r.clicks, r.sent), 3, CLICK_BAR)}</td>
+                  <td className="em-num">{r.unsubs}</td>
+                  <td className="em-money">{r.revenue != null ? fmt(r.revenue) : dash}</td>
                 </tr>
               ))}
             </tbody>

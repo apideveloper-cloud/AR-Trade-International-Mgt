@@ -1,0 +1,5 @@
+/* Fixed styles that used to be inline in the field sales pages (selectors are doubled up so they still win over the shared table rules). */
+.fd-tbl .fd-tr span b.fd-due { color: #b3261e; }
+.fd-tbl .fd-tr span small.fd-addr { display: block; color: #6b7388; }
+.fd-tbl .fd-tr .fd-who small.fd-online { color: #17784a; }
+.fd-sub-row .fd-apa.fd-apa-start { justify-content: flex-start; }

@@ -1,0 +1,2 @@
+/* Fixed style that used to be inline in the approvals review popup (doubled selector so it still wins over .bk-bad). */
+.ap-modal .bk-bad.ap-err { color: #b3261e; margin: 0; font-size: 13px; }

@@ -1,0 +1,103 @@
+/* Delivery Hub — fixed styles moved out of JSX. Every class is hxi- prefixed; selectors are doubled so they beat the old inline specificity. */
+
+/* HubApp */
+.hxi-boot.hxi-boot { padding: 80px; text-align: center; }
+.hxi-denied.hxi-denied { padding: 40px; }
+
+/* TrackPage */
+.hxi-trackbar.hxi-trackbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.hxi-tracklabel.hxi-tracklabel { font-size: 13px; color: #56607a; }
+.hxi-trackselect.hxi-trackselect { border: 1px solid #d5ddeb; border-radius: 10px; padding: 8px 12px; font-size: 13px; font-weight: 700; background: #fff; }
+.hxi-trackhint.hxi-trackhint { font-size: 12px; color: #7a8299; }
+
+/* Returns */
+.hxi-policy.hxi-policy { background: #0b1631; color: #fff; border-radius: 18px; padding: 18px; display: flex; flex-direction: column; gap: 10px; font-size: 13px; line-height: 1.55; }
+.hxi-policy-title.hxi-policy-title { font-family: var(--disp); font-weight: 800; font-size: 18px; }
+.hxi-policy-soft.hxi-policy-soft { color: #c9d4ea; }
+.hxi-policy-strong.hxi-policy-strong { color: #fff; }
+.hxi-policy-no.hxi-policy-no { color: #f3b9c4; }
+.hxi-tight.hxi-tight { gap: 4px; }
+.hxi-retitle.hxi-retitle { margin-bottom: 6px; }
+.hxi-empty.hxi-empty { color: #7a8299; padding: 20px 0; }
+.hxi-retrow.hxi-retrow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px 0; border-top: 1px solid #eef2f8; }
+.hxi-retinfo.hxi-retinfo { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.hxi-retreason.hxi-retreason { font-size: 12px; color: #56607a; }
+.hxi-retacts.hxi-retacts { display: flex; gap: 6px; flex-wrap: wrap; }
+.hxi-retstatus.hxi-retstatus { font-size: 12px; }
+.hxi-retstatus.hxi-ok { color: oklch(0.45 0.13 150); }
+.hxi-retstatus.hxi-bad { color: oklch(0.5 0.18 20); }
+
+/* Branches */
+.hxi-brname.hxi-brname { font-family: var(--disp); font-weight: 800; font-size: 16px; color: #0b1631; }
+.hxi-brarea.hxi-brarea { font-size: 12.5px; color: #56607a; }
+.hxi-brcount.hxi-brcount { font-size: 12px; color: oklch(0.45 0.15 255); }
+.hxi-routecard.hxi-routecard { gap: 4px; overflow-x: auto; }
+.hxi-routehint.hxi-routehint { font-size: 12px; color: #7a8299; margin-bottom: 6px; }
+.hxi-muted.hxi-muted { color: #7a8299; }
+.hxi-routeaddr.hxi-routeaddr { color: #56607a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hxi-routepick.hxi-routepick { color: oklch(0.45 0.15 255); }
+.hxi-routepick.hxi-fallback { color: oklch(0.5 0.16 40); }
+.hxi-stocks.hxi-stocks { display: flex; gap: 4px; flex-wrap: wrap; }
+.hxi-stock.hxi-stock { font-size: 11px; font-weight: 700; padding: 3px 7px; border-radius: 6px; background: oklch(0.95 0.04 150); color: oklch(0.4 0.12 150); }
+.hxi-stock.hxi-out { background: oklch(0.96 0.03 25); color: oklch(0.48 0.15 25); }
+.hxi-courier.hxi-courier { flex-direction: row; align-items: center; gap: 12px; }
+.hxi-courier-logo.hxi-courier-logo { color: #fff; font-weight: 800; font-size: 13px; padding: 8px 12px; border-radius: 10px; }
+.hxi-courier-info.hxi-courier-info { display: flex; flex-direction: column; line-height: 1.35; font-size: 12.5px; }
+.hxi-courier-used.hxi-courier-used { color: #56607a; }
+
+/* Dispatch */
+.hxi-mw0.hxi-mw0 { min-width: 0; }
+.hxi-chip.hxi-chip { background: #eef2f8; color: #3a4256; }
+.hxi-chip.hxi-amount { color: #0b1631; }
+.hxi-chip.hxi-cod { background: oklch(0.96 0.05 85); color: oklch(0.45 0.12 70); }
+.hxi-chip.hxi-paid { background: oklch(0.95 0.04 150); color: oklch(0.4 0.12 150); }
+.hxi-chip.hxi-fb { background: oklch(0.96 0.04 25); color: oklch(0.48 0.16 25); }
+.hxi-carrier.hxi-carrier { font-size: 10.5px; font-weight: 700; color: oklch(0.42 0.15 255); }
+.hxi-go.hxi-go { background: #0b1631; }
+.hxi-go.hxi-wait { background: #b6bfd0; }
+.hxi-go.hxi-done { background: oklch(0.55 0.16 150); }
+.hxi-donename.hxi-donename { color: #56607a; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hxi-contents.hxi-contents { display: contents; }
+
+/* RiderApp */
+.hxi-between.hxi-between { display: flex; justify-content: space-between; align-items: center; }
+.hxi-who.hxi-who { display: flex; flex-direction: column; line-height: 1.25; }
+.hxi-eyebrow.hxi-eyebrow { font-size: 11px; color: #9fb3d1; font-weight: 700; letter-spacing: .06em; }
+.hxi-ridername.hxi-ridername { font-family: var(--disp); font-weight: 800; font-size: 19px; }
+.hxi-vehicle.hxi-vehicle { font-size: 11.5px; color: #c9d4ea; }
+.hxi-duty.hxi-duty { background: oklch(0.72 0.15 150); color: #05230f; font-size: 11px; font-weight: 800; padding: 4px 10px; border-radius: 999px; }
+.hxi-handcash.hxi-handcash { background: #fff; color: #0b1631; font-size: 12.5px; padding: 9px; border-radius: 10px; font-weight: 700; text-align: center; }
+.hxi-nojobs.hxi-nojobs { text-align: center; color: #7a8299; font-size: 13px; padding: 40px 10px; }
+.hxi-jobid.hxi-jobid { font-size: 12.5px; }
+.hxi-flowpill.hxi-flowpill { color: #fff; font-size: 10.5px; font-weight: 800; padding: 3px 8px; border-radius: 999px; }
+.hxi-jobmain.hxi-jobmain { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; }
+.hxi-jobtxt.hxi-jobtxt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.hxi-jobname.hxi-jobname { font-size: 14px; }
+.hxi-jobaddr.hxi-jobaddr { font-size: 12px; color: #56607a; line-height: 1.35; }
+.hxi-jobitems.hxi-jobitems { font-size: 11.5px; color: #7a8299; }
+.hxi-call.hxi-call { flex-shrink: 0; width: 38px; height: 38px; border-radius: 50%; background: oklch(0.94 0.04 150); color: oklch(0.42 0.13 150); display: grid; place-items: center; font-size: 16px; }
+.hxi-paybar.hxi-paybar { display: flex; justify-content: space-between; align-items: center; background: oklch(0.96 0.03 150); border-radius: 10px; padding: 8px 10px; font-size: 12.5px; }
+.hxi-paybar.hxi-cod { background: oklch(0.96 0.05 85); }
+.hxi-paylabel.hxi-paylabel { color: oklch(0.4 0.12 150); }
+.hxi-cod .hxi-paylabel.hxi-paylabel { color: oklch(0.45 0.12 70); }
+.hxi-paytotal.hxi-paytotal { font-family: var(--disp); font-size: 16px; color: #0b1631; }
+.hxi-btnrow.hxi-btnrow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; }
+.hxi-pod.hxi-pod { border-top: 1px dashed #d5ddeb; padding-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+.hxi-modes.hxi-modes { display: flex; gap: 4px; background: #eef2f8; border-radius: 999px; padding: 3px; align-self: flex-start; }
+.hxi-mode.hxi-mode { border: 0; background: transparent; color: #3a4256; border-radius: 999px; padding: 6px 14px; font-size: 12px; font-weight: 800; }
+.hxi-mode.hxi-on { background: #0b1631; color: #fff; }
+.hxi-otp.hxi-otp { border: 1.5px solid #d5ddeb; border-radius: 10px; padding: 11px; font-size: 18px; letter-spacing: .4em; text-align: center; font-family: var(--mono); outline: 0; }
+.hxi-signame.hxi-signame { border: 1.5px solid #d5ddeb; border-radius: 10px; padding: 9px 11px; font-size: 13px; outline: 0; }
+.hxi-sigwrap.hxi-sigwrap { position: relative; }
+.hxi-sigcanvas.hxi-sigcanvas { width: 100%; height: 130px; background: #fff; border: 1.5px dashed #b9c5da; border-radius: 10px; touch-action: none; display: block; }
+.hxi-sighint.hxi-sighint { position: absolute; left: 10px; bottom: 6px; font-size: 10.5px; color: #9aa3b8; pointer-events: none; }
+.hxi-sigclear.hxi-sigclear { position: absolute; right: 6px; top: 6px; border: 0; background: #eef2f8; border-radius: 6px; font-size: 11px; font-weight: 700; padding: 3px 8px; }
+.hxi-codtick.hxi-codtick { display: flex; gap: 8px; align-items: center; font-size: 12.5px; font-weight: 700; color: #0b1631; }
+.hxi-codbox.hxi-codbox { width: 17px; height: 17px; }
+.hxi-demootp.hxi-demootp { font-size: 11px; color: #7a8299; }
+.hxi-attempts.hxi-attempts { font-size: 11.5px; color: oklch(0.5 0.15 50); }
+.hxi-side.hxi-side { display: flex; flex-direction: column; gap: 12px; }
+.hxi-cashvals.hxi-cashvals { display: flex; gap: 10px; align-items: center; }
+.hxi-cashamt.hxi-cashamt { color: #7a8299; }
+.hxi-cashamt.hxi-has { color: oklch(0.45 0.12 70); }
+.hcard.hxi-rules { font-size: 13px; line-height: 1.5; color: #3a4256; gap: 8px; }

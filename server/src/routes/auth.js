@@ -4,6 +4,7 @@ import crypto from 'node:crypto';
 import { pool } from '../db.js';
 import { bdMobile, digits, fail, wrap, checkPassword, str, verifyPassword } from '../util.js';
 import { limit } from '../middleware/security.js';
+import { assignMemberCode } from '../memberCode.js';
 import { auth, clearSessionCookie, sendAuth, userOut } from '../middleware/customerAuth.js';
 
 export const AREAS = ['inside', 'suburb', 'outside'];
@@ -77,6 +78,7 @@ export function mountAuthRoutes(app) {
       if (ex.length) throw fail(409, DUP_MSG);
       const [r] = await conn.query('INSERT INTO users (name,email,phone,password_hash,address,area) VALUES (?,?,?,?,?,?)',
         [str(o.customer_name).slice(0, 120) || 'Customer', email, phone, hash, str(o.address).slice(0, 255), AREAS.includes(o.area) ? o.area : 'inside']);
+      await assignMemberCode(conn, r.insertId);
       const [u] = await conn.query('UPDATE orders SET user_id = ? WHERE id = ? AND user_id IS NULL', [r.insertId, o.id]);
       if (u.affectedRows !== 1) throw fail(409, 'This order already belongs to an account. Please sign in.');
       await conn.commit();
@@ -101,6 +103,7 @@ export function mountAuthRoutes(app) {
     const hash = await bcrypt.hash(password, 10);
     const [r] = await pool.query('INSERT INTO users (name,email,phone,password_hash,address,area) VALUES (?,?,?,?,?,?)',
       [name, email, normPhone(phone), hash, address, AREAS.includes(area) ? area : 'inside']);
+    await assignMemberCode(pool, r.insertId);
     sendAuth(req, res, await getUser(r.insertId));
   }));
 
@@ -149,6 +152,7 @@ export function mountAuthRoutes(app) {
     if (!u) {
       const locked = await bcrypt.hash(crypto.randomBytes(24).toString('hex'), 8);
       const [r] = await pool.query('INSERT INTO users (name,email,phone,password_hash,profile) VALUES (?,?,?,?,?)', [String(who.name || email.split('@')[0]).slice(0, 120), email, '', locked, JSON.stringify({ signup: provider })]);
+      await assignMemberCode(pool, r.insertId);
       u = await getUser(r.insertId);
     }
     sendAuth(req, res, u, { created: !u.phone });

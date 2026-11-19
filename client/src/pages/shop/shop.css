@@ -1,0 +1,36 @@
+/* Shop page: classes moved out of inline styles (prefix shpx- is unique to this area). */
+.page.shpx-page { padding: 24px 28px 40px; }
+.shop-top .shpx-head { display: flex; flex-direction: column; gap: 6px; }
+.shop-top .shpx-count { color: #5d6270; font-size: 14px; }
+.seg button .shpx-vi { font-size: 14px; line-height: 1; }
+.seg button .shpx-si { font-size: 12px; opacity: .85; }
+
+.sbox .shpx-pricehd { display: flex; justify-content: space-between; align-items: baseline; }
+.sbox .shpx-pricehd .ttl.shpx-pttl { font-family: var(--disp); font-weight: 800; font-size: 15px; color: var(--navy); }
+.sbox .shpx-pricehd .shpx-prange { font-size: 11px; color: #8a93a6; }
+.minmax .shpx-dash { color: #a0a8b8; }
+.sbox.shpx-avail { gap: 6px; }
+.sbox.shpx-avail .ttl.shpx-avail-ttl { margin-bottom: 4px; }
+
+.empty.shpx-empty { gap: 12px; }
+.empty.shpx-empty .shpx-empty-t { font-family: var(--disp); font-weight: 700; font-size: 22px; }
+.empty.shpx-empty .shpx-empty-s { color: #5d6270; font-size: 14px; max-width: 420px; line-height: 1.5; }
+.empty.shpx-empty .btn.shpx-empty-btn { padding: 12px 20px; }
+.loadmore .shpx-showing { font-family: var(--mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #5b6778; }
+
+.lrow .mid .shpx-tags { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.lrow .mid .shpx-spec { font-size: 13px; color: #6b7080; }
+
+/* loading skeletons */
+.pcard.shpx-sk-card { gap: 14px; }
+.shimmer.shpx-sk-img { aspect-ratio: 1/.92; border-radius: 16px; }
+.pcard .shpx-sk-lines { display: flex; flex-direction: column; gap: 8px; padding: 0 6px; }
+.shimmer.shpx-sk-l1 { height: 10px; width: 40%; border-radius: 6px; }
+.shimmer.shpx-sk-l2 { height: 14px; width: 92%; border-radius: 6px; }
+.shimmer.shpx-sk-l3 { height: 14px; width: 70%; border-radius: 6px; }
+.pcard .shpx-sk-foot { display: flex; justify-content: space-between; padding: 12px 6px 4px; border-top: 1px dashed #eef1f6; }
+.shimmer.shpx-sk-price { height: 22px; width: 42%; border-radius: 8px; }
+.shimmer.shpx-sk-btn { height: 38px; width: 76px; border-radius: 999px; }
+.lrow .shimmer.shpx-skr-img { aspect-ratio: 1; border-radius: 14px; }
+.lrow .shimmer.shpx-skr-mid { height: 60px; border-radius: 8px; }
+.lrow .shimmer.shpx-skr-btn { height: 40px; width: 140px; border-radius: 999px; }

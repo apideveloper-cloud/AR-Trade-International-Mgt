@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { mktApi as api } from '../admin/adminApi.js';
-import { card } from './emailShared.js';
 
 export default function Templates() {
   const [rows, setRows] = useState(null);
@@ -9,31 +8,31 @@ export default function Templates() {
   if (!rows) return <span className="spin" />;
   return (
     <>
-      <div className="em-s60">
+      <div className="em-tpl-grid">
         {rows.map(t => (
-          <button key={t.id} onClick={() => setPv(t)} style={{ ...card, borderRadius: 20, textAlign: 'left', border: 0, padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', transition: 'transform .25s' }} onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-4px)'; }} onMouseLeave={e => { e.currentTarget.style.transform = 'none'; }}>
-            <div style={{ height: 118, background: t.hero, padding: 16, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', color: '#fff' }}><span className="em-s61">{t.kind}</span><b className="em-s62">{t.headline}</b></div>
-            <div className="em-s63"><b className="em-s64">{t.name}</b><span className="em-s65">{t.subject}</span><span className="em-s66">Preview →</span></div>
+          <button key={t.id} onClick={() => setPv(t)} className="em-card em-card-lg em-tpl-card">
+            <div className="em-tpl-hero" style={{ background: t.hero }}><span className="em-tpl-kind">{t.kind}</span><b className="em-tpl-headline">{t.headline}</b></div>
+            <div className="em-tpl-body"><b className="em-tpl-name">{t.name}</b><span className="em-tpl-subject">{t.subject}</span><span className="em-tpl-more">Preview →</span></div>
           </button>
         ))}
       </div>
       {pv && (
-        <div onClick={() => setPv(null)} className="em-s67">
-          <div onClick={e => e.stopPropagation()} className="em-s68">
-            <div className="em-s69">
-              <div className="em-s70"><b className="em-s71">{pv.subject}</b><button onClick={() => setPv(null)} className="em-s72">×</button></div>
+        <div onClick={() => setPv(null)} className="em-modal">
+          <div onClick={e => e.stopPropagation()} className="em-modal-box">
+            <div className="em-mail-head">
+              <div className="em-mail-head-top"><b className="em-mail-subject">{pv.subject}</b><button onClick={() => setPv(null)} className="em-modal-close">×</button></div>
               <span>From: AR Trade International &lt;hello@artradeinternational.com&gt; · {pv.preheader}</span>
             </div>
-            <div className="em-s73">
-              <div className="em-s74">
-                <div style={{ background: pv.hero, color: '#fff', padding: '28px 26px', display: 'flex', flexDirection: 'column', gap: 10 }}><img src="/ar-icon-round.png" alt="AR Trade" className="em-s75" /><b className="em-s76">{pv.headline}</b></div>
-                <div className="em-s77"><span className="em-s78">{pv.body}</span><a href="/" className="em-s79">{pv.cta}</a></div>
-                <div className="em-s80">
+            <div className="em-modal-body">
+              <div className="em-mail">
+                <div className="em-mail-hero" style={{ background: pv.hero }}><img src="/ar-icon-round.png" alt="AR Trade" className="em-mail-logo" /><b className="em-mail-title">{pv.headline}</b></div>
+                <div className="em-mail-main"><span className="em-mail-text">{pv.body}</span><a href="/" className="em-mail-cta">{pv.cta}</a></div>
+                <div className="em-mail-foot">
                   <span>You're receiving this because you subscribed at artradeinternational.com. We never share or sell your email.</span>
-                  <span className="em-s81"><b>Unsubscribe</b><b>Manage preferences</b><span>AR Trade International · Dhaka, Bangladesh</span></span>
+                  <span className="em-mail-links"><b>Unsubscribe</b><b>Manage preferences</b><span>AR Trade International · Dhaka, Bangladesh</span></span>
                 </div>
               </div>
-              <span className="em-s82">The footer with unsubscribe + preferences is locked and added to every email.</span>
+              <span className="em-modal-note">The footer with unsubscribe + preferences is locked and added to every email.</span>
             </div>
           </div>
         </div>

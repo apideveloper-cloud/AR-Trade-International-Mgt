@@ -1,0 +1,15 @@
+/* Role matrix: former inline styles. Doubled classes so they win over the base rules, as the inline styles did. */
+.a-msg.xroles-ok.xroles-ok { background: #e6f4ea; color: #1e6b3a; }
+.a-table.mx.xroles-wrap.xroles-wrap { padding: 0; }
+.rm-table.xroles-table.xroles-table { border-collapse: separate; border-spacing: 0; width: 100%; }
+.rm-table .xroles-c0.xroles-c0 { width: 270px; }
+.rm-table .xroles-th.xroles-th { padding: 10px 6px; text-align: center; vertical-align: bottom; }
+.rm-table .xroles-sticky.xroles-sticky { position: sticky; left: 0; background: #fff; z-index: 1; text-align: left; }
+.rm-table .xroles-perm.xroles-perm { padding: 7px 14px; }
+.xroles-btns.xroles-btns { display: flex; gap: 8px; }
+.a-btn.xroles-save.xroles-save { background: oklch(0.82 0.13 85); color: #16181d; font-weight: 800; }
+.a-card.xroles-log.xroles-log { gap: 6px; }
+.xroles-none.xroles-none { color: #8a8f9b; font-size: 13px; }
+.xroles-entry.xroles-entry { font-size: 13px; }
+.xroles-entry.xroles-entry + .xroles-entry { border-top: 1px solid #f3f4f7; padding-top: 6px; }
+.xroles-entry .xroles-by { color: #8a8f9b; }

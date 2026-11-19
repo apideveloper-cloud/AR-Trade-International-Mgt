@@ -3,19 +3,19 @@ import { can, invApi, slNo, useTable } from '../../adminApi.js';
 import { Drawer, Modal, Summary, Toolbar } from '../../ui.jsx';
 import { ListFilter } from '../../ListFilter.jsx';
 import { Fact, Grid, Notice, Skeleton, Tabs, fDate, taka, todayBd } from '../../fieldKit.jsx';
-import { useInv, num, AddBtn, Foot, ProductPick, Lines, linesBody, VendorSelect, useVendors, vendorOptions } from './shared.jsx';
+import { useInv, useSaveForm, num, AddBtn, Foot, ProductPick, Lines, linesBody, VendorSelect, useVendors, vendorOptions } from './shared.jsx';
 
+/** Record damaged stock; it is taken out of stock. */
 function DamageForm({ vendors, onClose, onSaved }) {
   const [p, setP] = useState(null); const [f, setF] = useState({ qty: 1, reason: '', vendorId: '', date: todayBd() });
-  const [err, setErr] = useState(''); const [busy, setBusy] = useState(false);
+  const { busy, err, submit } = useSaveForm(onSaved, onClose);
   const set = k => e => setF(v => ({ ...v, [k]: e.target.value }));
-  const submit = async e => {
-    e.preventDefault(); if (!p) { setErr('Choose the damaged product'); return; }
-    setBusy(true); setErr('');
-    try { await invApi.post('/damages', { ...f, productId: p.id, qty: num(f.qty) }); onSaved(); onClose(); } catch (er) { setErr(er.message); setBusy(false); }
+  const save = () => {
+    if (!p) throw new Error('Choose the damaged product');
+    return invApi.post('/damages', { ...f, productId: p.id, qty: num(f.qty) });
   };
   return (
-    <Modal narrow kicker="Damage" title="Record damaged stock" onClose={onClose} onSubmit={submit} footer={<Foot onClose={onClose} busy={busy} label="Save & remove from stock" />}>
+    <Modal narrow kicker="Damage" title="Record damaged stock" onClose={onClose} onSubmit={submit(save)} footer={<Foot onClose={onClose} busy={busy} label="Save & remove from stock" />}>
       <div className="iv-form"><Notice err={err} />
         {p ? <div className="iv-chosen"><b>{p.name}</b><small>in stock {p.stock}</small><button type="button" className="a-x" onClick={() => setP(null)}>✕</button></div> : <ProductPick onPick={setP} placeholder="Search the damaged product…" />}
         <div className="a-fields">
@@ -29,18 +29,15 @@ function DamageForm({ vendors, onClose, onSaved }) {
     </Modal>
   );
 }
+/** Return goods to a vendor; takes them out of stock and reduces what is owed. */
 function ReturnForm({ vendors, onClose, onSaved }) {
   const [f, setF] = useState({ vendorId: '', receiptId: '', reason: '', date: todayBd() }); const [lines, setLines] = useState([]);
-  const [err, setErr] = useState(''); const [busy, setBusy] = useState(false);
+  const { busy, err, submit } = useSaveForm(onSaved, onClose);
   const bills = useInv(f.vendorId ? '/receipts?vendor=' + f.vendorId : null);
   const set = k => e => setF(v => ({ ...v, [k]: e.target.value }));
-  const submit = async e => {
-    e.preventDefault(); setBusy(true); setErr('');
-    try { await invApi.post('/returns', { ...f, lines: linesBody(lines) }); onSaved(); onClose(); } catch (er) { setErr(er.message); setBusy(false); }
-  };
   const total = lines.reduce((t, l) => t + num(l.qty) * num(l.unitCost), 0);
   return (
-    <Modal side kicker="Return" title="Return goods to a vendor" onClose={onClose} onSubmit={submit} footer={<Foot onClose={onClose} busy={busy} label="Save & remove from stock" />}>
+    <Modal side kicker="Return" title="Return goods to a vendor" onClose={onClose} onSubmit={submit(() => invApi.post('/returns', { ...f, lines: linesBody(lines) }))} footer={<Foot onClose={onClose} busy={busy} label="Save & remove from stock" />}>
       <div className="iv-form"><Notice err={err} />
         <div className="a-fields">
           <label className="a-lbl">Vendor<VendorSelect vendors={vendors} value={f.vendorId} onChange={v => setF(x => ({ ...x, vendorId: v, receiptId: '' }))} /></label>
@@ -54,6 +51,7 @@ function ReturnForm({ vendors, onClose, onSaved }) {
     </Modal>
   );
 }
+/** One return to a vendor with its lines. */
 function ReturnDrawer({ r, onClose }) {
   const d = useInv('/returns/' + r.id);
   return (
@@ -63,6 +61,7 @@ function ReturnDrawer({ r, onClose }) {
     </Drawer>
   );
 }
+/** Damage and returns page. */
 export function InvDamage({ staff }) {
   const [tab, setTab] = useState('damage');
   const dm = useTable('/damages', { q: '', vendor: '', from: '', to: '' }, [], invApi);
@@ -90,7 +89,7 @@ export function InvDamage({ staff }) {
         <Tabs value={tab} onChange={setTab} items={[['damage', 'Damaged stock', dm.data.total], ['returns', 'Returns to vendors', rt.data.total]]} />
         {tab === 'damage' ? (
           <Grid server={dm} cols="44px 100px minmax(220px,2fr) 70px 110px minmax(160px,1.3fr) 140px" head={['SL', 'Record', 'Product', 'Qty', 'Loss', 'What happened', 'Date']} empty="No damaged stock matches."
-            rows={dm.data.rows.map((x, i) => ({ key: x.id, cells: [slNo(dm, i), <b key="i" className="mono">{x.id}</b>, <span key="n"><b>{x.name}</b>{x.vendor && <small style={{ display: 'block', color: '#6b7388' }}>vendor: {x.vendor}</small>}</span>, x.qty, taka(x.loss), x.reason, fDate(x.date)] }))} />
+            rows={dm.data.rows.map((x, i) => ({ key: x.id, cells: [slNo(dm, i), <b key="i" className="mono">{x.id}</b>, <span key="n"><b>{x.name}</b>{x.vendor && <small className="iv-subline">vendor: {x.vendor}</small>}</span>, x.qty, taka(x.loss), x.reason, fDate(x.date)] }))} />
         ) : (
           <Grid server={rt} cols="44px 100px minmax(180px,1.5fr) 80px 120px minmax(160px,1.3fr) 130px" head={['SL', 'Return', 'Vendor', 'Qty', 'Credit', 'Reason', 'Date']} onRow={setRet} empty="No return to a vendor matches."
             rows={rt.data.rows.map((x, i) => ({ key: x.id, item: x, cells: [slNo(rt, i), <b key="i" className="mono">{x.id}</b>, x.vendor, x.pcs, taka(x.total), x.reason, fDate(x.date)] }))} />

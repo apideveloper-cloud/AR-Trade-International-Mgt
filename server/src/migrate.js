@@ -7,6 +7,7 @@ import { ensureAudit } from './audit.js';
 import { ensureIndexes } from './indexes.js';
 import { ensureProductSlugs } from './productSlugs.js';
 import { ensureChatLeads } from './chatLeads.js';
+import { backfillMemberCodes } from './memberCode.js';
 
 const STAFF_COLS = [['nid', 'VARCHAR(20)'], ['present_address', 'VARCHAR(300)'], ['contact_address', 'VARCHAR(300)'], ['ref_name', 'VARCHAR(120)'], ['ref_phone', 'VARCHAR(20)']];
 
@@ -49,6 +50,13 @@ export async function ensureSchema() {
     // one admin-console session per user: the id of the newest sign-in (an older device's token stops working)
     if (!have.has('app_session_id')) { await pool.query('ALTER TABLE staff ADD COLUMN app_session_id VARCHAR(40) NULL'); console.log('Added staff.app_session_id'); } // the mobile app has its own one-device session
     if (!have.has('session_id')) { await pool.query('ALTER TABLE staff ADD COLUMN session_id VARCHAR(40) NULL'); console.log('Added staff.session_id'); }
+  }
+  // member profile ID (SR2026-00001) of every customer account; accounts that joined before it existed are numbered in join order
+  const [uc] = await pool.query("SELECT COLUMN_NAME c FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users'");
+  if (uc.length) {
+    if (!uc.some(r => r.c === 'member_code')) { await pool.query('ALTER TABLE users ADD COLUMN member_code VARCHAR(16) NULL, ADD UNIQUE KEY uq_member_code (member_code)'); console.log('Added users.member_code'); }
+    const numbered = await backfillMemberCodes(pool);
+    if (numbered) console.log(`Gave ${numbered} existing members a member ID`);
   }
   const [cols] = await pool.query("SELECT COLUMN_NAME c FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'categories'");
   if (cols.length && !cols.some(r => r.c === 'img')) {

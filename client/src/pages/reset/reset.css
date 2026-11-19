@@ -1,0 +1,10 @@
+/* Reset password page (rsp- prefix) */
+.rsp.rsp { max-width: 440px; margin: 60px auto; padding: 0 20px; }
+.rsp .white-card.rsp-card { gap: 14px; }
+.rsp .rsp-h1.rsp-h1 { margin: 0; font-size: 26px; }
+.rsp .a-msg.rsp-err-box { background: #fdeceb; color: #b3261e; padding: 12px; border-radius: 10px; font-weight: 600; }
+.rsp .rsp-hint.rsp-hint { font-size: 13px; color: #5d6270; }
+.rsp .rsp-form.rsp-form { display: flex; flex-direction: column; gap: 12px; }
+.rsp .rsp-hello.rsp-hello { color: #5d6270; }
+.rsp .rsp-err.rsp-err { color: #b3261e; font-size: 13px; font-weight: 600; }
+.rsp .rsp-submit.rsp-submit { padding: 12px; }

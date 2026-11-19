@@ -1,0 +1,2 @@
+/* Admin shell: former inline style of the "no pages for this role" screen. */
+.xapp-none.xapp-none { padding: 60px; text-align: center; display: flex; flex-direction: column; gap: 14px; align-items: center; }

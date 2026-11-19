@@ -1,0 +1,6 @@
+/* Fixed styles that used to be inline in the Purchasing & stock pages. The selectors are deliberately specific so they win over the generic cell rules, as the inline styles did. */
+.adm .a-card small.iv-subline, .adm .a-drawer small.iv-subline { display: block; color: #6b7388; }
+.adm .a-card b.iv-gain { color: #17784a; }
+.adm .a-drawer b.iv-in, .adm .a-card b.iv-in { color: #1a8a5a; }
+.adm .a-drawer b.iv-out, .adm .a-card b.iv-out { color: #b3261e; }
+.adm .fd-sub-row.pd-pay-rows { padding: 4px 12px 8px; }

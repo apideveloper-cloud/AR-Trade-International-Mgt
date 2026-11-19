@@ -1,0 +1,83 @@
+/* Live order tracking. Every rule is prefixed with .lt so it beats generic rules like the old inline styles did. */
+.lt { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: 16px; align-items: start; }
+.lt .lt-col { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.lt .lt-box { background: #fff; border: 1px solid #e3e8f2; border-radius: 18px; padding: 18px; display: flex; flex-direction: column; gap: 12px; }
+.lt .lt-box.lt-main { gap: 16px; }
+.lt .lt-box.lt-lines { gap: 2px; }
+.lt .lt-box.lt-pad16 { padding: 16px; }
+.lt .lt-box.lt-order { gap: 8px; padding: 16px; font-size: 13px; }
+.lt .lt-box.lt-otp { border: 2px solid oklch(0.62 0.16 250); align-items: center; text-align: center; gap: 6px; padding: 16px; }
+.lt .lt-title { font-size: 14px; color: #0b1631; }
+.lt .lt-title.lt-gap { margin-bottom: 8px; }
+.lt .lt-eyebrow { font-size: 11px; font-weight: 800; letter-spacing: .08em; color: #56607a; }
+.lt .lt-muted12 { font-size: 12px; color: #56607a; }
+
+/* headline + status pill */
+.lt .lt-head { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; align-items: center; }
+.lt .lt-head-t { display: flex; flex-direction: column; gap: 2px; }
+.lt .lt-id { font-weight: 700; font-size: 13px; }
+.lt .lt-headline { font-family: var(--disp); font-weight: 800; font-size: 22px; color: #0b1631; }
+.lt .lt-pill { color: #fff; font-weight: 800; font-size: 12px; padding: 6px 12px; border-radius: 999px; }
+
+/* stepper */
+.lt .lt-steps { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 4px; }
+.lt .lt-step { display: flex; flex-direction: column; gap: 6px; align-items: center; text-align: center; }
+.lt .lt-bar { width: 100%; height: 5px; border-radius: 999px; background: #e3e8f2; }
+.lt .lt-dot { width: 26px; height: 26px; border-radius: 50%; background: #fff; border: 1px solid #e3e8f2; color: #9aa3b8; display: grid; place-items: center; font-size: 11px; font-weight: 800; }
+.lt .lt-name { font-size: 11px; font-weight: 700; color: #9aa3b8; line-height: 1.25; }
+.lt .lt-at { font-size: 10px; color: #7a8299; }
+.lt .lt-step.on .lt-bar { background: var(--c); }
+.lt .lt-step.on .lt-dot { background: var(--c); border: 0; color: #fff; }
+.lt .lt-step.on .lt-name { color: #0b1631; }
+
+/* live map strip */
+.lt .lt-live { background: linear-gradient(135deg, #0b1631, oklch(0.38 0.15 258)); border-radius: 14px; padding: 16px; color: #fff; display: flex; flex-direction: column; gap: 14px; }
+.lt .lt-live-row { display: flex; justify-content: space-between; font-size: 12px; color: #c9d4ea; }
+.lt .lt-live-row b { font-weight: 800; color: #fff; }
+.lt .lt-live-note { font-size: 12px; color: #c9d4ea; }
+.lt .lt-track { position: relative; height: 30px; }
+.lt .lt-track > * { position: absolute; }
+.lt .lt-rail { left: 0; right: 0; top: 13px; height: 4px; border-radius: 999px; background: repeating-linear-gradient(90deg, rgba(255,255,255,.35) 0 8px, transparent 8px 14px); }
+.lt .lt-done { left: 0; top: 13px; height: 4px; border-radius: 999px; background: oklch(0.75 0.14 220); width: var(--pct); transition: width 1.5s linear; }
+.lt .lt-rider { top: 3px; left: calc(var(--pct) - 12px); width: 24px; height: 24px; border-radius: 50%; background: #fff; color: #0b1631; display: grid; place-items: center; font-size: 13px; transition: left 1.5s linear; }
+.lt .lt-goal { right: -4px; top: 5px; width: 20px; height: 20px; border-radius: 50%; background: oklch(0.72 0.15 150); border: 3px solid #fff; }
+
+/* courier + proof of delivery */
+.lt .lt-courier { display: flex; justify-content: space-between; align-items: center; gap: 10px; background: #eef2f8; border-radius: 12px; padding: 12px 14px; flex-wrap: wrap; }
+.lt .lt-courier-l { display: flex; align-items: center; gap: 10px; }
+.lt .lt-courier-id { color: #fff; font-weight: 800; font-size: 12px; padding: 6px 10px; border-radius: 8px; }
+.lt .lt-courier-tn { display: flex; flex-direction: column; line-height: 1.3; }
+.lt .lt-courier-eta { font-size: 12.5px; font-weight: 700; color: #0b1631; }
+.lt .lt-pod { background: oklch(0.96 0.04 150); color: oklch(0.35 0.11 150); border-radius: 12px; padding: 12px 14px; font-size: 13px; font-weight: 700; }
+
+/* timeline */
+.lt .lt-event { display: grid; grid-template-columns: 14px minmax(0, 1fr) auto; gap: 10px; padding: 8px 0; border-top: 1px solid #eef2f8; font-size: 13px; align-items: center; }
+.lt .lt-event-dot { width: 10px; height: 10px; border-radius: 50%; }
+.lt .lt-note { color: #56607a; }
+.lt .lt-event-at { font-size: 11.5px; color: #7a8299; white-space: nowrap; }
+
+/* rider card */
+.lt .lt-rider-row { display: flex; align-items: center; gap: 12px; }
+.lt .lt-avatar { width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, oklch(0.62 0.15 230), oklch(0.45 0.17 258)); color: #fff; display: grid; place-items: center; font-weight: 800; }
+.lt .lt-rider-info { display: flex; flex-direction: column; line-height: 1.3; flex: 1; min-width: 0; }
+.lt .lt-rider-info b { font-size: 15px; }
+.lt .lt-rating { font-size: 12px; color: oklch(0.55 0.13 80); font-weight: 700; }
+.lt a.lt-call { background: #0b1631; color: #fff; border-radius: 999px; padding: 9px 14px; font-size: 12.5px; font-weight: 800; }
+
+/* OTP */
+.lt .lt-otp-code { font-weight: 700; font-size: 34px; letter-spacing: .3em; color: #0b1631; }
+
+/* order lines */
+.lt .lt-line { display: flex; justify-content: space-between; gap: 10px; }
+.lt .lt-line-name { color: #3a4256; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lt .lt-line b { white-space: nowrap; }
+.lt .lt-total { display: flex; justify-content: space-between; border-top: 1px solid #eef2f8; padding-top: 8px; font-weight: 800; }
+
+/* return */
+.lt .lt-select { border: 1px solid #d5ddeb; border-radius: 10px; padding: 9px; font-size: 13px; background: #fff; }
+.lt .lt-why { font-size: 12px; line-height: 1.45; border-radius: 10px; padding: 8px 10px; font-weight: 600; background: oklch(0.96 0.03 25); color: oklch(0.45 0.15 25); }
+.lt .lt-why.ok { background: oklch(0.96 0.04 150); color: oklch(0.38 0.11 150); }
+.lt .lt-err { font-size: 12.5px; font-weight: 700; color: oklch(0.5 0.18 25); }
+.lt .lt-box .btn.btn-pill.lt-ask { background: #b6bfd0; padding: 10px; }
+.lt .lt-box .btn.btn-pill.lt-ask.ok { background: #0b1631; }
+.lt .lt-ret { background: oklch(0.97 0.03 350); border: 1px solid oklch(0.88 0.06 350); border-radius: 14px; padding: 12px 14px; font-size: 13px; color: oklch(0.4 0.14 350); font-weight: 700; }

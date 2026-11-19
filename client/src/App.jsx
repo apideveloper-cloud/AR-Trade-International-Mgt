@@ -9,7 +9,7 @@ import Chat from './components/Chat.jsx';
 import { ForbiddenPage, LoadFailedPage, MaintenancePage, OfflinePage, ServerErrorPage } from './pages/ErrorPages.jsx';
 import { CartDrawer, CompareBar, LoginModal, NewsletterPopup, OptInMail, PromoPopup, Toast } from './components/Overlays.jsx';
 import Home from './pages/Home.jsx';
-import { NotFound } from './pages/Info.jsx';
+import { NotFound } from './pages/info/NotFound.jsx';
 
 /** Pages other than the Home page load on demand, so the first visit downloads only what it needs. */
 const page = lazyPage;
@@ -29,11 +29,11 @@ const Services = page(() => import('./pages/Services.jsx'));
 const ServiceDetail = page(() => import('./pages/Services.jsx'), 'ServiceDetail');
 const Careers = page(() => import('./pages/Careers.jsx'), 'Careers');
 const Job = page(() => import('./pages/Careers.jsx'), 'Job');
-const Offers = page(() => import('./pages/Info.jsx'), 'Offers');
-const About = page(() => import('./pages/Info.jsx'), 'About');
-const Contact = page(() => import('./pages/Info.jsx'), 'Contact');
-const Faq = page(() => import('./pages/Info.jsx'), 'Faq');
-const Policy = page(() => import('./pages/Info.jsx'), 'Policy');
+const Offers = page(() => import('./pages/info/Offers.jsx'), 'Offers');
+const About = page(() => import('./pages/info/About.jsx'), 'About');
+const Contact = page(() => import('./pages/info/Contact.jsx'), 'Contact');
+const Faq = page(() => import('./pages/info/Faq.jsx'), 'Faq');
+const Policy = page(() => import('./pages/info/Policy.jsx'), 'Policy');
 
 const AdminApp = lazyPage(() => import('./admin/AdminApp.jsx'));
 const HubApp = lazyPage(() => import('./hub/HubApp.jsx'));

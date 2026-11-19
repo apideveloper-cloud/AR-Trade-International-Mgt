@@ -1,10 +1,11 @@
 import { Switch } from '../../ui.jsx';
+import './catalogPage.css';
 
 /** The Popular / New toggle chips of a product (read-only people see only the ones that are on). */
 export function FlagChips({ p, canWrite, patch }) {
   return (
-    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-      {[['popular', 'Popular'], ['isNew', 'New']].filter(([k]) => canWrite || p[k]).map(([k, l]) => <button key={k} type="button" className="a-chip" disabled={!canWrite} style={{ padding: '3px 8px', fontSize: 11, background: p[k] ? 'oklch(0.95 0.04 150)' : '#fff', cursor: canWrite ? 'pointer' : 'default' }} onClick={() => patch(p, { [k]: !p[k] })}>{l}</button>)}
+    <div className="fl-chips">
+      {[['popular', 'Popular'], ['isNew', 'New']].filter(([k]) => canWrite || p[k]).map(([k, l]) => <button key={k} type="button" className={'a-chip fl-chip' + (p[k] ? ' is-on' : '')} disabled={!canWrite} onClick={() => patch(p, { [k]: !p[k] })}>{l}</button>)}
     </div>
   );
 }
@@ -14,4 +15,10 @@ export function LiveSwitch({ p, canWrite, patch }) {
   return canWrite
     ? <Switch on={p.active} onChange={v => patch(p, { active: v })} title="Visible on the store" />
     : <span className={'ro-live ' + (p.active ? 'on' : '')}>{p.active ? 'Live' : 'Hidden'}</span>;
+}
+
+/** A number cell: an input that saves on blur when `canWrite`, otherwise the plain value in a `Plain` element (class `plainClass`). `k` is the product field. */
+export function NumCell({ p, k, canWrite, patch, Plain = 'span', plainClass = 'ro-val' }) {
+  if (!canWrite) return <Plain className={plainClass}>{p[k]}</Plain>;
+  return <input className="a-mini" type="number" min="0" defaultValue={p[k]} onBlur={e => { if (+e.target.value !== p[k]) patch(p, { [k]: +e.target.value }); }} />;
 }

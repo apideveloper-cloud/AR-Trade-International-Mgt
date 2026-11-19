@@ -26,7 +26,7 @@ router.use(customer);
 
 const profileOut = u => {
   const p = parseJson(u.profile) || {};
-  return { id: u.id, name: u.name, email: u.email, phone: u.phone, address: u.address, area: u.area, role: u.role, since: u.created_at,
+  return { id: u.id, name: u.name, email: u.email, phone: u.phone, address: u.address, area: u.area, role: u.role, since: u.created_at, memberCode: u.member_code || '',
     gender: p.gender || '', dob: p.dob || '', org: p.org || '', bin: p.bin || '', devices: p.devices || '', notifs: { ...NOTIF_DEFAULTS, ...(p.notifs || {}) } };
 };
 

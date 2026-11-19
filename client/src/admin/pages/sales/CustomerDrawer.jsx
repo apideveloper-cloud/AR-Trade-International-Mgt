@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { adm, dateF, fmtMoney } from '../../adminApi.js';
-import { Drawer, Pill, hueOf } from '../../ui.jsx';
+import { Avatar } from './Avatar.jsx';
+import { Drawer, Pill } from '../../ui.jsx';
 import { Skeleton } from '../../fieldKit.jsx';
 import { OrderDrawer } from './OrderDrawer.jsx';
 
@@ -22,7 +23,7 @@ export function CustomerDrawer({ c, onClose, onReset, onSetPassword }) {
     <>
     <Drawer title={c.name} sub={c.phone} onClose={onClose}>
       <div className="od-hero">
-        <span className="od-av" style={{ '--h': hueOf(c.name) }}>{String(c.name || '?').split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase()}</span>
+        <Avatar name={c.name} cls="od-av" />
         <div className="od-who"><b>{c.name}</b><span>{c.phone}</span>
           <div className="od-badges"><i className={'od-pay ' + (c.userId ? 'ok' : '')}>{c.userId ? '✓ Online account' : 'No online account'}</i>{c.n > 1 && <i>Repeat buyer</i>}{!c.n && <i>No orders yet</i>}</div></div>
         <div className="od-amt"><small>Lifetime</small><b>{fmtMoney(c.ltv)}</b><span>{c.n} order{c.n === 1 ? '' : 's'}</span></div>

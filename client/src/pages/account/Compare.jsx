@@ -14,28 +14,28 @@ export default function Compare() {
   return (
     <>
       <H2 right={<button className="ac-btn ghost" onClick={() => setCompare([])}>Clear all</button>}>Compare products</H2>
-      <span className="ac-s71">Pick 2 or 3 products to see their specs side by side.</span>
-      <div className="ac-s72">
+      <span className="ac-cmp-hint">Pick 2 or 3 products to see their specs side by side.</span>
+      <div className="ac-cmp-slots">
         {slots.map((v, i) => { const p = find(v); return (
-          <div key={i} className="ac-card ac-s73">
-            <span className="mono ac-s74">PRODUCT {i + 1}</span>
+          <div key={i} className="ac-card ac-cmp-slot">
+            <span className="mono ac-cmp-label">PRODUCT {i + 1}</span>
             <select className="ac-input" value={v} onChange={e => pick(i, e.target.value)}><option value="">Select a product…</option>{products.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}</select>
-            {p && <div className="ac-s75"><Thumb src={p.img} size={64} /><span className="ac-s35"><b className="ac-s76">{p.name}</b><b className="ac-s77">{p.price ? fmt(p.price) : 'Ask price'}</b></span></div>}
+            {p && <div className="ac-row-10"><Thumb src={p.img} size={64} /><span className="ac-col-2"><b className="ac-cmp-name">{p.name}</b><b className="ac-disp">{p.price ? fmt(p.price) : 'Ask price'}</b></span></div>}
           </div>
         ); })}
       </div>
       {items.length >= 2 ? (
-        <div className="ac-s78">
-          <div style={{ display: 'grid', gridTemplateColumns: `180px repeat(${items.length},minmax(200px,1fr))`, minWidth: 600 }}>
+        <div className="ac-cmp-wrap">
+          <div className="ac-cmp-grid" style={{ gridTemplateColumns: `180px repeat(${items.length},minmax(200px,1fr))` }}>
             {keys.map((k, i) => (
-              <div key={k} className="ac-s79">
-                <div style={{ padding: '12px 16px', fontSize: 13, fontWeight: 700, color: '#5d6270', background: i % 2 ? '#fafbfd' : '#fff', borderBottom: '1px solid #f1f3f7' }}>{k}</div>
-                {items.map((p, j) => <div key={p.id} style={{ padding: '12px 16px', fontSize: 13.5, background: i % 2 ? '#fafbfd' : '#fff', borderLeft: '1px solid #f1f3f7', borderBottom: '1px solid #f1f3f7', fontWeight: k === 'Price' ? 800 : 400 }}>{val(k, p, j)}</div>)}
+              <div key={k} className="ac-contents">
+                <div className={i % 2 ? 'ac-cmp-k alt' : 'ac-cmp-k'}>{k}</div>
+                {items.map((p, j) => <div key={p.id} className={'ac-cmp-v' + (i % 2 ? ' alt' : '') + (k === 'Price' ? ' price' : '')}>{val(k, p, j)}</div>)}
               </div>
             ))}
           </div>
         </div>
-      ) : <div className="ac-s80">Select at least 2 products to compare.</div>}
+      ) : <div className="ac-cmp-empty">Select at least 2 products to compare.</div>}
     </>
   );
 }

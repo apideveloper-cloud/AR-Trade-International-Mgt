@@ -4,6 +4,7 @@ import { hubApi as hub } from '../admin/adminApi.js';
 import { FLOW, FLOW_COLOR } from '../components/LiveTrack.jsx';
 import { fmt } from '../api.js';
 import { DONE, ago } from './hubUtils.js';
+import './hubInline.css';
 
 export default function Dispatch({ board, reload }) {
   const [err, setErr] = useState('');
@@ -21,11 +22,11 @@ export default function Dispatch({ board, reload }) {
     return (
       <article key={o.id} className="ocard">
         <div className="t"><Link to={'/hub/track/' + o.id}>{o.id}</Link><span>{ago(o.date)}</span></div>
-        <div style={{ minWidth: 0 }}><div className="nm">{o.name}</div><div className="ad" title={o.address}>{o.address}</div></div>
+        <div className="hxi-mw0"><div className="nm">{o.name}</div><div className="ad" title={o.address}>{o.address}</div></div>
         <div className="chips">
-          <span style={{ background: '#eef2f8', color: '#0b1631' }}>{fmt(o.total)}</span>
-          <span style={{ background: o.cod ? 'oklch(0.96 0.05 85)' : 'oklch(0.95 0.04 150)', color: o.cod ? 'oklch(0.45 0.12 70)' : 'oklch(0.4 0.12 150)' }}>{o.cod ? 'COD' : o.payment + (o.payStatus === 'Paid' ? ' ✓' : '')}</span>
-          <span style={{ background: o.fallback ? 'oklch(0.96 0.04 25)' : '#eef2f8', color: o.fallback ? 'oklch(0.48 0.16 25)' : '#3a4256' }}>⌂ {branchName(o.branch)}</span>
+          <span className="hxi-chip hxi-amount">{fmt(o.total)}</span>
+          <span className={'hxi-chip ' + (o.cod ? 'hxi-cod' : 'hxi-paid')}>{o.cod ? 'COD' : o.payment + (o.payStatus === 'Paid' ? ' ✓' : '')}</span>
+          <span className={'hxi-chip' + (o.fallback ? ' hxi-fb' : '')}>⌂ {branchName(o.branch)}</span>
         </div>
         {verify && <span className="vnote">{verify}</span>}
         {canAssign && (
@@ -34,10 +35,10 @@ export default function Dispatch({ board, reload }) {
             <select value={o.courier || ''} onChange={e => run(() => hub.put(`/orders/${o.id}/courier`, { courier: e.target.value || null }))}><option value="">Courier…</option>{board.couriers.map(c => <option key={c.id}>{c.id}</option>)}</select>
           </div>
         )}
-        {(o.hasRider || o.courier) && <span style={{ fontSize: 10.5, fontWeight: 700, color: 'oklch(0.42 0.15 255)' }}>{o.courier ? `${o.courier} · ${o.courierTn}` : '🛵 ' + (rider?.name || 'Rider')}</span>}
+        {(o.hasRider || o.courier) && <span className="hxi-carrier">{o.courier ? `${o.courier} · ${o.courierTn}` : '🛵 ' + (rider?.name || 'Rider')}</span>}
         <div className="acts">
-          {nextT && o.flow !== 'Out for delivery' && <button className="go" disabled={needCarrier} title={needCarrier ? 'Assign a rider or courier first' : ''} style={{ background: needCarrier ? '#b6bfd0' : '#0b1631' }} onClick={() => run(() => hub.put(`/orders/${o.id}/flow`, { flow: nextT }))}>{nextT === 'Out for delivery' ? 'Dispatch →' : nextT + ' →'}</button>}
-          {o.flow === 'Out for delivery' && o.courier && <button className="go" style={{ background: 'oklch(0.55 0.16 150)' }} onClick={() => run(() => hub.post(`/orders/${o.id}/deliver`, { method: 'courier', cod: o.cod }))}>Delivered ✓</button>}
+          {nextT && o.flow !== 'Out for delivery' && <button className={'go hxi-go' + (needCarrier ? ' hxi-wait' : '')} disabled={needCarrier} title={needCarrier ? 'Assign a rider or courier first' : ''} onClick={() => run(() => hub.put(`/orders/${o.id}/flow`, { flow: nextT }))}>{nextT === 'Out for delivery' ? 'Dispatch →' : nextT + ' →'}</button>}
+          {o.flow === 'Out for delivery' && o.courier && <button className="go hxi-go hxi-done" onClick={() => run(() => hub.post(`/orders/${o.id}/deliver`, { method: 'courier', cod: o.cod }))}>Delivered ✓</button>}
           <button className="x" title="Cancel order" onClick={() => { const n = window.prompt(`Cancel ${o.id} — reason?`, 'Customer request'); if (n !== null) run(() => hub.post(`/orders/${o.id}/cancel`, { note: n })); }}>✕</button>
         </div>
       </article>
@@ -45,7 +46,7 @@ export default function Dispatch({ board, reload }) {
   };
   return (
     <>
-      <div className="legend">{[...FLOW, 'Cancelled', 'Returned'].map((t, i) => <span key={t} style={{ display: 'contents' }}><span className="p"><i style={{ background: FLOW_COLOR[t] }} />{t}</span>{i < FLOW.length - 1 && <span>→</span>}</span>)}</div>
+      <div className="legend">{[...FLOW, 'Cancelled', 'Returned'].map((t, i) => <span key={t} className="hxi-contents"><span className="p"><i style={{ background: FLOW_COLOR[t] }} />{t}</span>{i < FLOW.length - 1 && <span>→</span>}</span>)}</div>
       {err && <div className="a-msg err">{err}</div>}
       <div className="board">
         {FLOW.slice(0, 5).map(t => {
@@ -62,7 +63,7 @@ export default function Dispatch({ board, reload }) {
       <div className="donegrid">
         {['Delivered', 'Cancelled', 'Returned'].map(t => {
           const list = orders.filter(o => o.flow === t);
-          return <div key={t}><h5><i style={{ background: FLOW_COLOR[t] }} />{t} · {list.length}</h5>{list.slice(0, 5).map(o => <Link key={o.id} to={'/hub/track/' + o.id}><b className="mono">{o.id}</b><span style={{ color: '#56607a', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.name}</span><b>{fmt(o.total)}</b></Link>)}</div>;
+          return <div key={t}><h5><i style={{ background: FLOW_COLOR[t] }} />{t} · {list.length}</h5>{list.slice(0, 5).map(o => <Link key={o.id} to={'/hub/track/' + o.id}><b className="mono">{o.id}</b><span className="hxi-donename">{o.name}</span><b>{fmt(o.total)}</b></Link>)}</div>;
         })}
       </div>
     </>

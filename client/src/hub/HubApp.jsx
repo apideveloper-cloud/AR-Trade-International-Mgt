@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom';
 import './hub.css';
+import './hubInline.css';
 import { Login } from '../admin/AdminApp.jsx';
 import { adm, can, getAdminToken, setAdminToken, setUnauthorizedHandler } from '../admin/adminApi.js';
 import { fmt } from '../api.js';
@@ -25,10 +26,10 @@ export default function HubApp() {
     adm.get('/me').then(r => setStaff(r.staff)).catch(() => setAdminToken(null)).finally(() => setReady(true));
   }, []);
 
-  if (!ready) return <div style={{ padding: 80, textAlign: 'center' }}><span className="spin" /></div>;
+  if (!ready) return <div className="hxi-boot"><span className="spin" /></div>;
   if (!staff) return <Login onDone={setStaff} />;
   const rider = isRiderOnly(staff);
-  if (!rider && !can(staff, 'hub.view')) return <div style={{ padding: 40 }}><div className="a-msg err">Your role cannot open the Delivery Hub.</div></div>;
+  if (!rider && !can(staff, 'hub.view')) return <div className="hxi-denied"><div className="a-msg err">Your role cannot open the Delivery Hub.</div></div>;
 
   const active = board?.orders.filter(o => !DONE.includes(o.flow)) || [];
   const nav = rider ? [['rider', 'Rider app', 0]] : [['dispatch', 'Dispatch board', active.length], ['rider', 'Rider app', board?.orders.filter(o => o.rider && o.flow === 'Out for delivery').length || 0], ['track', 'Live tracking', 0], ['returns', 'Returns & refunds', board?.returnsPending || 0], ['branches', 'Branches & couriers', 0]];

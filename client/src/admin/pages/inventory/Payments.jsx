@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { can, invApi, slNo, useTable } from '../../adminApi.js';
 import { Summary, Toolbar, alertBox, confirmBox } from '../../ui.jsx';
 import { ListFilter } from '../../ListFilter.jsx';
-import { Chip, Grid, Notice, Tabs, downloadCsv, fDate, taka } from '../../fieldKit.jsx';
-import { useInv, AddBtn, PayForm, useVendors, fetchAll, vendorOptions, METHODS } from './shared.jsx';
+import { Chip, Grid, Notice, Tabs, fDate, taka } from '../../fieldKit.jsx';
+import { useInv, AddBtn, PayForm, useVendors, exportCsv, CsvButton, vendorOptions, METHODS } from './shared.jsx';
 
+/** Vendor payments page: payments made and the bills still to pay. */
 export function InvPayments({ staff }) {
   const [tab, setTab] = useState('payments');
   const p = useTable('/payments', { q: '', vendor: '', method: '', from: '', to: '', min: '', max: '' }, [], invApi);
@@ -18,7 +19,7 @@ export function InvPayments({ staff }) {
     if (!(await confirmBox(`Remove payment ${x.id} of ${taka(x.amount)}? Only payments made in the last 24 hours can be removed.`, { danger: true, confirmLabel: 'Remove' }))) return;
     try { await invApi.del('/payments/' + x.id); reload(); } catch (e) { alertBox(e.message); }
   };
-  const exportCsv = async () => { const list = await fetchAll('/payments', p.params).catch(e => { alertBox(e.message); return []; }); if (list.length) downloadCsv('vendor-payments.csv', ['Payment', 'Date', 'Vendor', 'Method', 'Reference', 'Purchase', 'Amount'], list.map(r => [r.id, r.date, r.vendor, r.method, r.reference, r.receiptId, r.amount])); };
+  const download = () => exportCsv('/payments', p.params, 'vendor-payments.csv', ['Payment', 'Date', 'Vendor', 'Method', 'Reference', 'Purchase', 'Amount'], r => [r.id, r.date, r.vendor, r.method, r.reference, r.receiptId, r.amount]);
   return (
     <>
       <Summary items={[
@@ -34,7 +35,7 @@ export function InvPayments({ staff }) {
       <Notice err={p.error || b.error} />
       <section className="a-card">
         <div className="card-hd"><div><h3>Vendor payments</h3><small className="fd-sub">Money paid to vendors and suppliers</small></div>
-          <div className="bk-acts"><button type="button" className="a-mini" onClick={exportCsv} disabled={!p.data.total}>⤓ CSV</button>{canEdit && <AddBtn onClick={() => setPay({})}>＋ Pay vendor</AddBtn>}</div></div>
+          <div className="bk-acts"><CsvButton onClick={download} disabled={!p.data.total} />{canEdit && <AddBtn onClick={() => setPay({})}>＋ Pay vendor</AddBtn>}</div></div>
         <Tabs value={tab} onChange={setTab} items={[['payments', 'Payments', p.data.total], ['due', 'Bills to pay', b.data.total]]} />
         {tab === 'payments' ? (
           <Grid server={p} cols="44px 100px 120px minmax(180px,1.5fr) 120px minmax(120px,1fr) 110px 120px 60px" head={['SL', 'Payment', 'Date', 'Vendor', 'Method', 'Reference', 'Bill', 'Amount', '']} empty="No payment matches."

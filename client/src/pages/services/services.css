@@ -1,0 +1,43 @@
+/* Servicing pages (landing + detail). Prefix sv-. Rules are doubled-up (.sv .x) so they beat the shared info-pages.css / blog.css rules the old inline styles overrode. */
+.sv-loading { padding: 80px; text-align: center; }
+.sv.sv-page { max-width: 1600px; margin: 0 auto; padding: 24px 28px 40px; display: flex; flex-direction: column; gap: 28px; }
+
+/* hero */
+.sv .sv-hero-text { display: flex; flex-direction: column; gap: 16px; }
+.sv .sv-hero-sub { margin: 0; color: #c9ccd4; font-size: 16px; line-height: 1.6; }
+.sv .sv-gold-h { font-weight: 800; font-size: 18px; }
+.sv .sv-gold-p { font-size: 14px; line-height: 1.5; }
+
+/* charges + booking */
+.sv .sv-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr)); gap: 24px; align-items: start; }
+.sv .sv-r { text-align: right; }
+.sv .sv-row-t { display: flex; flex-direction: column; gap: 2px; }
+.sv .sv-row-name { font-size: 14px; font-weight: 600; }
+.sv .sv-row-bn { font-size: 12px; color: #5d6270; }
+.sv .sv-reg { text-align: right; color: #8a8f9b; text-decoration: line-through; font-size: 14px; }
+.sv .sv-offer { text-align: right; font-weight: 800; font-size: 15px; }
+.sv .sv-note { font-size: 12px; color: #5d6270; margin-top: 8px; }
+.sv .sv-book { gap: 14px; position: sticky; top: 140px; }
+.sv .white-card h2.sv-book-t { margin: 0; }
+.sv .sv-form { display: flex; flex-direction: column; gap: 12px; }
+.sv .sv-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+.sv .sv-issue { resize: vertical; }
+.sv .sv-mkt { display: flex; flex-direction: column; gap: 8px; background: #f6f8fc; border: 1px solid #e3e8f2; border-radius: 14px; padding: 12px 14px; }
+.sv .sv-mkt-row { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; line-height: 1.45; color: #3a3f4b; cursor: pointer; }
+.sv .sv-mkt-box { margin-top: 3px; width: 16px; height: 16px; flex-shrink: 0; }
+.sv .sv-mkt-hint { color: #7a8090; }
+.sv .sv-mkt-email { border: 1px solid #cfd6e4; border-radius: 10px; padding: 10px 12px; background: #fff; font-size: 13px; }
+.sv .sv-submit.btn { padding: 15px; font-size: 15px; }
+.sv .sv-sent { display: flex; flex-direction: column; gap: 10px; }
+.sv .sv-sent-h { font-weight: 800; font-size: 18px; color: oklch(0.42 0.19 258); }
+.sv .sv-sent-p { font-size: 14px; color: #3d424d; }
+
+/* caution note */
+.sv .sv-caution { background: oklch(0.95 0.03 350); border-radius: 20px; padding: 24px 28px; display: flex; flex-direction: column; gap: 8px; }
+.sv .sv-caution-h { font-weight: 700; font-size: 16px; font-family: Manrope, sans-serif; }
+.sv .sv-caution-p { font-size: 14px; line-height: 1.6; }
+
+/* detail page */
+.sv-detail.bpost { max-width: 900px; }
+.sv-detail .crumbs { margin-bottom: 18px; }
+.sv-detail .sv-crumb-cur { color: #16181d; }

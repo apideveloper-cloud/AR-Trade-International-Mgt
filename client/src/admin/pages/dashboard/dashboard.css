@@ -1,0 +1,4 @@
+/* Fixed styles that used to be inline in the dashboard (doubled selectors so they keep winning over dash.css). */
+.a-msg.dash-asof { background: #fff6e0; color: #8a5a00; }
+.a-msg.dash-asof a { font-weight: 800; }
+.db-card .fc-chart { position: relative; }

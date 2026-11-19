@@ -1,7 +1,7 @@
 // Storefront customer session: an HttpOnly cookie, so page scripts (and any XSS) can never read the token.
 import { readCustomer, sessionCookie } from '../util.js';
 
-export const userOut = u => ({ id: u.id, name: u.name, email: u.email, phone: u.phone, address: u.address, area: u.area, role: u.role });
+export const userOut = u => ({ id: u.id, name: u.name, email: u.email, phone: u.phone, address: u.address, area: u.area, role: u.role, memberCode: u.member_code || '' });
 
 export const COOKIE = 'ar_session';
 export const clearSessionCookie = `${COOKIE}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0`;

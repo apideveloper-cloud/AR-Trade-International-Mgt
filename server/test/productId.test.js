@@ -6,7 +6,8 @@ import { fileURLToPath } from 'node:url';
 
 // the product page and the review / detail routes must agree on what a product is called in an address
 const here = path.dirname(fileURLToPath(import.meta.url));
-const page = fs.readFileSync(path.join(here, '../../client/src/pages/Product.jsx'), 'utf8');
+const dir = path.join(here, '../../client/src/pages/product');
+const page = ['ProductPage.jsx', 'useProductEffects.js'].map(f => fs.readFileSync(path.join(dir, f), 'utf8')).join('\n');
 const api = fs.readFileSync(path.join(here, '../src/routes/catalog.js'), 'utf8');
 
 test('the product page asks the server by product number, not by the words of its address', () => {

@@ -6,6 +6,7 @@ import { useApiData } from '../../hooks/useApiData.js';
 import { useBusy } from '../../hooks/useBusy.js';
 import { saveTextFile } from '../../hooks/download.js';
 import { withAlert } from '../../hooks/withAlert.js';
+import './engage.css';
 
 export function Marketing() {
   const subs = useTable('/subscribers', { from: '', to: '' });
@@ -42,7 +43,7 @@ export function Marketing() {
           </a>
           <div className="a-card mk-card">
             <div className="mk-hd"><b>Campaigns</b><span className="chip">{camps.length}</span></div>
-            {!camps.length && <div className="muted" style={{ padding: '4px 0 8px' }}>No campaigns yet. Create one in the Email Center.</div>}
+            {!camps.length && <div className="muted eg-empty-sm">No campaigns yet. Create one in the Email Center.</div>}
             {camps.map(c => (
               <div key={c.id} className="mk-camp">
                 <span className="mk-dot" style={{ '--h': c.status === 'Sent' ? 160 : 70 }}>{c.status === 'Sent' ? '✓' : '⏱'}</span>
@@ -55,8 +56,8 @@ export function Marketing() {
         <div className="mk-right">
           <ListFilter t={subs} noun="subscriber" title="Search subscribers" search={{ placeholder: 'Email address' }} range={{ label: 'Joined' }} />
           <Toolbar t={subs} sizes={[10, 25]} search={false} />
-          <div className="a-card mk-card" style={{ padding: 0 }}>
-            <div className="mk-hd" style={{ padding: '12px 16px' }}><b>Subscriber list</b><span className="chip">{subs.data.total}</span><span style={{ flex: 1 }} /><button className="a-btn sm ghost" onClick={() => exportCsv(subs.data.rows)}>⤓ Export CSV</button></div>
+          <div className="a-card mk-card eg-flush">
+            <div className="mk-hd eg-hd-md"><b>Subscriber list</b><span className="chip">{subs.data.total}</span><span className="eg-grow" /><button className="a-btn sm ghost" onClick={() => exportCsv(subs.data.rows)}>⤓ Export CSV</button></div>
             <form onSubmit={add} className="mk-add"><input className="a-input" name="email" type="email" required placeholder="Add an email address" /><button className="a-btn sm grad" disabled={adding}>＋ Add</button></form>
             {subs.data.rows.map((x, i) => (
               <div key={x.email} className="mk-sub">
@@ -66,16 +67,16 @@ export function Marketing() {
                 <button type="button" className="mk-rm" onClick={() => remove(x.email)}>Remove</button>
               </div>
             ))}
-            {!subs.data.rows.length && <div className="muted" style={{ padding: 16 }}>No subscribers yet.</div>}
+            {!subs.data.rows.length && <div className="muted eg-empty-md">No subscribers yet.</div>}
           </div>
           <Pager t={subs} />
         </div>
       </div>
-      <div className="a-card mk-card" style={{ padding: 0 }}>
-        <div className="mk-hd" style={{ padding: '14px 18px 4px' }}><b>Consent log</b><span className="chip">{consents.data.total}</span></div>
-        <div style={{ padding: '0 18px 8px', fontSize: 12, color: '#6b7388' }}>Double opt-in records: date, time, source and IP for every signup.</div>
-        <div style={{ padding: '0 12px 8px' }}><ListFilter t={consents} noun="record" title="Search consent log" search={{ placeholder: 'Email or source' }} selects={[{ key: 'status', label: 'Status', all: 'All statuses', icon: 'status', options: ['Pending', 'Confirmed', 'Unsubscribed'] }]} range={{ label: 'Consent' }} /><div style={{ height: 8 }} /><Toolbar t={consents} search={false} /></div>
-        <div style={{ overflow: 'auto' }}>
+      <div className="a-card mk-card eg-flush">
+        <div className="mk-hd eg-hd-lg"><b>Consent log</b><span className="chip">{consents.data.total}</span></div>
+        <div className="eg-hint">Double opt-in records: date, time, source and IP for every signup.</div>
+        <div className="eg-filter"><ListFilter t={consents} noun="record" title="Search consent log" search={{ placeholder: 'Email or source' }} selects={[{ key: 'status', label: 'Status', all: 'All statuses', icon: 'status', options: ['Pending', 'Confirmed', 'Unsubscribed'] }]} range={{ label: 'Consent' }} /><div className="eg-gap8" /><Toolbar t={consents} search={false} /></div>
+        <div className="eg-scroll">
           <table className="dt">
             <thead><tr>{['SL', 'Email', 'Status', 'Source', 'Consent at', 'Confirmed at', 'IP', ''].map(h => <th key={h}>{h}</th>)}</tr></thead>
             <tbody>{consents.data.rows.map((c, i) => (
@@ -84,13 +85,13 @@ export function Marketing() {
                 <td><b>{c.email}</b></td>
                 <td><Pill s={c.status === 'Confirmed' ? 'Hired' : c.status === 'Pending' ? 'New' : 'Cancelled'} label={c.status} /></td>
                 <td>{c.source}</td><td>{dateTimeF(c.at)}</td><td>{dateTimeF(c.confirmedAt)}</td>
-                <td><span className="mono" style={{ fontSize: 11.5 }}>{c.ip}</span></td>
+                <td><span className="mono eg-ip">{c.ip}</span></td>
                 <td>{c.status !== 'Confirmed' ? <button type="button" className="a-btn sm ghost" onClick={() => confirm(c.id)}>Confirm</button> : null}</td>
               </tr>
             ))}</tbody>
           </table>
         </div>
-        <div style={{ padding: 12 }}><Pager t={consents} /></div>
+        <div className="eg-pad12"><Pager t={consents} /></div>
       </div>
     </>
   );

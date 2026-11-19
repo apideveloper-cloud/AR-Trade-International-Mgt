@@ -1,0 +1,16 @@
+/* Rules that used to be inline styles in Footer.jsx. Extra selectors keep them stronger than styles/footer.css. */
+.footer .foot-cta .ftx-note { font-size: 13.5px; }
+.footer .foot-grid .col .ftx-tagline { margin: 0; font-size: 14px; line-height: 1.65; max-width: 300px; }
+.footer .foot-grid .col.ftx-showroom { gap: 12px; font-size: 14px; line-height: 1.5; }
+.footer .foot-grid .col .foot-info.ftx-hours { color: #8f9bb8; font-size: 13px; }
+.footer .foot-grid .col a.foot-info.ftx-phone { color: #fff; font-weight: 700; }
+.footer .foot-grid .col .ftx-ext { opacity: .6; }
+.footer .foot-bot .dev-by b.ftx-dev { color: #fff; font-weight: 700; }
+
+/* social badge colours */
+.footer .socials a.ftx-instagram { background: linear-gradient(45deg, #f9a825, #e1306c 50%, #833ab4); }
+.footer .socials a.ftx-facebook { background: #1877f2; }
+.footer .socials a.ftx-linkedin { background: #0a66c2; }
+.footer .socials a.ftx-youtube { background: #ff0033; }
+.footer .socials a.ftx-x { background: #000; }
+.footer .socials a.ftx-other { background: #333; }

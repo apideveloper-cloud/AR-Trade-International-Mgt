@@ -4,6 +4,7 @@ import { Summary, confirmBox } from '../../ui.jsx';
 import { Av, Chip, Tabs, usePaged } from '../../fieldKit.jsx';
 import { useApiData } from '../../hooks/useApiData.js';
 import { ChatLeads } from '../ChatLeads.jsx';
+import './engage.css';
 
 const MSG_TONE = { New: 'amber', Read: 'blue', Replied: 'ok', Closed: 'off' };
 const waLink = c => { const d = String(c || '').replace(/\D/g, ''); return /^01\d{9}$/.test(d) ? 'https://wa.me/88' + d : null; };
@@ -67,7 +68,7 @@ export function Inbox() {
       ]} />
       {err && <div className="a-msg err">{err}</div>}
       <section className="a-card">
-        <div className="card-hd"><div><h3>Messages and quote requests</h3><small style={{ color: '#6b7388' }}>Sent from the storefront Contact page. Saved in the database and handled here.</small></div></div>
+        <div className="card-hd"><div><h3>Messages and quote requests</h3><small className="eg-inbox-sub">Sent from the storefront Contact page. Saved in the database and handled here.</small></div></div>
         <div className="fd-bar">
           <Tabs value={tab} onChange={setTab} items={[['open', 'To answer', n('New') + n('Read')], ['New', 'New', n('New')], ['Replied', 'Replied', n('Replied')], ['Closed', 'Closed', n('Closed')], ['all', 'All', d.contact.length]]} />
           <input className="a-input fd-q" placeholder="Search name, contact or text…" value={q} onChange={e => setQ(e.target.value)} aria-label="Search messages" />
@@ -80,11 +81,11 @@ export function Inbox() {
       </section>
       <section className="a-card">
         <h3>Live chat · storefront visitors</h3>
-        <div style={{ maxHeight: 360, overflow: 'auto', background: '#f6f5f2', borderRadius: 12, padding: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {!d.chat.length && <span style={{ color: '#5d6270' }}>No chat yet. Messages from the storefront chat widget appear here.</span>}
-          {d.chat.map(m => <div key={m.id} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}><div style={{ maxWidth: '85%', padding: '9px 12px', borderRadius: 12, background: '#fff', lineHeight: 1.45 }}>{m.text}</div><small style={{ color: '#6b7388', fontSize: 11 }}>{m.name ? <><b>{m.name}</b>{m.contact ? ' · ' + m.contact : ''} · </> : null}{dateTimeF(m.at)}</small></div>)}
+        <div className="eg-chat-box">
+          {!d.chat.length && <span className="eg-chat-empty">No chat yet. Messages from the storefront chat widget appear here.</span>}
+          {d.chat.map(m => <div key={m.id} className="eg-chat-item"><div className="eg-chat-bubble">{m.text}</div><small className="eg-chat-time">{m.name ? <><b>{m.name}</b>{m.contact ? ' · ' + m.contact : ''} · </> : null}{dateTimeF(m.at)}</small></div>)}
         </div>
-        <span style={{ fontSize: 12, color: '#6b7080' }}>Replies are not sent from here yet: call or WhatsApp the visitor.</span>
+        <span className="eg-chat-foot">Replies are not sent from here yet: call or WhatsApp the visitor.</span>
       </section>
       <ChatLeads />
     </>

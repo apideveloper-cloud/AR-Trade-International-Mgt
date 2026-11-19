@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { adm } from '../../adminApi.js';
-import { Modal, hueOf } from '../../ui.jsx';
+import { Avatar } from './Avatar.jsx';
+import { Modal } from '../../ui.jsx';
 import './setPassword.css';
 
 const CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz';
@@ -51,7 +52,7 @@ export function SetPasswordModal({ c, onClose, onDone }) {
         ? <button type="button" className="a-btn grad" onClick={onClose}>Done</button>
         : <><button type="button" className="a-btn ghost" onClick={onClose}>Cancel</button><button className="a-btn grad" disabled={!valid || busy}>{busy ? 'Saving…' : 'Set password'}</button></>}>
       <div className="spw-who">
-        <span className="spw-av" style={{ '--h': hueOf(c.name) }}>{String(c.name || '?').split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase()}</span>
+        <Avatar name={c.name} cls="spw-av" />
         <div><b>{c.name}</b><small>{c.phone}{c.email ? ' · ' + c.email : ''}</small></div>
       </div>
       {saved ? (
