@@ -40,3 +40,15 @@ export function pageFallback({ title, intro, blocks = [], cats, site }) {
 export const linkBlock = (heading, items) => (items.length ? `<section><h2>${esc(heading)}</h2>${list(items)}</section>` : '');
 export const textBlock = (heading, text) => (text ? `<section>${heading ? `<h2>${esc(heading)}</h2>` : ''}<p>${esc(text)}</p></section>` : '');
 export { a as link, pagesOf };
+
+/** Questions and answers as visible text (same text as the FAQPage JSON-LD). */
+export const faqBlock = faqs => {
+  const rows = (faqs || []).filter(f => f && String(f.q || '').trim() && String(f.a || '').trim());
+  return rows.length ? `<section><h2>Frequently asked questions</h2>${rows.map(f => `<h3>${esc(f.q)}</h3><p>${esc(f.a)}</p>`).join('')}</section>` : '';
+};
+/** Policy headings and paragraphs. */
+export const policyBlocks = policy => (policy?.secs || []).filter(s => s.h || s.p).map(s => `<section>${s.h ? `<h2>${esc(s.h)}</h2>` : ''}${s.p ? `<p>${esc(s.p)}</p>` : ''}</section>`);
+/** Small helpful page for a 404: a sentence plus links to Home, Shop all and the main categories. */
+export function notFoundFallback({ cats = [], site = {} }) {
+  return wrap(`<main><h1>Page not found</h1><p>Sorry, we could not find this page. It may have moved or is no longer available. Try one of these instead.</p>${list([a('/', 'Home'), a('/shop', 'Shop all products'), ...cats.slice(0, 12).map(c => a('/shop/' + c.id, c.title))])}</main>${footHtml(site)}`);
+}

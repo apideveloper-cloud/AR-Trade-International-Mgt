@@ -31,7 +31,7 @@ export default function Popular() {
         <div className="tabs">{TABS.map(([k, l]) => <button key={k} className={tab === k ? 'on' : ''} onClick={() => { setTab(k); rail.current?.scrollTo({ left: 0 }); }}>{l}</button>)}</div>
       </SectionHead>
       <div onMouseEnter={() => { paused.current = true; }} onMouseLeave={() => { paused.current = false; }}>
-        <div className="pop-rail" ref={rail}>{list.map(p => <div key={p.id}><ProductCard p={p} /></div>)}</div>
+        <div className="pop-rail" ref={rail}>{list.map((p, n) => <div key={p.id}><ProductCard p={p} priority={n < 4} /></div>)}</div>
       </div>
     </section>
   );

@@ -14,7 +14,9 @@ export function mountUploads(app) {
   app.use('/api/media', express.static(path.join(SERVER_ROOT, 'uploads/blog'), { maxAge: '7d', fallthrough: false })); // old blog image links
   // every imported / uploaded image lives under server/uploads/<products|blog|services|clients|company>/<category>/
   app.use('/api/uploads', (req, res, next) => (isPrivateUploadPath(req.url.split('?')[0]) ? res.status(404).end() : next())); // private folders (CVs, vouchers) are never served, whatever the URL spelling
-  app.use('/api/uploads', express.static(path.join(SERVER_ROOT, 'uploads'), { maxAge: '7d', fallthrough: false, index: false, dotfiles: 'deny' }));
+  app.use('/api/uploads', express.static(path.join(SERVER_ROOT, 'uploads'), { maxAge: '7d', fallthrough: false, index: false, dotfiles: 'deny',
+    // an uploaded picture's name carries a timestamp, so its content never changes: keep it for a year (other files keep the 7 days)
+    setHeaders: (res, file) => { if (/\.(png|jpe?g|webp|gif|avif|svg)$/i.test(file)) res.setHeader('Cache-Control', 'public, max-age=31536000, immutable'); } }));
 }
 
 /** Production: serve the built client, with robots.txt, sitemap.xml and the per-page HTML shell registered last. */

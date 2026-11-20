@@ -11,7 +11,7 @@ export default function ListRow({ p }) {
   const off = offPct(p);
   return (
     <article className="lrow">
-      <Link to={productPath(p)} className="im">{p.img && <img src={p.img} alt={p.name} loading="lazy" onError={e => { e.currentTarget.style.display = 'none'; }} />}{off > 0 && <span className="b-off">−{off}%</span>}</Link>
+      <Link to={productPath(p)} className="im">{p.img && <img src={p.img} alt={p.name} width="160" height="160" loading="lazy" decoding="async" onError={e => { e.currentTarget.style.display = 'none'; }} />}{off > 0 && <span className="b-off">−{off}%</span>}</Link>
       <div className="mid">
         <div className="shpx-tags"><span className="bk">{p.brand}</span>{p.isNew && <span className="b-new">New</span>}</div>
         <Link to={productPath(p)}><h3>{p.name}</h3></Link>

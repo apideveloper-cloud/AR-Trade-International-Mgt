@@ -7,8 +7,8 @@ export default function Brand({ size = 68, to = '/', className = '' }) {
   const [bad, setBad] = useState(false);
   return (
     <Link to={to} className={'brand-mark ' + className} aria-label="AR Trade International" style={{ '--s': size + 'px' }}>
-      {bad ? (<><img src="/ar-icon-round.png" alt="" width={size} height={size} /><span>AR TRADE INTERNATIONAL</span></>)
-        : <img className="wordmark" src={LOGO} alt="AR Trade International" style={{ height: size, width: 'auto' }} onError={() => setBad(true)} />}
+      {bad ? (<><img src="/ar-icon-round.png" alt="" width={size} height={size} loading="eager" /><span>AR TRADE INTERNATIONAL</span></>)
+        : <img className="wordmark" src={LOGO} alt="AR Trade International" width="1158" height="227" loading="eager" fetchpriority="high" decoding="async" style={{ height: size, width: 'auto' }} onError={() => setBad(true)} />}
     </Link>
   );
 }

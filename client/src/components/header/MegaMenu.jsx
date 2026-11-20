@@ -13,7 +13,7 @@ export default function MegaMenu({ groups, active, setActive, close }) {
         <div className="mega-l">
           {groups.map((g, gi) => (
             <Link key={g.t} to={shopLink(g.c)} className={gi === active ? 'on' : ''} onMouseEnter={() => setActive(gi)} onClick={close}>
-              <span className="th">{g.img ? <img src={g.img} alt="" /> : g.t.split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase()}</span>
+              <span className="th">{g.img ? <img src={g.img} alt="" width="30" height="30" loading="lazy" decoding="async" /> : g.t.split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase()}</span>
               <span className="nm">{g.t}</span><span className="hdx-chev">›</span>
             </Link>
           ))}
@@ -29,7 +29,7 @@ export default function MegaMenu({ groups, active, setActive, close }) {
           <div className="mega-picks">
             {cur.picks.map(p => (
               <Link key={p.id} to={productPath(p)} onClick={close}>
-                <span className="im"><img src={p.img} alt="" /></span>
+                <span className="im"><img src={p.img} alt="" width="200" height="80" loading="lazy" decoding="async" /></span>
                 <span className="n clamp2">{p.name}</span><b>{p.price ? fmt(p.price) : 'Ask price'}</b>
               </Link>
             ))}
@@ -40,7 +40,7 @@ export default function MegaMenu({ groups, active, setActive, close }) {
           <span className="k">Hot sale</span>
           <span className="t">Original laser toner at reduced prices</span>
           <span className="d">Cash on delivery in Dhaka. Courier delivery nationwide.</span>
-          <span className="im"><img src="/api/uploads/site/hp-79a-black-toner.jpg" alt="" /></span>
+          <span className="im"><img src="/api/uploads/site/hp-79a-black-toner.jpg" alt="" width="200" height="60" loading="lazy" decoding="async" /></span>
           <span className="go">See offers →</span>
         </Link>
       </div>

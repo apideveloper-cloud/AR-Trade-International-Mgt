@@ -22,6 +22,7 @@ export function Editor({ product, cats, onClose, onSaved, purchase = false, init
   }, [product]);
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
+  const [warn, setWarn] = useState('');
   const on = k => e => setF(s => ({ ...s, [k]: e.target.value }));
   const isNew = !product;
   const off = f.old > f.price && f.price ? Math.round((1 - f.price / f.old) * 100) : 0;
@@ -30,7 +31,7 @@ export function Editor({ product, cats, onClose, onSaved, purchase = false, init
   const submit = async e => {
     e.preventDefault();
     if (busy) return; // already saving or uploading
-    setErr(''); setBusy(true);
+    setErr(''); setWarn(''); setBusy(true);
     try {
       if (purchase) {
         onSaved(await invApi.post('/products', { ...f, specs: parseSpecs(specText) })); return;
@@ -39,22 +40,25 @@ export function Editor({ product, cats, onClose, onSaved, purchase = false, init
       if (isNew && (f.metaTitle || f.metaDesc || f.metaKeywords)) await adm.put('/products/' + saved.id, { metaTitle: f.metaTitle, metaDesc: f.metaDesc, metaKeywords: f.metaKeywords });
       const specs = parseSpecs(specText);
       if (specs.length || !isNew) await adm.put(`/products/${isNew ? saved.id : product.id}/specs`, { specs });
+      if (saved.gtinWarning) { onSaved(); setWarn(saved.gtinWarning); return; } // stays open so the warning is read; the button stays off so a new product is not added twice
       onSaved(); onClose();
     } catch (er) { setErr(er.message); setBusy(false); }
   };
   return (
     <Modal side kicker={isNew ? 'New product' : 'Edit product'} title={isNew ? 'Add a product' : f.name} onClose={onClose} onSubmit={submit}
-      footer={<><button type="button" className="a-btn ghost" onClick={onClose}>Cancel</button><button className="a-btn grad" disabled={busy}>{busy ? 'Saving…' : isNew ? 'Add product' : 'Save changes'}</button></>}>
+      footer={<><button type="button" className="a-btn ghost" onClick={onClose}>Cancel</button><button className="a-btn grad" disabled={busy}>{warn ? 'Saved' : busy ? 'Saving…' : isNew ? 'Add product' : 'Save changes'}</button></>}>
       <div className={'pf' + (purchase ? ' pf-buy' : '')}>
         <ProductMedia f={f} product={product} purchase={purchase} off={off} gallery={gallery} />
         <div className="pf-main">
           {err && <div className="a-msg err">{err}</div>}
+          {warn && <div className="a-msg err">Saved. {warn}</div>}
           <Card title="Basics">
             <div className="pf-g pf-g3">
               <label className="a-lbl pf-w3">Product name<input className="a-input" required value={f.name} onChange={on('name')} /></label>
               <label className="a-lbl">Brand<input className="a-input" required value={f.brand} onChange={on('brand')} /></label>
               <label className="a-lbl">Category<select className="a-input" value={f.cat} onChange={on('cat')}>{cats.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}</select></label>
               <label className="a-lbl">Part no.<input className="a-input" value={f.part} onChange={on('part')} /></label>
+              <label className="a-lbl">GTIN / EAN barcode<input className="a-input" inputMode="numeric" maxLength={14} value={f.gtin || ''} onChange={e => { const v = e.target.value.replace(/\D/g, '').slice(0, 14); setF(s => ({ ...s, gtin: v })); }} /><small className="pf-hint">Optional. 8, 12, 13 or 14 digits. Shown to Google in product data.</small></label>
             </div>
           </Card>
           {!purchase && <Card title="Price &amp; stock">

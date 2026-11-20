@@ -14,7 +14,7 @@ function Spotlight({ spot, off }) {
     <div className="spot">
       <span className="glow" />
       <div className="top"><span className="tag">NEW ARRIVAL · {spot.brand}</span>{off > 0 && <span className="save">Save {off}%</span>}</div>
-      <Link to={productPath(spot)} className="pic">{spot.img && <img src={spot.img} alt={spot.name} loading="lazy" decoding="async" />}</Link>
+      <Link to={productPath(spot)} className="pic">{spot.img && <img src={spot.img} alt={spot.name} width="400" height="280" loading="lazy" decoding="async" />}</Link>
       <div className="info">
         <div className="hm-spot-info">
           <Link to={productPath(spot)} className="nm">{spot.name}</Link>
@@ -32,7 +32,7 @@ function MiniProduct({ q }) {
   return (
     <div className="mini-p">
       <div className="row">
-        <Link to={productPath(q)} className="th">{q.img && <img src={q.img} alt="" loading="lazy" decoding="async" />}{o > 0 && <em>−{o}%</em>}</Link>
+        <Link to={productPath(q)} className="th">{q.img && <img src={q.img} alt="" width="64" height="64" loading="lazy" decoding="async" />}{o > 0 && <em>−{o}%</em>}</Link>
         <div className="hm-mini-info">
           <span className="brand-k">{q.brand}</span>
           <Link to={productPath(q)} className="nm clamp2">{q.name}</Link>
@@ -64,7 +64,7 @@ export default function Fresh() {
       <div className="fresh-tabs">
         {tabs.map(c => (
           <button key={c.id} className={'fresh-tab' + (c.id === nk ? ' on' : '')} onClick={() => setNk(c.id)}>
-            <span className="im">{c.items.find(p => p.img) && <img src={c.items.find(p => p.img).img} alt="" loading="lazy" decoding="async" />}</span>{c.t}<span className="n">{c.items.length}</span>
+            <span className="im">{c.items.find(p => p.img) && <img src={c.items.find(p => p.img).img} alt="" width="40" height="40" loading="lazy" decoding="async" />}</span>{c.t}<span className="n">{c.items.length}</span>
           </button>
         ))}
       </div>

@@ -10,6 +10,7 @@ import { fail, parseJson, wrap, isLocalImg, localImg, iso } from './util.js';
 import { addRange, whereOf } from './listing.js';
 import { can } from './permissions.js';
 import { like, page } from './adminHelpers.js';
+import { processUpload } from './imageProcess.js';
 
 // ---------- blog: managed by Admin and the Content writer role ----------
 export const SAN = {
@@ -141,11 +142,12 @@ export function contentRouter(guard) {
     const sig = IMG_TYPES[kind];
     if (!sig || !sig.every((x, k) => buf[k] === x)) throw fail(400, 'That file is not a valid image');
     const base = slugify(String(req.body.name || 'image').replace(/\.[a-z0-9]+$/i, '')).slice(0, 40) || 'image';
-    const file = `${base}-${Date.now().toString(36)}.${kind}`;
+    const out = await processUpload(buf, `image/${m[1] === 'jpg' ? 'jpeg' : m[1]}`, { maxEdge: 1600 }); // never throws: falls back to the original bytes
+    const file = `${base}-${Date.now().toString(36)}.${out.ext}`;
     const dir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../uploads', folder);
     fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(path.join(dir, file), buf);
-    res.json({ url: `/api/uploads/${folder}/${file}` });
+    fs.writeFileSync(path.join(dir, file), out.buffer);
+    res.json({ url: `/api/uploads/${folder}/${file}`, width: out.width, height: out.height });
   }));
 
   router.get('/pages', guard('pages.manage'), wrap(async (req, res) => {

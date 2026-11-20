@@ -15,19 +15,19 @@ export function BuyAction({ p, cls = 'add', label = '+ Add' }) {
   return <button className={cls} onClick={() => addToCart(p)}>{label}</button>;
 }
 
-export default function ProductCard({ p }) {
+export default function ProductCard({ p, priority = false }) {
   const { wish, toggleWish, compare, toggleCompare } = useStore();
   const [loaded, setLoaded] = useState(false);
   const [failed, setFailed] = useState(false); // the picture file is missing: show the placeholder, never the browser's broken-image alt text
-  const [near, setNear] = useState(false); // lazy loader: the image is requested only when its card is close to the viewport
+  const [near, setNear] = useState(priority); // lazy loader: the image is requested only when its card is close to the viewport
   const box = useRef(null);
   useEffect(() => {
     const el = box.current;
-    if (!el || typeof IntersectionObserver === 'undefined') { setNear(true); return undefined; }
+    if (priority || !el || typeof IntersectionObserver === 'undefined') { setNear(true); return undefined; }
     const io = new IntersectionObserver(([e]) => { if (e.isIntersecting) { setNear(true); io.disconnect(); } }, { rootMargin: '300px 400px' });
     io.observe(el);
     return () => io.disconnect();
-  }, []);
+  }, [priority]);
   const off = offPct(p);
   const w = wish.includes(p.id), c = compare.includes(p.id);
   return (
@@ -36,7 +36,7 @@ export default function ProductCard({ p }) {
         {p.img && !failed ? (
           <>
             {!loaded && <div className="shimmer cmpx-fill" />}
-            {near && <img src={p.img} alt={p.name} loading="lazy" decoding="async" onLoad={() => setLoaded(true)} onError={() => setFailed(true)} style={{ opacity: loaded ? 1 : 0 }} />}
+            {near && <img src={p.img} alt={p.name} width="400" height="368" loading={priority ? 'eager' : 'lazy'} fetchpriority={priority ? 'high' : undefined} decoding="async" onLoad={() => setLoaded(true)} onError={() => setFailed(true)} style={{ opacity: loaded ? 1 : 0 }} />}
           </>
         ) : <div className="ph">No photo yet</div>}
         <div className="pc-badges">{off > 0 && <span className="b-off">−{off}%</span>}{p.isNew && <span className="b-new">New</span>}</div>

@@ -11,7 +11,17 @@ The client is a single-page React app, so the HTML file alone is nearly empty. `
 | Head tags | `inject()` in `seo.js` | one `<title>`, one meta description, canonical, `robots`, Open Graph and Twitter tags, `rel=prev/next`, a `preload` for the product picture |
 | Structured data | `seo.js`, helpers in `seoHelpers.js` | `Product` + `BreadcrumbList` (products), `CollectionPage` + `ItemList` + `BreadcrumbList` (category pages), `Store` + `WebSite` (home), `BlogPosting` + `BreadcrumbList` (articles) |
 | Plain-HTML copy | `seoFallback.js` | heading, text, price, specs and **real links** inside `<div id="root">`; hidden from people, replaced by React at start-up, readable by crawlers that do not run JavaScript |
-| Sitemap / robots | `seo.js` | `/sitemap.xml` (products with `lastmod` from `products.updated_at`, images, blog, services) and `/robots.txt` |
+| Sitemap / robots | `seo.js`, builders in `seoSchema.js` | `/sitemap.xml` is an **index** of `/sitemap-products.xml` (images, `lastmod` from `products.updated_at`), `/sitemap-categories.xml`, `/sitemap-blog.xml`, `/sitemap-pages.xml` (static pages, services, policies); `lastmod` only where a real date exists. `/robots.txt` also blocks `/wishlist`, `/compare`, `/login`, `/*?sort=`, `/*?q=`, `/*?new=` |
+
+## Structured data now emitted (builders in `server/src/seoSchema.js`, wiring in `seo.js`)
+- **Store** (`['Store','ElectronicsStore']`, `@id` `/#store`) on home **and** `/contact`: telephone and WhatsApp `contactPoint` (en, bn), `geo` from the delivery office coordinates, `sameAs` from the admin social links, `legalName` (`site.legalName`) and `openingHoursSpecification` (`site.hours` = `[{days:['Saturday'], opens:'09:00', closes:'18:00'}]`) only when those settings exist. City / postal code are parsed from `site.address` (e.g. "Dhaka-1217"), else the old constants.
+- **FAQPage** on `/faq` from `content.faqs`, with the same text in the plain-HTML copy. Not emitted when there are no FAQs.
+- **Service** + `BreadcrumbList` on `/services/<slug>` (provider = the Store `@id`); `BreadcrumbList` on `/services`, `/contact`, `/faq`, `/policy/<key>`.
+- **Product**: up to 10 approved `review`s next to `aggregateRating` (now with best/worst), `gtin8/12/13/14` from `products.gtin` (digits only, 8/12/13/14 long), `color` (only a real colour word), `model` from `part`, `priceSpecification` with `valueAddedTaxIncluded` (the product page says "Prices include VAT"), `PreOrder` availability only if a truthy `products.preorder` exists (no such column yet).
+- **Policies** `/policy/<key>`: indexable, title `<Policy> | AR Trade International`, description from the first paragraph, plain-HTML headings/paragraphs, in the pages sitemap. Unknown keys stay 404 + noindex.
+- `?sort=`, `?view=`, `?order=` (like `?q=`, `?new=`) on category pages: 200, `noindex, follow`, canonical to the clean category URL. `?page=` is unchanged.
+- LCP: `preload` of the first listing image on category pages and of the first enabled image slide on the home page.
+- 404 pages carry a small plain-HTML block (Home, Shop all, main categories); status 404, `noindex, nofollow`.
 
 ## Rules built in
 - Product title: `{Name} – Price in BD | AR Trade` within 60 characters; a product with no price (price 0) never claims one and has no `Offer` in the structured data.
@@ -34,4 +44,5 @@ The client is a single-page React app, so the HTML file alone is nearly empty. `
 ## Known limits
 - About 58% of products have price 0 (prices come from purchase entries), so they cannot show a price in Google until a price is set.
 - Product pictures are uploaded JPEG/PNG files; converting them to WebP/AVIF is not done.
-- Opening hours, return policy and GTIN/MPN are not in the data, so they are not in the structured data.
+- Still missing, waiting for settings from the owner: `MerchantReturnPolicy`, `deliveryTime` (handling and transit days) and structured opening hours (`site.hours`; the builder is ready and emits them once set). `legalName` waits for `site.legalName`.
+- GTIN is emitted only for products whose `gtin` column is filled; `preorder` has no column yet.

@@ -9,7 +9,8 @@ import { parseJson, wrap } from './util.js';
 import { legacySlug, productIdOf, productPath, productSlug } from './slug.js';
 
 import { NAME, PER_PAGE, SHORT, breadcrumbLd, clip, collectionLd, esc, isAutoDesc, isAutoTitle, listTitle, pageUrl, pagesOf, parsePage, plain, productDescription, productTitle } from './seoHelpers.js';
-import { linkBlock, link, listFallback, pageFallback, productFallback, productLine, textBlock } from './seoFallback.js';
+import { faqBlock, linkBlock, link, listFallback, notFoundFallback, pageFallback, policyBlocks, productFallback, productLine, textBlock } from './seoFallback.js';
+import { CHILD_SITEMAPS, aggregateLd, faqLd, heroImage, isVariantQuery, latestDay, offerExtras, policyMeta, productExtras, reviewsLd, robotsTxt, sameAsOf, serviceLd, sitemapIndex, storeLd, urlEntry, urlset } from './seoSchema.js';
 const baseUrl = req => (process.env.SITE_URL || `${req.get('x-forwarded-proto') || req.protocol}://${req.get('host')}`).replace(/\/$/, '');
 const LOGO = '/api/uploads/site/artrade-logo.png';
 const money = v => (v !== '' && v !== null && v !== undefined && Number.isFinite(Number(v)) ? String(Number(v)) : null);
@@ -64,7 +65,7 @@ function inject(html, base, m) {
     `<meta name="description" content="${esc(m.desc)}">`,
     m.keywords ? `<meta name="keywords" content="${esc(m.keywords)}">` : '',
     `<meta name="robots" content="${m.noindex ? (m.follow ? 'noindex, follow' : 'noindex, nofollow') : 'index, follow, max-image-preview:large'}">`,
-    m.noindex ? '' : `<link rel="canonical" href="${esc(url)}">`,
+    m.noindex && !m.canonical ? '' : `<link rel="canonical" href="${esc(m.canonical || url)}">`,
     m.prev ? `<link rel="prev" href="${esc(m.prev)}">` : '', m.next ? `<link rel="next" href="${esc(m.next)}">` : '',
     m.preload ? `<link rel="preload" as="image" href="${esc(abs(base, m.preload))}" fetchpriority="high">` : '', // the product picture is a CSS background, so the browser would find it late
     `<meta property="og:site_name" content="${NAME}">`, `<meta property="og:type" content="${m.type || 'website'}">`,
@@ -82,28 +83,35 @@ function inject(html, base, m) {
 }
 
 export function mountSeo(app, dist) {
-  app.get('/robots.txt', (req, res) => {
-    res.type('text/plain').send(['User-agent: *', 'Allow: /', 'Disallow: /admin', 'Disallow: /hub', 'Disallow: /email', 'Disallow: /field', 'Disallow: /api/', 'Disallow: /cart', 'Disallow: /checkout', 'Disallow: /account', 'Disallow: /track', 'Disallow: /success/', '',
-      'Allow: /api/uploads/', '', `Sitemap: ${baseUrl(req)}/sitemap.xml`, ''].join('\n'));
-  });
+  app.get('/robots.txt', (req, res) => { res.type('text/plain').send(robotsTxt(baseUrl(req))); });
 
+  // /sitemap.xml is an index of four child sitemaps; lastmod is given only where a real date exists
+  const policiesOf = async () => (parseJson((await pool.query('SELECT v FROM settings WHERE k = "content"'))[0][0]?.v) || {}).policies || [];
+  const kids = {
+    '/sitemap-products.xml': async base => {
+      const [allProds] = await pool.query('SELECT id, name, slug, img, DATE_FORMAT(updated_at, "%Y-%m-%d") lm FROM products WHERE active = 1 ORDER BY id DESC');
+      const prods = published(allProds); // a product whose picture is missing is not published, so it is not offered to search engines either
+      return prods.map(p => urlEntry(base + productPath(p), '0.7', p.img ? `<image:image><image:loc>${esc(abs(base, p.img))}</image:loc></image:image>` : '', p.lm));
+    },
+    '/sitemap-categories.xml': async base => (await pool.query('SELECT id FROM categories WHERE hidden = 0'))[0].map(c => urlEntry(base + '/shop/' + c.id, '0.8')),
+    '/sitemap-blog.xml': async base => (await pool.query('SELECT slug, DATE_FORMAT(COALESCE(updated_at, published), "%Y-%m-%d") d FROM blog_posts WHERE status = "Published" AND noindex = 0'))[0].map(p => urlEntry(base + '/blog/' + p.slug, '0.6', '', p.d)),
+    '/sitemap-pages.xml': async base => {
+      const [pages] = await pool.query('SELECT slug, DATE_FORMAT(updated_at, "%Y-%m-%d") d FROM site_pages WHERE status = "Published" AND grp = "servicing" AND noindex = 0');
+      return [
+        ...Object.keys(STATIC).map(p => urlEntry(base + p, p === '/' ? '1.0' : '0.8')),
+        ...pages.map(p => urlEntry(base + '/services/' + p.slug, '0.7', '', p.d)),
+        ...(await policiesOf()).filter(x => x.k && x.t).map(x => urlEntry(base + '/policy/' + x.k, '0.4'))
+      ];
+    }
+  };
   app.get('/sitemap.xml', wrap(async (req, res) => {
-    const base = baseUrl(req);
-    const [cats] = await pool.query('SELECT id FROM categories WHERE hidden = 0');
-    const [allProds] = await pool.query('SELECT id, name, slug, img, DATE_FORMAT(updated_at, "%Y-%m-%d") lm FROM products WHERE active = 1 ORDER BY id DESC');
-    const prods = published(allProds); // a product whose picture is missing is not published, so it is not offered to search engines either
-    const [posts] = await pool.query('SELECT slug, DATE_FORMAT(COALESCE(updated_at, published), "%Y-%m-%d") d FROM blog_posts WHERE status = "Published" AND noindex = 0');
-    const [pages] = await pool.query('SELECT slug FROM site_pages WHERE status = "Published" AND grp = "servicing" AND noindex = 0');
-    const u = (loc, pri, extra = '', lm = '') => `<url><loc>${esc(base + loc)}</loc>${lm ? `<lastmod>${lm}</lastmod>` : ''}<priority>${pri}</priority>${extra}</url>`;
-    const out = [
-      ...Object.keys(STATIC).map(p => u(p, p === '/' ? '1.0' : '0.8')),
-      ...cats.map(c => u('/shop/' + c.id, '0.8')),
-      ...prods.map(p => u(productPath(p), '0.7', p.img ? `<image:image><image:loc>${esc(abs(base, p.img))}</image:loc></image:image>` : '', p.lm)),
-      ...posts.map(p => u('/blog/' + p.slug, '0.6', '', p.d)),
-      ...pages.map(p => u('/services/' + p.slug, '0.7'))
-    ];
-    res.type('application/xml').send(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n${out.join('\n')}\n</urlset>`);
+    const [[pm]] = await pool.query('SELECT DATE_FORMAT(MAX(updated_at), "%Y-%m-%d") d FROM products WHERE active = 1');
+    const [[bm]] = await pool.query('SELECT DATE_FORMAT(MAX(COALESCE(updated_at, published)), "%Y-%m-%d") d FROM blog_posts WHERE status = "Published" AND noindex = 0');
+    const [[gm]] = await pool.query('SELECT DATE_FORMAT(MAX(updated_at), "%Y-%m-%d") d FROM site_pages WHERE status = "Published" AND grp = "servicing" AND noindex = 0');
+    const lm = { '/sitemap-products.xml': pm?.d, '/sitemap-blog.xml': bm?.d, '/sitemap-pages.xml': latestDay([gm?.d || '']) };
+    res.type('application/xml').send(sitemapIndex(baseUrl(req), CHILD_SITEMAPS.map(path => ({ path, lm: lm[path] || '' }))));
   }));
+  for (const [path, build] of Object.entries(kids)) app.get(path, wrap(async (req, res) => { res.type('application/xml').send(urlset(await build(baseUrl(req)))); }));
 
   // the HTML shell for every non-API page, with the right meta for the URL
   app.get(/^(?!\/api).*/, wrap(async (req, res) => {
@@ -112,18 +120,9 @@ export function mountSeo(app, dist) {
     let m = null, status = 200;
     const site = parseJson((await pool.query('SELECT v FROM settings WHERE k = "site"'))[0][0]?.v) || {};
     const { cats, prods } = await catalog();
-    const org = {
-      '@context': 'https://schema.org', '@type': 'Store', '@id': base + '/#store', name: NAME, url: base, logo: base + '/api/uploads/site/artrade-logo.png', image: base + '/api/uploads/site/artrade-logo.png',
-      telephone: site.phone, email: site.email, address: { '@type': 'PostalAddress', streetAddress: site.address || '159 Santinagar', addressLocality: 'Dhaka', postalCode: '1217', addressCountry: 'BD' },
-      priceRange: '৳', areaServed: 'BD'
-    };
-
-    if (p === '/') {
-      // social profiles the owner entered in the admin; only real https links
-      const c = parseJson((await pool.query('SELECT v FROM settings WHERE k = "content"'))[0][0]?.v) || {};
-      const same = Object.values(c.social || {}).filter(u => /^https?:\/\//.test(u || ''));
-      if (same.length) org.sameAs = same;
-    }
+    // storefront content (FAQs, policies, social links, hero slides) and the Store block that home and contact both carry
+    const c = parseJson((await pool.query('SELECT v FROM settings WHERE k = "content"'))[0][0]?.v) || {};
+    const org = storeLd({ base, site, sameAs: sameAsOf(c.social) });
 
     // one address per page: lower case, no trailing slash (a second spelling would be a duplicate page for search engines)
     const shown = dec(p);
@@ -142,7 +141,7 @@ export function mountSeo(app, dist) {
       const pages = pagesOf(rows.length), offset = (page - 1) * PER_PAGE;
       if (page > pages) return { status: 404, m: { path: p, title: 'Page not found | ' + NAME, desc: STATIC['/'][1], noindex: true } };
       const slice = rows.slice(offset, offset + PER_PAGE);
-      const search = !!(req.query.q || req.query.new); // search results are not pages to rank: noindex, but their links may be followed
+      const search = !!(req.query.q || req.query.new) || isVariantQuery(req.query); // search results and ?sort= ?view= ?order= variants are not pages to rank: noindex, but their links may be followed; canonical stays the clean URL
       const heading = cat ? cat.title : 'All products';
       const title = listTitle(page, cat ? [`${cat.title} Price in Bangladesh | ${SHORT}`, `${cat.title} | ${SHORT}`] : [STATIC['/shop'][0], `Shop All Products | ${SHORT}`], cat ? cat.title : 'All Products');
       const intro = cat ? `Buy genuine ${cat.title.toLowerCase()} online in Bangladesh. ${cat.description || ''} Best prices and fast delivery in Dhaka.` : STATIC['/shop'][1];
@@ -150,7 +149,7 @@ export function mountSeo(app, dist) {
       const url = base + pageUrl(path, page);
       const trail = cat ? [['Home', '/'], ['Shop', '/shop'], [cat.title]] : [['Home', '/'], ['Shop']];
       return { m: {
-        path: pageUrl(path, page), title, desc, noindex: search, follow: search,
+        path: pageUrl(path, page), title, desc, noindex: search, follow: search, canonical: search ? url : undefined, preload: slice[0]?.img || undefined,
         prev: page > 1 ? base + pageUrl(path, page - 1) : undefined, next: page < pages ? base + pageUrl(path, page + 1) : undefined,
         ld: search ? undefined : [
           collectionLd({ name: heading, url, description: desc, total: rows.length, offset, items: slice.map(x => ({ name: x.name, url: base + productPath(x) })) }),
@@ -186,7 +185,7 @@ export function mountSeo(app, dist) {
         const imgs = (gal.length ? gal.map(g => g.path) : [x.img]).filter(Boolean).map(i => abs(base, i));
         const url = base + productPath(x);
         const prod = {
-          '@context': 'https://schema.org', '@type': 'Product', name: x.name, image: imgs, sku: x.sku || String(x.id), mpn: x.part || undefined, category: cat?.title,
+          '@context': 'https://schema.org', '@type': 'Product', name: x.name, image: imgs, sku: x.sku || String(x.id), mpn: x.part || undefined, ...productExtras(x), category: cat?.title,
           description: clip(plain(x.short_desc) || plain(x.description) || x.meta_desc || x.name, 500), brand: x.brand ? { '@type': 'Brand', name: x.brand } : undefined, url
         };
         if (x.price > 0) {
@@ -194,6 +193,7 @@ export function mountSeo(app, dist) {
             '@type': 'Offer', url, priceCurrency: 'BDT', price: String(x.price), priceValidUntil: priceUntil(), itemCondition: 'https://schema.org/NewCondition',
             availability: x.stock > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock', seller: { '@type': 'Organization', name: NAME }
           };
+          Object.assign(prod.offers, offerExtras(x, x.price, { vatShown: true })); // the product page shows "Prices include VAT"
           // delivery charges come from the site settings: Dhaka is free within freeKm of the office, then priced by distance (the cheapest tier is listed); the rest of Bangladesh is outsideFee; nothing is guessed when they are not set
           const dlv = mergeDelivery(site.delivery);
           const ship = [['Dhaka', Math.min(...dlv.tiers.map(t => t.fee).concat(dlv.maxFee))], [null, site.outsideFee]].filter(([, f]) => money(f) !== null).map(([region, f]) => ({
@@ -202,7 +202,12 @@ export function mountSeo(app, dist) {
           }));
           if (ship.length) prod.offers.shippingDetails = ship;
         }
-        if (rv.n > 0) prod.aggregateRating = { '@type': 'AggregateRating', ratingValue: Number(rv.a).toFixed(1), reviewCount: Number(rv.n) };
+        if (rv.n > 0) {
+          prod.aggregateRating = aggregateLd(rv.n, rv.a);
+          const [rvs] = await pool.query('SELECT name, rating, title, body, created_at FROM reviews WHERE product_id = ? AND status = "Approved" ORDER BY created_at DESC, id DESC LIMIT 10', [x.id]);
+          const list = reviewsLd(rvs, 10);
+          if (list.length) prod.review = list;
+        }
         const crumbs = { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [
           { '@type': 'ListItem', position: 1, name: 'Home', item: base + '/' }, { '@type': 'ListItem', position: 2, name: cat?.title || 'Shop', item: `${base}/shop/${x.category_id}` }, { '@type': 'ListItem', position: 3, name: x.name, item: url }] };
         // generated from the product data; a title or description written by hand in the admin is kept, the import's generated ones are replaced
@@ -228,7 +233,10 @@ export function mountSeo(app, dist) {
     } else if ((r = p.match(/^\/services\/([^/]+)$/))) {
       const [[x]] = await pool.query('SELECT title, excerpt, cover, body, meta_title, meta_desc, meta_keywords, noindex FROM site_pages WHERE slug = ? AND status = "Published"', [dec(r[1])]);
       if (x) m = { path: p, title: x.meta_title || `${x.title} | ${NAME}`, desc: x.meta_desc || x.excerpt || clip(plain(x.body), 155), keywords: x.meta_keywords, noindex: !!x.noindex, image: x.cover };
-      if (x) m.fallback = pageFallback({ title: x.title, intro: clip(plain(x.excerpt), 300), blocks: [textBlock('', clip(plain(x.body), 4000)), linkBlock('Our servicing', [link('/services', 'Printer & photocopier servicing')])], cats, site });
+      if (x) {
+        m.fallback = pageFallback({ title: x.title, intro: clip(plain(x.excerpt), 300), blocks: [textBlock('', clip(plain(x.body), 4000)), linkBlock('Our servicing', [link('/services', 'Printer & photocopier servicing')])], cats, site });
+        m.ld = [serviceLd({ name: x.title, description: plain(x.excerpt) || plain(x.body), url: base + p, storeId: base + '/#store' }), breadcrumbLd([['Home', base + '/'], ['Services', base + '/services'], [x.title, base + p]])];
+      }
     } else if ((r = p.match(/^\/shop\/([^/]+)$/)) && r[1] !== 'all') {
       const [[x]] = await pool.query('SELECT id, title, description FROM categories WHERE id = ?', [r[1]]);
       if (x) { const L = listing(x); if (L.redirect) return res.redirect(301, L.redirect); m = L.m; status = L.status || 200; }
@@ -253,19 +261,25 @@ export function mountSeo(app, dist) {
       if (p === '/') blocks.push(linkBlock('Shop by category', cats.map(c => link('/shop/' + c.id, c.title))), linkBlock('Popular products', prods.slice(0, 24).map(productLine)));
       if (p === '/blog') blocks.push(linkBlock('Articles', (await pool.query('SELECT slug, title FROM blog_posts WHERE status = "Published" AND noindex = 0 ORDER BY published DESC LIMIT 40'))[0].map(x => link('/blog/' + x.slug, x.title))));
       if (p === '/services') blocks.push(linkBlock('Servicing', (await pool.query('SELECT slug, title FROM site_pages WHERE status = "Published" AND grp = "servicing" AND noindex = 0'))[0].map(x => link('/services/' + x.slug, x.title))));
-      m = { path: p, title: t, desc: d, keywords: kw || undefined, noindex: hide, fallback: hide ? undefined : pageFallback({ title: p === '/' ? `${NAME}: genuine toner, printers and copiers in Bangladesh` : t.split(/ [|—] /)[0], intro: d, blocks, cats, site }), ld: p === '/' ? [org, { '@context': 'https://schema.org', '@type': 'WebSite', '@id': base + '/#website', name: NAME, url: base, publisher: { '@id': base + '/#store' }, potentialAction: { '@type': 'SearchAction', target: `${base}/shop/all?q={search_term_string}`, 'query-input': 'required name=search_term_string' } }] : undefined };
+      if (p === '/faq') blocks.push(faqBlock(c.faqs));
+      const faq = p === '/faq' ? faqLd(c.faqs) : null;
+      m = { path: p, title: t, desc: d, keywords: kw || undefined, noindex: hide, preload: p === '/' ? heroImage(c.slides) : undefined, fallback: hide ? undefined : pageFallback({ title: p === '/' ? `${NAME}: genuine toner, printers and copiers in Bangladesh` : t.split(/ [|—] /)[0], intro: d, blocks, cats, site }), ld: p === '/' ? [org, { '@context': 'https://schema.org', '@type': 'WebSite', '@id': base + '/#website', name: NAME, url: base, publisher: { '@id': base + '/#store' }, potentialAction: { '@type': 'SearchAction', target: `${base}/shop/all?q={search_term_string}`, 'query-input': 'required name=search_term_string' } }] : p === '/contact' ? [org, breadcrumbLd([['Home', base + '/'], ['Contact', base + '/contact']])] : p === '/faq' ? [faq, breadcrumbLd([['Home', base + '/'], ['FAQ', base + '/faq']])].filter(Boolean) : p === '/services' ? [breadcrumbLd([['Home', base + '/'], ['Services', base + '/services']])] : undefined };
+    }
+    if (!m && (r = p.match(/^\/policy\/([^/]+)$/))) {
+      const pol = (c.policies || []).find(x => x.k === dec(r[1]));
+      if (pol) {
+        const pm = policyMeta(pol);
+        m = { path: p, title: pm.title, desc: pm.desc, ld: [breadcrumbLd([['Home', base + '/'], [pol.t, base + p]])], fallback: pageFallback({ title: pol.t, blocks: policyBlocks(pol), cats, site }) };
+      }
     }
     if (!m) {
       // a page that does not exist must answer 404, not 200 (Google treats a 200 "not found" page as a soft 404)
       let exists = p === '/' || PRIVATE.test(p);
       if (!exists && (r = p.match(/^\/careers\/([^/]+)$/))) exists = !!(await pool.query('SELECT 1 FROM jobs WHERE id = ?', [dec(r[1])]))[0].length;
-      if (!exists && (r = p.match(/^\/policy\/([^/]+)$/))) {
-        const c = parseJson((await pool.query('SELECT v FROM settings WHERE k = "content"'))[0][0]?.v) || {};
-        exists = (c.policies || []).some(x => x.k === dec(r[1]));
-      }
       if (!exists) status = 404;
       m = { path: p, title: status === 404 ? 'Page not found | ' + NAME : NAME, desc: STATIC['/'][1], noindex: status === 404 || PRIVATE.test(p) || p !== '/' };
     } else if (PRIVATE.test(p)) m.noindex = true;
+    if (status === 404 && !m.fallback) { m.fallback = notFoundFallback({ cats, site }); m.noindex = true; m.follow = false; } // keep 404 + noindex,nofollow, but give crawlers and people real links
 
     res.status(status).type('html').send(inject(template(dist), base, m));
   }));

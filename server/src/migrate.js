@@ -31,6 +31,8 @@ export async function ensureSchema() {
   if (prc.length && !prc.some(r => r.c === 'warranty')) await pool.query('ALTER TABLE products ADD COLUMN warranty TINYINT(1) NOT NULL DEFAULT 1');
   // last change of a product, for the sitemap's <lastmod>: stays NULL (no lastmod) until a product is really changed
   if (prc.length && !prc.some(r => r.c === 'updated_at')) { await pool.query('ALTER TABLE products ADD COLUMN updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP'); console.log('Added products.updated_at'); }
+  // GTIN / EAN barcode (digits only, optional), emitted to Google as product data; no backfill
+  if (prc.length && !prc.some(r => r.c === 'gtin')) { await pool.query('ALTER TABLE products ADD COLUMN gtin VARCHAR(14) NULL'); console.log('Added products.gtin'); }
   // search-engine fields the admin fills in for blog articles and site pages (title, description, keywords, hide from Google)
   for (const table of ['blog_posts', 'site_pages']) {
     const [tc] = await pool.query('SELECT COLUMN_NAME c FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?', [table]);

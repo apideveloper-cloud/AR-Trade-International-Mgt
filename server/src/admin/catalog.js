@@ -6,6 +6,7 @@ import { fail, parseJson, wrap, isLocalImg, localImg } from '../util.js';
 import { buildProductReport } from '../overview.js';
 import { whereOf } from '../listing.js';
 import { SAN } from '../adminContent.js';
+import { normalizeGtin, gtinValid } from '../gtin.js';
 import { like, page } from '../adminHelpers.js';
 
 const prodOut = r => ({
@@ -13,7 +14,7 @@ const prodOut = r => ({
   isNew: !!r.is_new, featured: !!r.featured, active: !!r.active, tech: r.tech, color: r.color, yield: r.yield_info, part: r.part, compat: r.compat, spec: r.spec,
   description: r.description || '', gallery: parseJson(r.gallery) || [], source: r.source_url || '', edited: !!r.edited,
   metaTitle: r.meta_title || '', metaDesc: r.meta_desc || '', metaKeywords: r.meta_keywords || '',
-  warranty: !(r.warranty === 0 || r.warranty === false)
+  warranty: !(r.warranty === 0 || r.warranty === false), gtin: r.gtin || ''
 });
 const PROD_COLS = { warranty: 'warranty', metaTitle: 'meta_title', metaDesc: 'meta_desc', metaKeywords: 'meta_keywords', cat: 'category_id', brand: 'brand', name: 'name', old: 'old_price', price: 'price', img: 'img', stock: 'stock', popular: 'popular', isNew: 'is_new', featured: 'featured', active: 'active', tech: 'tech', color: 'color', yield: 'yield_info', part: 'part', compat: 'compat', spec: 'spec' };
 const BOOL = new Set(['popular', 'isNew', 'featured', 'active', 'warranty']);
@@ -34,6 +35,22 @@ function productPatch(body) {
   if ('gallery' in body) { sets.push('gallery = ?'); vals.push(JSON.stringify((Array.isArray(body.gallery) ? body.gallery : []).map(u => String(u).trim()).filter(isLocalImg).slice(0, 12))); }
   if (sets.length) sets.push('edited = 1');
   return { sets, vals };
+}
+
+/** Reads body.gtin: undefined = not sent, null = clear, else the normalised digits (400 when malformed). */
+function gtinOf(body) {
+  if (!('gtin' in body)) return undefined;
+  const raw = body.gtin == null ? '' : String(body.gtin).trim();
+  if (!raw) return null;
+  const g = normalizeGtin(raw);
+  if (!g) throw fail(400, 'GTIN must be 8, 12, 13 or 14 digits');
+  return g;
+}
+/** Warning text when another product already carries this GTIN (saving is still allowed). */
+async function gtinWarning(g, id) {
+  if (!g) return '';
+  const [[o]] = await pool.query('SELECT id FROM products WHERE gtin = ? AND id <> ? ORDER BY id LIMIT 1', [g, id]);
+  return [o && `Same GTIN as product ${o.id}`, !gtinValid(g) && 'GTIN check digit does not match (saved anyway)'].filter(Boolean).join('. ');
 }
 
 /** Runs UPDATE <table> SET <sets> WHERE id = ? and returns how many rows matched. */
@@ -63,10 +80,13 @@ export function mountCatalogRoutes(router, guard) {
 
   router.put('/products/:id', guard('products.manage'), wrap(async (req, res) => {
     const { sets, vals } = productPatch(req.body);
+    const gtin = gtinOf(req.body);
+    if (gtin !== undefined) { sets.push('gtin = ?'); vals.push(gtin); if (sets.length === 1) sets.push('edited = 1'); }
     if (!sets.length) throw fail(400, 'Nothing to update');
     if (!(await updateById('products', sets, vals, req.params.id))) throw fail(404, 'Product not found');
     const [[p]] = await pool.query('SELECT * FROM products WHERE id = ?', [req.params.id]);
-    res.json(prodOut(p));
+    const warn = await gtinWarning(p.gtin, p.id);
+    res.json(warn ? { ...prodOut(p), gtinWarning: warn } : prodOut(p));
   }));
 
   router.get('/products/:id/report', guard(['products.view', 'dashboard.view']), wrap(async (req, res) => { res.json(await buildProductReport(pool, req.params.id, req.query.asOf, Number(req.query.range) || 30)); }));
@@ -88,14 +108,17 @@ export function mountCatalogRoutes(router, guard) {
   router.post('/products', guard('products.manage'), wrap(async (req, res) => {
     const b = req.body;
     if (typeof b.name !== 'string' || typeof b.cat !== 'string' || typeof b.brand !== 'string' || !b.name || !b.cat || !b.brand) throw fail(400, 'Name, brand and category are required');
+    const gtin = gtinOf(b);
     const [[{ m }]] = await pool.query('SELECT COALESCE(MAX(id), 29999) m FROM products WHERE id >= 30000');
     const id = Math.max(30000, m + 1);
     await pool.query('INSERT INTO products (id,category_id,brand,name,old_price,price,img,stock,is_new,active,tech,color,yield_info,part,compat,spec,description,gallery,edited) VALUES (?,?,?,?,?,?,?,?,1,1,?,?,?,?,?,?,?,?,1)',
       [id, b.cat, b.brand, b.name, Math.max(0, parseInt(b.old, 10) || 0), Math.max(0, parseInt(b.price, 10) || 0), localImg(b.img) || null, Math.max(0, parseInt(b.stock, 10) || 0), String(b.tech || ''), String(b.color || ''), String(b.yield || ''), String(b.part || ''), String(b.compat || ''), String(b.spec || ''), sanitizeHtml(String(b.description || ''), SAN), JSON.stringify((Array.isArray(b.gallery) ? b.gallery : (b.img ? [b.img] : [])).map(u => String(u).trim()).filter(isLocalImg).slice(0, 12))]);
     await assignSlug(pool, id);
     if ('warranty' in b) await pool.query('UPDATE products SET warranty = ? WHERE id = ?', [+!!b.warranty, id]);
+    if (gtin) await pool.query('UPDATE products SET gtin = ? WHERE id = ?', [gtin, id]);
     const [[p]] = await pool.query('SELECT * FROM products WHERE id = ?', [id]);
-    res.json(prodOut(p));
+    const warn = await gtinWarning(gtin, id);
+    res.json(warn ? { ...prodOut(p), gtinWarning: warn } : prodOut(p));
   }));
 
   router.delete('/products/:id', guard('products.manage'), wrap(async (req, res) => {

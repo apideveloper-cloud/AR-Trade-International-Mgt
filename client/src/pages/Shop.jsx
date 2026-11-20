@@ -114,7 +114,7 @@ export default function Shop() {
           <Pager where="top" {...pagerProps} />
           {view === 'grid' ? (
             <div className="p-grid">
-              {shown.map(p => <div key={p.id}><ProductCard p={p} /></div>)}
+              {shown.map((p, n) => <div key={p.id}><ProductCard p={p} priority={n < 4} /></div>)}
               {skels.map(i => <SkeletonCard key={'s' + i} />)}
             </div>
           ) : (
