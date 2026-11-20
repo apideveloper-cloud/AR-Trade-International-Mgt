@@ -9,7 +9,7 @@ export function ResetLinkModal({ link, onClose }) {
     <Modal kicker="Password reset" title={'Reset link for ' + link.name} onClose={onClose}
       footer={<>
         <button type="button" className="a-btn sm" onClick={() => { navigator.clipboard?.writeText(link.url)?.catch(() => {}); setCopied(true); setTimeout(() => setCopied(false), 2000); }}>{copied ? 'Copied ✓' : 'Copy link'}</button>
-        <a className="a-btn ghost sm" target="_blank" rel="noreferrer" href={`https://wa.me/88${String(link.phone || '').replace(/\D/g, '')}?text=${encodeURIComponent('AR Trade: set a new password here (valid 24 hours): ' + link.url)}`}>Send on WhatsApp</a>
+        <a className="a-btn ghost sm" target="_blank" rel="noreferrer" href={`https://wa.me/88${String(link.phone || '').replace(/\D/g, '')}?text=${encodeURIComponent(`AR Trade: set a new password here (valid ${link.hours || 24} hours): ` + link.url)}`}>Send on WhatsApp</a>
         <button type="button" className="a-btn ghost sm" onClick={onClose}>Close</button>
       </>}>
       <div className="sinl-col">

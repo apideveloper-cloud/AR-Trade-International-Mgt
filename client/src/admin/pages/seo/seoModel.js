@@ -16,23 +16,6 @@ export function setIn(obj, path, value) {
   return base;
 }
 
-const filled = v => (Array.isArray(v) ? v.length > 0 : v != null && String(v).trim() !== '');
-
-/** Which parts of the settings are filled in: [[label, done, hint]] for the Overview checklist. */
-export function completeness(s) {
-  if (!s) return [];
-  const t = s.templates || {};
-  const tplDone = PAGE_TYPES.every(([k]) => t[k] && filled(t[k].title) && filled(t[k].description));
-  return [
-    ['Site name', filled(s.general?.siteName), 'General'],
-    ['Title and description templates for every page type', tplDone, 'Templates'],
-    ['Shipping (zones and delivery days)', filled(s.shipping?.zones) && (filled(s.shipping?.handlingDays) || filled(s.shipping?.transitDays?.dhaka)), 'Shipping and returns'],
-    ['Returns policy', filled(s.returns?.windowDays) && filled(s.returns?.category), 'Shipping and returns'],
-    ['Opening hours', filled(s.business?.hours), 'Business'],
-    ['Search engine verification', filled(s.verification?.google) || filled(s.verification?.bing), 'Verification']
-  ].map(([label, done, where]) => [label, !!done, where]);
-}
-
 /** PUT that keeps the list of problems the server sends with a 400 (adm.put only keeps the first message). */
 export async function putJson(url, body) {
   const t = getAdminToken();

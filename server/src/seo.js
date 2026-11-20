@@ -265,8 +265,9 @@ export function inject(html, base, m, status = 200) {
     analyticsFor(m, status)
   ].filter(Boolean).join('\n');
   // the shell carries a generic description: remove it, the page has its own (two descriptions make Google pick one)
-  let out = html.replace(/<meta name="description"[^>]*>\s*/g, '').replace(/<title>[^<]*<\/title>/, `<title>${esc(m.title)}</title>`).replace('</head>', tags + '\n</head>');
-  if (m.fallback) out = out.replace('<div id="root"></div>', `<div id="root">${m.fallback}</div>`);
+  // function replacers: a string replacement treats "$$", "$&", "$'" and "$`" in product text (for example "Save $$$") as patterns and corrupts the page
+  let out = html.replace(/<meta name="description"[^>]*>\s*/g, '').replace(/<title>[^<]*<\/title>/, () => `<title>${esc(m.title)}</title>`).replace('</head>', () => tags + '\n</head>');
+  if (m.fallback) out = out.replace('<div id="root"></div>', () => `<div id="root">${m.fallback}</div>`);
   return out;
 }
 
@@ -314,9 +315,11 @@ export function mountSeo(app, dist) {
     if (PUBLIC_PAGE.test(shown) && shown !== shown.toLowerCase()) return res.redirect(301, encodeURI(shown.toLowerCase()) + search(req));
     if (PUBLIC_PAGE.test(req.path) && req.path.length > 1 && req.path.endsWith('/')) return res.redirect(301, p + search(req));
     // admin-managed redirects (old product / blog / page addresses); any failure means "no redirect"
-    const hit = await redirects.lookup(shown).catch(() => null);
+    // the 404 monitor logs the address as sent (percent-encoded), so a redirect made from that list is stored encoded: try the decoded spelling, then the sent one
+    let hitSource = shown, hit = await redirects.lookup(shown).catch(() => null);
+    if (!hit && p !== shown) { hitSource = p; hit = await redirects.lookup(p).catch(() => null); }
     if (hit) {
-      pool.query('UPDATE seo_redirects SET hits = hits + 1, last_hit = NOW() WHERE source = ?', [shown]).catch(() => {}); // not awaited, errors ignored
+      pool.query('UPDATE seo_redirects SET hits = hits + 1, last_hit = NOW() WHERE source = ?', [hitSource]).catch(() => {}); // not awaited, errors ignored
       return res.redirect(hit.code, redirectTarget(hit.target));
     }
     const R = await resolveMeta({ base, p, query: req.query, qs: search(req) });

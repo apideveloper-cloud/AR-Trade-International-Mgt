@@ -12,7 +12,8 @@ export function useAdminSession() {
   useEffect(() => { setUnauthorizedHandler(logout); }, [logout]);
   useEffect(() => {
     if (!getAdminToken()) { setReady(true); return; }
-    adm.get('/me').then(r => setStaff(r.staff)).catch(() => setAdminToken(null)).finally(() => setReady(true));
+    adm.get('/me').then(r => setStaff(r.staff)).catch(e => { if (e.status === 401) setAdminToken(null); }) // only a refused token is forgotten: a server restart or lost connection must not sign a "Remember me" device out
+      .finally(() => setReady(true));
   }, []);
   const loadCats = useCallback(() => adm.get('/categories').then(r => setCats(r.map(c => ({ id: c.id, title: c.title })))).catch(() => {}), []);
   useEffect(() => { if (staff && can(staff, 'products.view')) loadCats(); }, [staff, loadCats]);

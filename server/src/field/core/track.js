@@ -1,5 +1,6 @@
 // Live GPS tracking: upload points, who is on duty now, one person's route.
 import { Router } from 'express';
+import { trackPointOk } from './rules.js';
 import { pool, guard, wrap, fail, isApprover, mysqlDate, UTC, range, coord } from '../common.js';
 
 const router = Router();
@@ -9,7 +10,7 @@ router.post('/track', guard(), wrap(async (req, res) => {
   if (!pts.length) throw fail(400, 'No points');
   const rows = [];
   for (const p of pts) { // a malformed point is skipped, it never fails the batch
-    try { rows.push([req.staff.id, coord(p?.lat, 90), coord(p?.lng, 180), mysqlDate(p?.time)]); } catch { /* skip */ }
+    try { if (!trackPointOk(p)) continue; rows.push([req.staff.id, coord(p?.lat, 90), coord(p?.lng, 180), mysqlDate(p?.time)]); } catch { /* skip */ }
   }
   if (rows.length) await pool.query('INSERT INTO field_track (staff_id,lat,lng,at) VALUES ?', [rows]);
   // `accepted` = how many points from the START of the sent list were taken in (at most 500 are read): the app drops exactly those; bad points among them are counted in `skipped`

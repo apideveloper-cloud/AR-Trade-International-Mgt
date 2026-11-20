@@ -58,17 +58,32 @@ export async function runOnce() {
   return j.id;
 }
 
-async function queueRecurring() {
+export const FAILED_PAUSE_MS = 3600e3; // a recurring job that ran out of attempts is tried again at most once an hour (not every 15 s)
+/** Queues every recurring job that has nothing waiting, running, recently done or recently failed. */
+export async function queueRecurring() {
   for (const [type, r] of recurring) {
-    const [x] = await pool.query("SELECT 1 FROM growth_jobs WHERE type = ? AND (status IN ('Queued','Running') OR (status = 'Done' AND finished_at > ?)) LIMIT 1", [type, new Date(Date.now() - r.everyMs)]);
+    const now = Date.now();
+    const [x] = await pool.query("SELECT 1 FROM growth_jobs WHERE type = ? AND (status IN ('Queued','Running') OR (status = 'Done' AND finished_at > ?) OR (status = 'Failed' AND finished_at > ?)) LIMIT 1", [type, new Date(now - r.everyMs), new Date(now - Math.min(r.everyMs, FAILED_PAUSE_MS))]);
     if (!x.length) await enqueue(type, r.payload, { dedupeKey: 'rec:' + type });
   }
 }
 
+export const KEEP_DONE_MS = 14 * 86400e3, KEEP_FAILED_MS = 60 * 86400e3, KEEP_LOG_MS = 90 * 86400e3;
+let lastPrune = 0;
+/** Finished jobs and API log rows older than their retention are deleted (recurring jobs add hundreds of rows a day). At most once an hour. */
+export async function pruneOld(now = Date.now()) {
+  if (now - lastPrune < 3600e3) return;
+  lastPrune = now;
+  await pool.query("DELETE FROM growth_jobs WHERE status = 'Done' AND finished_at < ? LIMIT 5000", [new Date(now - KEEP_DONE_MS)]);
+  await pool.query("DELETE FROM growth_jobs WHERE status = 'Failed' AND finished_at < ? LIMIT 5000", [new Date(now - KEEP_FAILED_MS)]);
+  await pool.query('DELETE FROM integration_logs WHERE at < ? LIMIT 5000', [new Date(now - KEEP_LOG_MS)]);
+}
+export const _resetPrune = () => { lastPrune = 0; };
+
 export async function tick() {
   if (busy || stopping) return;
   busy = true;
-  try { await queueRecurring(); for (let i = 0; i < 5 && !stopping; i++) if (!(await runOnce())) break; }
+  try { await queueRecurring(); await pruneOld().catch(() => {}); for (let i = 0; i < 5 && !stopping; i++) if (!(await runOnce())) break; }
   catch (e) { console.error('growth jobs:', e.message); }
   finally { busy = false; }
 }

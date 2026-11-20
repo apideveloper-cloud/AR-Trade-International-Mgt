@@ -21,9 +21,11 @@ export function Contact() {
   const ft = withDefaults(DEFAULT_FOOTER, content.footer);
   const [sent, setSent] = useState(false);
   const [err, setErr] = useState('');
+  const [busy, setBusy] = useState(false); // blocks a second click while the first message is on its way
   const submit = async e => {
-    e.preventDefault(); setErr('');
+    e.preventDefault(); if (busy) return; setErr(''); setBusy(true);
     try { await api.post('/contact', Object.fromEntries(new FormData(e.target).entries())); setSent(true); } catch (er) { setErr(er.message); }
+    setBusy(false);
   };
   return (
     <section className="inf-wrap">
@@ -45,7 +47,7 @@ export function Contact() {
               <label className="lbl">Company (optional)<input className="field" name="company" /></label>
               <label className="lbl">Message<textarea className="field inf-msg" name="msg" rows={5} required /></label>
               {err && <div className="err">{err}</div>}
-              <button className="btn btn-dark btn-pill inf-send">Send message</button>
+              <button className="btn btn-dark btn-pill inf-send" disabled={busy}>{busy ? "Sending…" : "Send message"}</button>
             </form>
           ) : <span className="inf-thanks">Thanks — we'll reply within one business day.</span>}
         </div>

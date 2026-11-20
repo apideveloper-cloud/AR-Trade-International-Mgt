@@ -10,13 +10,13 @@ const EMAIL_RE = /^\S+@\S+\.\S+$/;
 const MOBILE_RE = /^01[3-9]\d{8}$/;
 
 /** NID, addresses and the reference person of a staff member. All optional, but checked when given. */
-function staffDetails(b) {
-  const nid = digits(b.nid);
+export function staffDetails(b, cur = {}) { // a field missing from `b` keeps its value in `cur`: a partial edit must not blank the rest
+  const nid = digits(b.nid ?? cur.nid);
   if (nid && ![10, 13, 17].includes(nid.length)) throw fail(400, 'NID must have 10, 13 or 17 digits.');
-  const refPhone = digits(b.refPhone).slice(-11);
+  const refPhone = digits(b.refPhone ?? cur.ref_phone).slice(-11);
   if (refPhone && !MOBILE_RE.test(refPhone)) throw fail(400, 'Enter a valid 11-digit mobile number for the reference person (01XXXXXXXXX).');
   const cut = (v, n) => String(v ?? '').trim().slice(0, n);
-  return { nid, present_address: cut(b.presentAddress, 300), contact_address: cut(b.contactAddress, 300), ref_name: cut(b.refName, 120), ref_phone: refPhone };
+  return { nid, present_address: cut(b.presentAddress ?? cur.present_address, 300), contact_address: cut(b.contactAddress ?? cur.contact_address, 300), ref_name: cut(b.refName ?? cur.ref_name, 120), ref_phone: refPhone };
 }
 const staffRow = s => ({ ...staffOut(s), nid: s.nid || '', presentAddress: s.present_address || '', contactAddress: s.contact_address || '', refName: s.ref_name || '', refPhone: s.ref_phone || '' });
 
@@ -79,7 +79,7 @@ export function mountTeamRoutes(router, guard) {
     const email = String(req.body.email ?? t.email).trim().toLowerCase().slice(0, 160);
     const phone = digits(req.body.phone ?? t.phone).slice(-11);
     checkContact(name, email, phone);
-    const d = staffDetails(req.body);
+    const d = staffDetails(req.body, t);
     const [dup] = await pool.query('SELECT id FROM staff WHERE (email = ? OR phone = ?) AND id <> ?', [email, phone, t.id]);
     if (dup.length) throw fail(409, 'This email or mobile number is already used by another account.');
     await pool.query('UPDATE staff SET name=?, email=?, phone=?, nid=?, present_address=?, contact_address=?, ref_name=?, ref_phone=? WHERE id=?', [name, email, phone, d.nid, d.present_address, d.contact_address, d.ref_name, d.ref_phone, t.id]);

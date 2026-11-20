@@ -23,15 +23,17 @@ const prodOut = r => ({
 const PROD_COLS = { warranty: 'warranty', metaTitle: 'meta_title', metaDesc: 'meta_desc', metaKeywords: 'meta_keywords', cat: 'category_id', brand: 'brand', name: 'name', old: 'old_price', price: 'price', img: 'img', stock: 'stock', popular: 'popular', isNew: 'is_new', featured: 'featured', active: 'active', tech: 'tech', color: 'color', yield: 'yield_info', part: 'part', compat: 'compat', spec: 'spec' };
 const BOOL = new Set(['popular', 'isNew', 'featured', 'active', 'warranty']);
 const INT = new Set(['old', 'price', 'stock']);
+const REQUIRED = { name: 'Name', cat: 'Category' }; // brand is not required here: imported products may have none and the edit form sends it back as ''
 const META_MAX = { metaTitle: 160, metaDesc: 320, metaKeywords: 500 };
 
-function productPatch(body) {
+export function productPatch(body) {
   const sets = [], vals = [];
   for (const [k, col] of Object.entries(PROD_COLS)) {
     if (!(k in body)) continue;
     let v = body[k];
     if (BOOL.has(k)) v = +!!v; else if (INT.has(k)) v = Math.max(0, parseInt(v, 10) || 0); else v = v == null ? '' : String(v);
     if (META_MAX[k]) v = v.slice(0, META_MAX[k]);
+    if (REQUIRED[k] && !String(v).trim()) throw fail(400, REQUIRED[k] + ' cannot be empty'); // a blank name makes an unnamed product (empty title, empty feed row)
     if (k === 'img') v = localImg(v) || null;
     sets.push(`${col} = ?`); vals.push(v);
   }

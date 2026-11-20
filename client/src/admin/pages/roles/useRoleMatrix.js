@@ -14,7 +14,8 @@ export function useRoleMatrix() {
   const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
 
-  const load = () => adm.get('/roles').then(d => { setData(d); setDraft(draftOf(d)); }).catch(e => setErr(e.message));
+  // `keep`: roles whose unsaved ticks stay as they are (resetting one role must not throw away the edits of the others)
+  const load = (keep = []) => adm.get('/roles').then(d => { setData(d); setDraft(prev => ({ ...draftOf(d), ...Object.fromEntries(keep.filter(k => prev[k]).map(k => [k, prev[k]])) })); }).catch(e => setErr(e.message));
   useEffect(() => { load(); }, []);
 
   const roles = useMemo(() => (data ? data.roles.filter(r => showLegacy || !r.legacy) : []), [data, showLegacy]);
@@ -40,7 +41,7 @@ export function useRoleMatrix() {
   const reset = async name => {
     if (!(await confirmBox(`Reset "${name}" to its default access?`, { confirmLabel: 'Reset access' }))) return;
     setErr(''); setMsg('');
-    try { await adm.post(`/roles/${encodeURIComponent(name)}/reset`); await load(); setMsg(`"${name}" is back to its default access.`); } catch (e) { setErr(e.message); }
+    try { await adm.post(`/roles/${encodeURIComponent(name)}/reset`); await load(changed.filter(n => n !== name)); setMsg(`"${name}" is back to its default access.`); } catch (e) { setErr(e.message); }
   };
   return { data, draft, roles, groups, changed, busy, msg, err, showLegacy, setShowLegacy, toggle, setAll, discard, save, reset };
 }

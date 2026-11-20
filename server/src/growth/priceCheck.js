@@ -7,6 +7,8 @@ import { startProgress, setProgress, endProgress, getProgress } from './progress
 import { availabilityOf, dayOf } from '../seoHelpers.js';
 import { availabilityText } from '../merchantFeed.js';
 import { productPath } from '../slug.js';
+import { parseJson } from '../util.js';
+import { dhakaToday as dhakaDay } from './priceRules.js';
 
 export const CAP = 5000, BATCH = 200, STALE_DAYS = 180;
 
@@ -34,7 +36,7 @@ const money = n => `${Number(n).toFixed(2)} BDT`;
 const feedNum = s => num(String(s ?? '').replace(/[^\d.\-]/g, ''));
 
 /** 'YYYY-MM-DD' of now in Asia/Dhaka (UTC+6, no daylight saving). */
-export const dhakaToday = (now = new Date()) => new Date(new Date(now).getTime() + 6 * 3600e3).toISOString().slice(0, 10);
+export const dhakaToday = (now = new Date()) => dhakaDay(new Date(now).getTime());
 
 /** The Product's first Offer out of the page JSON-LD list (array or object), or null. */
 export function offerOf(ld) {
@@ -217,15 +219,14 @@ export async function buildDigest({ query = defaultQuery, origin = '' } = {}) {
 const EMAIL = /^[^\s,;<>"()@]+@[^\s,;<>"()@]+\.[^\s,;<>"()@]+$/;
 export const looksLikeEmail = s => EMAIL.test(String(s || '')) && String(s).length <= 160;
 
+/** The address the digest goes to when none is saved: the shop e-mail, else CONTACT_TO. */
+export async function shopEmail() {
+  try { const [r] = await pool.query('SELECT v FROM settings WHERE k = ?', ['site']); const s = r.length ? parseJson(r[0].v) : null; return String(s?.email || process.env.CONTACT_TO || '').trim(); }
+  catch { return String(process.env.CONTACT_TO || '').trim(); }
+}
 async function defaultDeps() {
-  const [{ readGrowth }, mailer, { siteOrigin }, { parseJson }] = await Promise.all([import('./siteFiles.js'), import('../mailer.js'), import('./site.js'), import('../util.js')]);
-  return {
-    readGrowth, mailReady: () => mailer.mailReady(), sendMail: mailer.sendMail, origin: siteOrigin, query: defaultQuery,
-    async shopEmail() {
-      try { const [r] = await pool.query('SELECT v FROM settings WHERE k = ?', ['site']); const s = r.length ? parseJson(r[0].v) : null; return String(s?.email || process.env.CONTACT_TO || '').trim(); }
-      catch { return String(process.env.CONTACT_TO || '').trim(); }
-    }
-  };
+  const [{ readGrowth }, mailer, { siteOrigin }] = await Promise.all([import('./siteFiles.js'), import('../mailer.js'), import('./site.js')]);
+  return { readGrowth, mailReady: () => mailer.mailReady(), sendMail: mailer.sendMail, origin: siteOrigin, query: defaultQuery, shopEmail };
 }
 
 /** Sends the current summary. force (admin "send test") ignores the on/off switch. Never throws: { skipped, reason } or { sent:true, to, total }. */

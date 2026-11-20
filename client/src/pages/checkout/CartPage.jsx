@@ -5,7 +5,7 @@ import { productPath } from '../../slug.js';
 import { useStore } from '../../store.jsx';
 import { bgImage } from './constants.js';
 import { totalBeforeDelivery } from './helpers.js';
-import { CouponBox, Row } from './parts.jsx';
+import { CouponBox, Row, useCoupon } from './parts.jsx';
 import ViewSwitch from './ViewSwitch.jsx';
 
 const VIEW_KEY = 'ar_cart_view';
@@ -21,8 +21,8 @@ function CartLine({ l, setQty }) {
         <span className="ct-line-each">{fmt(l.price)} each</span>
         {l.short > 0 && <span className="ct-line-short">Only {l.avail} in stock — you can choose how to handle the rest at checkout</span>}
         <div className="ct-line-actions">
-          <div className="qty2"><button onClick={() => setQty(l.id, l.qty - 1)}>−</button><span>{l.qty}</span><button onClick={() => setQty(l.id, l.qty + 1)}>+</button></div>
-          <button onClick={() => setQty(l.id, 0)} className="ct-line-remove">Remove</button>
+          <div className="qty2"><button type="button" aria-label="Decrease quantity" onClick={() => setQty(l.id, l.qty - 1)}>−</button><span>{l.qty}</span><button type="button" aria-label="Increase quantity" onClick={() => setQty(l.id, l.qty + 1)}>+</button></div>
+          <button type="button" onClick={() => setQty(l.id, 0)} className="ct-line-remove">Remove</button>
         </div>
       </div>
       <span className="ct-line-total">{fmt(l.price * l.qty)}</span>
@@ -33,7 +33,7 @@ function CartLine({ l, setQty }) {
 /** The cart page. Delivery is not priced here (it depends on the address), so the total is before delivery. */
 export default function CartPage() {
   const { cartLines, setQty, user, totals } = useStore();
-  const [coupon, setCoupon] = useState('');
+  const [coupon, setCoupon] = useCoupon();
   const [view, setViewState] = useState(readView);
   const setView = v => { setViewState(v); try { localStorage.setItem(VIEW_KEY, v); } catch { /* storage blocked: the choice just is not remembered */ } };
   const t = totals({ area: user?.area || 'inside', coupon });

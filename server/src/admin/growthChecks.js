@@ -4,17 +4,13 @@ import { fail, wrap } from '../util.js';
 import { mailReady, mailSetupHint } from '../mailer.js';
 import { getProgress } from '../growth/progress.js';
 import { readGrowth, saveGrowth } from '../growth/siteFiles.js';
-import { CODES, looksLikeEmail, sendDigest, runCheck } from '../growth/priceCheck.js';
+import { CODES, looksLikeEmail, sendDigest, runCheck, shopEmail } from '../growth/priceCheck.js';
 
 export const RUN_GAP_MS = 60000;
 let lastRun = 0; // manual run: once per minute per process
 export const _resetRunGap = () => { lastRun = 0; };
 const iso = d => (d ? new Date(d).toISOString() : null);
 const int = (v, d, min, max) => { const n = Math.floor(Number(v)); return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : d; };
-
-async function shopEmail() {
-  try { const [r] = await pool.query('SELECT v FROM settings WHERE k = ?', ['site']); const s = r.length ? (typeof r[0].v === 'string' ? JSON.parse(r[0].v) : r[0].v) : null; return String(s?.email || '').trim(); } catch { return ''; }
-}
 
 export function mountGrowthCheckRoutes(router, guard, deps = {}) {
   const start = deps.start || runCheck;

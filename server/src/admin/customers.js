@@ -13,13 +13,33 @@ const inRange = (d, req) => { const a = day(req.query.from), b = day(req.query.t
 /** Marks every open password-reset link of a customer as used. */
 const closeResets = userId => pool.query('UPDATE password_resets SET used_at = NOW() WHERE user_id = ? AND used_at IS NULL', [userId]);
 
+/** One row per customer, orders and accounts merged by the last 10 digits of the mobile number. Several order groups of one number (the same person typed the name two ways) add up
+ *  instead of the last one winning, and accounts without a mobile (social sign-up) stay separate instead of all collapsing into one row. Returns a Map. */
+export function mergeCustomers(orders, users) {
+  const map = new Map();
+  const at = d => (d ? new Date(d).getTime() : 0);
+  for (const o of orders) {
+    const k = digits(o.phone).slice(-10) || 'o:' + o.name;
+    const c = map.get(k);
+    if (!c) { map.set(k, { name: o.name, phone: o.phone, email: o.email, n: Number(o.n), ltv: Number(o.ltv), last: o.last }); continue; }
+    if (at(o.last) > at(c.last)) { c.name = o.name; c.phone = o.phone; c.last = o.last; }
+    c.n += Number(o.n); c.ltv += Number(o.ltv); c.email = c.email || o.email;
+  }
+  for (const u of users) {
+    const k = digits(u.phone).slice(-10) || 'u:' + u.id;
+    const c = map.get(k);
+    if (!c) map.set(k, { name: u.name, phone: u.phone, email: u.email, userId: u.id, memberCode: u.member_code || '', n: 0, ltv: 0, last: null });
+    else { if (!c.email) c.email = u.email; c.userId = u.id; c.memberCode = u.member_code || ''; }
+  }
+  return map;
+}
+
 export function mountCustomerRoutes(router, guard) {
   router.get('/customers', guard('customers.view'), wrap(async (req, res) => {
     const { size, p } = page(req);
     const [orders] = await pool.query('SELECT customer_name name, customer_phone phone, MAX(customer_email) email, COUNT(*) n, SUM(total) ltv, MAX(created_at) last FROM orders WHERE status <> "Cancelled" GROUP BY customer_phone, customer_name');
     const [users] = await pool.query('SELECT id, name, phone, email, member_code FROM users');
-    const map = new Map(orders.map(o => [digits(o.phone).slice(-10), { name: o.name, phone: o.phone, email: o.email, n: o.n, ltv: Number(o.ltv), last: o.last }]));
-    users.forEach(u => { const k = digits(u.phone).slice(-10); if (!map.has(k)) map.set(k, { name: u.name, phone: u.phone, email: u.email, userId: u.id, memberCode: u.member_code || '', n: 0, ltv: 0, last: null }); else { const c = map.get(k); if (!c.email) c.email = u.email; c.userId = u.id; c.memberCode = u.member_code || ''; } });
+    const map = mergeCustomers(orders, users);
     const q = String(req.query.q || '').toLowerCase();
     const ranged = !!(day(req.query.from) || day(req.query.to));
     const list = [...map.values()].filter(c => (!q || `${c.name} ${c.phone} ${c.email} ${c.memberCode || ''}`.toLowerCase().includes(q)) && (!ranged || (c.last && inRange(c.last, req))));

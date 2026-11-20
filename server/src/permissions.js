@@ -150,8 +150,14 @@ export async function matrix() {
 export async function saveRole(role, perms, staff) {
   const next = new Set((Array.isArray(perms) ? perms : []).filter(p => PERM_KEYS.includes(p) && p !== MASTER_ONLY));
   const before = new Set([...permsOf(role)].filter(p => !ADMIN_ONLY.includes(p))); // the fixed admin permissions are not in the matrix, so they must not show up as "revoked"
-  await pool.query('DELETE FROM role_perms WHERE role = ?', [role]);
-  await pool.query('INSERT INTO role_perms (role, perm) VALUES ?', [[[role, '*seeded'], ...ADDED.map(k => [role, '*added:' + k]), ...[...next].map(p => [role, p])]]);
+  // one transaction: if the insert fails the old grants stay (a role left with no rows would be re-seeded with the defaults at the next start)
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    await conn.query('DELETE FROM role_perms WHERE role = ?', [role]);
+    await conn.query('INSERT INTO role_perms (role, perm) VALUES ?', [[[role, '*seeded'], ...ADDED.map(k => [role, '*added:' + k]), ...[...next].map(p => [role, p])]]);
+    await conn.commit();
+  } catch (e) { await conn.rollback().catch(() => {}); throw e; } finally { conn.release(); }
   await loadPermissions();
   const added = [...next].filter(p => !before.has(p)), removed = [...before].filter(p => !next.has(p));
   if (added.length || removed.length) {

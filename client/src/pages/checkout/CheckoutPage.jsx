@@ -7,7 +7,7 @@ import { useStore } from '../../store.jsx';
 import CheckoutForm from './CheckoutForm.jsx';
 import { LAST_ORDER_KEY, ONLINE_PAYS, writeSession } from './constants.js';
 import { orderPayload, paymentName, totalBeforeDelivery } from './helpers.js';
-import { useFieldErrors } from './parts.jsx';
+import { useCoupon, useFieldErrors } from './parts.jsx';
 import PayModal from './PayModal.jsx';
 import ReviewPage from './ReviewPage.jsx';
 import { normalizeCheckout, validateCheckout } from './validate.js';
@@ -25,7 +25,7 @@ function fieldToFocus(form, key) {
 export default function CheckoutPage() {
   const { cartLines, user, site, totals, clearCart, setLoginOpen, optIn } = useStore();
   const nav = useNavigate();
-  const [coupon, setCoupon] = useState('');
+  const [coupon, setCoupon] = useCoupon();
   const [express, setExpress] = useState(false);
   const [partial, setPartial] = useState('split');
   const [pay, setPay] = useState('COD');
@@ -80,7 +80,7 @@ export default function CheckoutPage() {
       const o = await api.post('/orders', orderPayload({ d, lines: cartLines, area, dest, partner, pay, gw, paid, coupon, exOn, partial }));
       writeSession(LAST_ORDER_KEY, o);
       if (d.mkt && d.email) optIn(d.email, 'Checkout · ' + o.id).catch(() => {});
-      clearCart(); setPaying(null); nav('/success/' + o.id);
+      setCoupon(''); clearCart(); setPaying(null); nav('/success/' + o.id);
     } catch (e) {
       inflight.current = false;
       setErr(e.message); setPaying(null); setBusy(false); window.scrollTo({ top: 0, behavior: 'smooth' });

@@ -24,6 +24,9 @@ export function mcMsg(r, okText, tr = s => s) {
   return { ok: false, text: b.hint && b.error && !String(b.error).includes(b.hint) ? tr(b.error) + ' ' + tr(b.hint) : tr(text) };
 }
 
+/** Translates the text of a { ok, text } message at display time. */
+export const trMsg = (tr, m) => (m && m.text ? { ...m, text: tr(m.text) } : m);
+
 export const STATUS_FILTERS = [['', 'All'], ['included', 'In feed'], ['skipped', 'Left out'], ['warning', 'Warnings'], ['excluded', 'Excluded by me'], ['error', 'Google errors']];
 export const REASON_TEXT = { no_image: 'No picture', no_price: 'No price', zero_price: 'Price is 0', not_published: 'Not published', out_of_stock: 'Out of stock', small_image: 'Picture too small', excluded: 'Excluded by you', excluded_category: 'Category excluded', no_description: 'No description', no_brand: 'No brand', no_gtin: 'No barcode (GTIN)' };
 const FEED_REASONS = { 'no price': 'No price (0)', 'no image': 'No picture', 'not active': 'Not published', 'name empty': 'No name', 'noindex': 'Hidden from Google', 'excluded by owner': 'Excluded by you', 'category excluded': 'Category excluded', 'image too small': 'Picture too small', 'image size unknown': 'Picture size unknown', 'over cap': 'Over the 5,000 product limit' };

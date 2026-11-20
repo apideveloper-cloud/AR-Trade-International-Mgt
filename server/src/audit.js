@@ -8,7 +8,7 @@ import { guard } from './admin.js';
 import { fail, wrap } from './util.js';
 import { addRange, pageOf } from './listing.js';
 
-export const RETENTION_DAYS = Number(process.env.AUDIT_KEEP_DAYS || 365);
+export const RETENTION_DAYS = Math.max(1, Number(process.env.AUDIT_KEEP_DAYS) || 365); // a typo such as "abc" or 0 must not break the daily clean-up or wipe the whole log
 const PREFIX = /^\/api\/(admin|inv|quotes|mkt|hub|field)(\/|$)/;
 const MUTATING = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 const SKIP = [/^\/api\/field\/track\b/, /^\/api\/quotes\/shared\//, /\/read(-all)?$/, /^\/api\/admin\/audit\b/, /^\/api\/mkt\/preview$/]; // GPS pings, "mark notification read" and email previews change nothing; reading the log is not logged

@@ -7,14 +7,27 @@ import { pool } from '../db.js';
 import { BATCH, SKIP } from './config.js';
 import { setProg } from './state.js';
 
-/** Writes the whole database to `file` (gzip). Resolves to { tables, rows }. */
-export async function dumpDb(file) {
-  const conn = await pool.getConnection();
+/**
+ * A gzip file being written. A failing disk (full, folder gone) must surface as a rejected put() / finish(), never as an unhandled
+ * rejection (which would stop the server) and never as a put() that waits forever for a 'drain' that cannot come.
+ */
+export function openGzipFile(file) {
   const gz = zlib.createGzip({ level: 6 });
   const ws = fs.createWriteStream(file);
   const done = new Promise((res, rej) => { ws.on('finish', res); ws.on('error', rej); gz.on('error', rej); });
+  done.catch(() => {}); // reported through put() / finish(); this only keeps an early failure from being "unhandled"
   gz.pipe(ws);
-  const put = async s => { if (!gz.write(s)) await once(gz, 'drain'); };
+  return {
+    put: async s => { if (!gz.write(s)) await Promise.race([once(gz, 'drain'), done]); },
+    finish: async () => { gz.end(); await done; },
+    abort: () => { gz.destroy(); ws.destroy(); } // destroying only gz would leave the file handle open
+  };
+}
+
+/** Writes the whole database to `file` (gzip). Resolves to { tables, rows }. */
+export async function dumpDb(file) {
+  const conn = await pool.getConnection();
+  const { put, finish, abort } = openGzipFile(file);
   let tables = 0, rows = 0;
   try {
     await conn.query('SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ');
@@ -50,13 +63,12 @@ export async function dumpDb(file) {
     await put(`SET FOREIGN_KEY_CHECKS=1;\nSET UNIQUE_CHECKS=1;\n-- Dump completed on ${new Date().toISOString()} (${tables} tables, ${rows} rows)\n`);
   } catch (e) {
     try { await conn.query('ROLLBACK'); } catch { /* connection already gone */ }
-    gz.destroy();
+    abort();
     throw e;
   } finally {
     conn.release();
   }
-  gz.end();
-  await done;
+  await finish();
   return { tables, rows };
 }
 

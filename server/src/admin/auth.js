@@ -7,10 +7,13 @@ import { unpublishedProducts } from '../productImages.js';
 import { can, REGISTRABLE } from '../permissions.js';
 import { meOut, sign } from './guard.js';
 
+/** The mobile number to look an account up by, or '' when the sign-in id is an email. Numbers are stored as the last 11 digits, so +880 1712-345678 and 8801712345678 must find 01712345678. */
+export const loginPhone = id => (String(id).includes('@') ? '' : digits(id).slice(-11));
+
 export function mountAuthRoutes(router, guard) {
   router.post('/login', wrap(async (req, res) => {
     const id = str(req.body.id).trim().toLowerCase();
-    const [[s]] = await pool.query('SELECT * FROM staff WHERE email = ? OR (phone <> "" AND phone = ?)', [id, digits(id)]);
+    const [[s]] = await pool.query('SELECT * FROM staff WHERE email = ? OR (phone <> "" AND phone = ?)', [id, loginPhone(id)]);
     if (!(await verifyPassword(req.body.password, s?.password_hash)) || !s) throw fail(401, 'Wrong mobile/email or password.');
     // the role picked on the sign-in page has to be this account's role (checked only once the password is right, so it reveals nothing to a guesser)
     const want = str(req.body.role).trim();

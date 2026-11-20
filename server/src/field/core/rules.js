@@ -12,6 +12,9 @@ export function parseProfile(body) {
   return { name, email, phone };
 }
 
+/** A GPS point needs a latitude, a longitude and a time. null / '' would otherwise read as 0, 0 at 1970 (Number(null) = 0, new Date(null) = epoch). */
+export const trackPointOk = p => !!p && [p.lat, p.lng, p.time].every(v => v != null && v !== '');
+
 /** The phone's clock is only trusted within 5 minutes of the server's; otherwise the server clock (UTC) is used. */
 export const serverTime = (t, now = Date.now()) => { const v = t ? new Date(t).getTime() : NaN; return Number.isFinite(v) && Math.abs(v - now) <= 5 * 60000 ? v : now; };
 

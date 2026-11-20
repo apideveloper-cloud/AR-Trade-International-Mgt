@@ -15,18 +15,25 @@ export function useCheckProgress(key, onDone) {
   const done = useRef(onDone);
   done.current = onDone;
 
+  const sawRunning = useRef(false);
+  const fails = useRef(0);
+
   const poll = useCallback(async () => {
     const r = await adm.get('/growth/progress?key=' + key).catch(() => null);
-    if (!r) return { stop: false };
+    if (!r) { fails.current += 1; return { stop: fails.current >= 30 }; } // the server cannot be reached for about 30 seconds: stop asking
+    fails.current = 0;
     setP(r);
-    const finished = !r.running && r.finishedAt && r.finishedAt >= since.current;
+    if (r.running) sawRunning.current = true;
+    // finishedAt is the server's clock and `since` the browser's: when the two differ by more than a few seconds the time test alone
+    // would miss the end of the run, so a run that was seen running and then stopped counts as finished as well.
+    const finished = !r.running && !!r.finishedAt && (sawRunning.current || r.finishedAt >= since.current);
     const gaveUp = !r.running && Date.now() - since.current > 60000; // the run never started: stop waiting
-    return { stop: !!(finished || gaveUp), finished: !!finished };
+    return { stop: !!(finished || gaveUp), finished: !!(finished || (gaveUp && r.finishedAt)) };
   }, [key]);
 
   useEffect(() => { // a run may already be going when the page opens
     let off = false;
-    adm.get('/growth/progress?key=' + key).then(r => { if (!off && r?.running) { since.current = 0; setP(r); setWatching(true); } }).catch(() => {});
+    adm.get('/growth/progress?key=' + key).then(r => { if (!off && r?.running) { since.current = 0; sawRunning.current = true; setP(r); setWatching(true); } }).catch(() => {});
     return () => { off = true; };
   }, [key]);
 
@@ -43,7 +50,7 @@ export function useCheckProgress(key, onDone) {
     return () => { off = true; clearTimeout(t); };
   }, [watching, poll]);
 
-  const begin = () => { since.current = Date.now() - 3000; setP(null); setWatching(true); };
+  const begin = () => { since.current = Date.now() - 3000; sawRunning.current = false; fails.current = 0; setP(null); setWatching(true); };
   return { p, watching, begin };
 }
 

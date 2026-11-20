@@ -3,23 +3,12 @@ import { Tabs } from '../../fieldKit.jsx';
 import { adm } from '../../adminApi.js';
 import { useApiData } from '../../hooks/useApiData.js';
 import { Msg, Section } from './parts.jsx';
+import { Pager } from './IssueList.jsx';
 import { run, when } from './growthModel.js';
 import { useT } from '../../i18n/lang.jsx';
 
 const SIZE = 15;
 const SERVICES = [['', 'All services'], ['google', 'Google'], ['bing', 'Bing'], ['indexnow', 'IndexNow']];
-
-function Pager({ page, pages, setPage }) {
-  const tr = useT();
-  if (pages <= 1) return null;
-  return (
-    <div className="a-pager">
-      <span>{tr('Page {page} of {pages}', { page, pages })}</span>
-      <button type="button" disabled={page <= 1} onClick={() => setPage(page - 1)}>{tr('‹ Prev')}</button>
-      <button type="button" disabled={page >= pages} onClick={() => setPage(page + 1)}>{tr('Next ›')}</button>
-    </div>
-  );
-}
 
 function Logs() {
   const tr = useT();

@@ -76,7 +76,8 @@ router.put('/:id/done', guardRole('rm', 'manager'), wrap(async (req, res) => {
   const remarks = String(req.body.remarks || '').trim().slice(0, 255);
   if (!remarks) throw fail(400, 'Please add remarks before marking done');
   if (f.status === 'Done') throw fail(409, 'Already done');
-  await pool.query("UPDATE field_followups SET status = 'Done', done_remarks = ? WHERE id = ?", [remarks, f.id]);
+  const [u] = await pool.query("UPDATE field_followups SET status = 'Done', done_remarks = ? WHERE id = ? AND status <> 'Done'", [remarks, f.id]);
+  if (!u.affectedRows) throw fail(409, 'Already done'); // a double tap must not add the history entry twice
   await push(f.id, { k: 'Done', t: remarks });
   res.json(out(await load(f.id)));
 }));

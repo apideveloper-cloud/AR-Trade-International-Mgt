@@ -39,7 +39,7 @@ export function registerAudienceRoutes(staff) {
   /** Real DNS lookups for the three authentication records. */
   staff.post('/setup/check-dns', guard('marketing.manage'), wrap(async (req, res) => {
     const cfg = await getCfg();
-    const p = PROVIDERS[cfg.provider];
+    const p = PROVIDERS[cfg.provider] || PROVIDERS.Brevo; // same fallback as GET /setup: an unset provider must not crash the check
     const txt = async host => { try { return (await dns.resolveTxt(host)).map(r => r.join('')); } catch { return []; } };
     const cname = async host => { try { return await dns.resolveCname(host); } catch { return []; } };
     const found = { spfTxt: await txt(cfg.domain), dkimCnames: await cname(`${p.dkim[0]}.${cfg.domain}`), dmarcTxt: await txt(`_dmarc.${cfg.domain}`) };

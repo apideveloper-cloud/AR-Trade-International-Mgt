@@ -105,7 +105,8 @@ router.get('/:id/pdf', guardSales, wrap(async (req, res) => {
 router.put('/:id/start', guardSales, wrap(async (req, res) => {
   const d = await find(req);
   if (d.status === 'Delivered') throw fail(409, 'Already delivered');
-  await pool.query('UPDATE field_deliveries SET status = "OnTheWay", eta = ?, staff_id = COALESCE(staff_id, ?) WHERE id = ?', [String(req.body.eta || d.eta || '').slice(0, 30), req.staff.id, d.id]);
+  const [u] = await pool.query('UPDATE field_deliveries SET status = "OnTheWay", eta = ?, staff_id = COALESCE(staff_id, ?) WHERE id = ? AND status <> "Delivered"', [String(req.body.eta || d.eta || '').slice(0, 30), req.staff.id, d.id]); // a confirm that just finished must not be turned back into OnTheWay
+  if (!u.affectedRows) throw fail(409, 'Already delivered');
   res.json({ ok: true });
 }));
 

@@ -25,7 +25,11 @@ export async function assignMemberCode(db, userId) {
   await db.query('INSERT IGNORE INTO counters (name, v) SELECT ?, COALESCE(MAX(CAST(SUBSTRING(member_code, ?) AS UNSIGNED)), 0) FROM users WHERE member_code LIKE ?', [name, PREFIX_LEN + 1, `${MEMBER_PREFIX}${u.y}-%`]);
   const [r] = await db.query('UPDATE counters SET v = LAST_INSERT_ID(v + 1) WHERE name = ?', [name]);
   const code = formatMemberCode(u.y, r.insertId);
-  await db.query('UPDATE users SET member_code = ? WHERE id = ? AND member_code IS NULL', [code, userId]);
+  const [up] = await db.query('UPDATE users SET member_code = ? WHERE id = ? AND member_code IS NULL', [code, userId]);
+  if (!up.affectedRows) { // another request numbered this account first: answer with the ID that was really saved, not the one we drew
+    const [[cur]] = await db.query('SELECT member_code FROM users WHERE id = ?', [userId]);
+    return cur?.member_code || code;
+  }
   return code;
 }
 

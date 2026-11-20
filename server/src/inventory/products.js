@@ -76,7 +76,7 @@ router.get('/stock/:id/moves', guard(VIEW), wrap(async (req, res) => {
 router.post('/stock/adjust', guard(MANAGE), wrap(async (req, res) => {
   const productId = parseInt(req.body.productId, 10), counted = req.body.counted === null || req.body.counted === '' || req.body.counted === undefined ? NaN : Math.round(Number(req.body.counted)); // empty must not mean 0
   const note = text(req.body.note, 300);
-  if (!productId || !Number.isInteger(counted) || counted < 0) throw fail(400, 'Enter the quantity you counted');
+  if (!productId || !Number.isInteger(counted) || counted < 0 || counted > 100000000) throw fail(400, 'Enter the quantity you counted');
   if (!note) throw fail(400, 'Write the reason for the correction');
   await tx(async conn => {
     const [[p]] = await conn.query('SELECT stock FROM products WHERE id = ? FOR UPDATE', [productId]);

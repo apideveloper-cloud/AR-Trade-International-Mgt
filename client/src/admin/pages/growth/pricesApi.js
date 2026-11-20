@@ -20,6 +20,3 @@ export const money = n => (Number(n) || 0).toLocaleString('en-US');
 
 /** Turns a 409 needsConfirm list into the question shown to the owner (pass the page's tr to translate it). */
 export const jumpText = (list, tr = s => s) => tr('This changes the price by more than 50 % for:') + '\n' + list.map(p => `${p.name || '#' + p.id} (${tr('{from} to {to}', { from: money(p.from), to: money(p.to) })}${p.pct != null ? ', ' + Math.round(p.pct) + ' %' : ''})`).join('\n') + '\n' + tr('Is this correct?');
-
-/** Short text for a 400 { errors } answer. */
-export const errorLines = b => (b.errors || []).map(e => `#${e.id} ${e.field || ''}: ${e.message}`);

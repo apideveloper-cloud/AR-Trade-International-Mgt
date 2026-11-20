@@ -13,7 +13,7 @@ export function FieldDeliveries() {
   const [pdf, setPdf] = useState(null);
   const det = useFld(open ? '/deliveries/' + open : null);
   const data = t.data, c = data.counts || {};
-  const d = det.data;
+  const d = det.data?.id === open ? det.data : null; // the previously opened note stays in det.data while the next one loads: do not show it under the new number
   return (
     <>
       <Summary items={[
@@ -34,7 +34,7 @@ export function FieldDeliveries() {
       {pdf && <PdfPreview url={`/api/field/deliveries/${pdf.id}/pdf`} title={pdf.id + ' · Delivery note'} filename={`${pdf.id}.pdf`} onClose={() => setPdf(null)} />}
       {open && (
         <Drawer title={open} sub={d ? `${d.customer} · ${d.status}` : 'Loading…'} onClose={() => setOpen(null)}>
-          {!d ? <Skeleton rows={7} /> : (
+          {!d ? (det.err ? <Notice err={det.err} onRetry={det.reload} /> : <Skeleton rows={7} />) : (
             <>
               <div className="fd-facts">
                 <Fact k="Order">{d.orderId}</Fact><Fact k="Customer">{d.customer}</Fact><Fact k="Contact">{[d.contact, d.phone].filter(Boolean).join(' · ')}</Fact><Fact k="Address">{d.address}</Fact>

@@ -16,9 +16,12 @@ const REVOKED = 'Google access was removed or has expired. Connect Google again.
 let cache = { token: '', exp: 0 };
 export const clearTokenCache = () => { cache = { token: '', exp: 0 }; };
 
-export const signState = staffId => jwt.sign({ sid: staffId, p: 'growth-google' }, secret(), { expiresIn: '10m' });
+// The state travels through the browser URL (history, Google, server access logs) and carries { sid } like a sign-in token, so it must NOT be
+// signed with the sign-in key: otherwise anyone who sees the URL could use it as a 10-minute admin bearer token. It has its own derived key.
+const stateKey = () => secret() + ':growth-google-state';
+export const signState = staffId => jwt.sign({ sid: staffId, p: 'growth-google' }, stateKey(), { expiresIn: '10m' });
 /** The staff id inside a valid state, or 0. */
-export function readState(state) { try { const t = jwt.verify(String(state || ''), secret()); return t.p === 'growth-google' ? Number(t.sid) || 0 : 0; } catch { return 0; } }
+export function readState(state) { try { const t = jwt.verify(String(state || ''), stateKey()); return t.p === 'growth-google' ? Number(t.sid) || 0 : 0; } catch { return 0; } }
 
 export async function authUrl(state, redirectUri) {
   const p = new URLSearchParams({ client_id: await getSecret('google.clientId'), redirect_uri: redirectUri, response_type: 'code', scope: SCOPES.join(' '), access_type: 'offline', prompt: 'consent', include_granted_scopes: 'true', state });

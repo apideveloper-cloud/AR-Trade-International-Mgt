@@ -60,7 +60,7 @@ export function InvStock({ staff }) {
         <Grid server={t} cols="44px 56px minmax(240px,2fr) 120px 120px 130px 110px" head={['SL', 'Image', 'Product', 'Brand', 'Selling price', 'Last buying price', 'In stock']} onRow={setOpen} empty="No product matches."
           rows={t.data.rows.map((p, i) => ({ key: p.id, item: p, cells: [slNo(t, i), <ProdThumb key="im" src={p.img} name={p.name} />, <span key="n"><b>{p.name}</b>{!p.active && <small className="iv-subline">hidden from the shop</small>}</span>, p.brand, taka(p.price), p.lastCost ? taka(p.lastCost) : '—', <Chip key="s" tone={p.stock <= 0 ? 'bad' : p.stock <= (t.data.low ?? 5) ? 'amber' : 'ok'}>{p.stock}</Chip>] }))} />
       </section>
-      {open && <StockDrawer p={open} canEdit={canEdit} onClose={() => setOpen(null)} onChanged={t.reload} />}
+      {open && <StockDrawer p={t.data.rows.find(x => x.id === open.id) || open} canEdit={canEdit} onClose={() => setOpen(null)} onChanged={t.reload} />}
     </>
   );
 }

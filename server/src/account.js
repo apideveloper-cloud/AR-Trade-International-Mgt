@@ -68,9 +68,9 @@ router.get('/addresses', wrap(async (req, res) => {
 }));
 router.post('/addresses', wrap(async (req, res) => {
   const b = req.body;
-  if (!b.line || !b.thana || !b.area) throw fail(400, 'Thana, area and house/road are required');
   for (const k of ['label', 'district', 'thana', 'area', 'line']) if (b[k] != null) b[k] = String(b[k]).trim().slice(0, k === 'line' ? 200 : 80);
-  for (const k of ['lat', 'lng']) b[k] = b[k] != null && b[k] !== '' && Number.isFinite(Number(b[k])) && Math.abs(Number(b[k])) <= 180 ? Number(b[k]) : null;
+  if (!b.line || !b.thana || !b.area) throw fail(400, 'Thana, area and house/road are required'); // checked after trimming, so spaces alone do not count
+  for (const [k, max] of [['lat', 90], ['lng', 180]]) b[k] = b[k] != null && b[k] !== '' && Number.isFinite(Number(b[k])) && Math.abs(Number(b[k])) <= max ? Number(b[k]) : null;
   const [[{ n }]] = await pool.query('SELECT COUNT(*) n FROM user_addresses WHERE user_id = ?', [req.user.id]);
   if (n >= 20) throw fail(400, 'You can save up to 20 addresses');
   const def = b.isDefault || n === 0;

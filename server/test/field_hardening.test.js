@@ -22,3 +22,13 @@ test('amount in words handles big and empty values', () => {
   assert.equal(words(Number.NaN), 'ZERO');
   assert.equal(words(-7500), 'SEVEN THOUSAND FIVE HUNDRED');
 });
+
+import { trackPointOk } from '../src/field/core/rules.js';
+test('a GPS point needs lat, lng and time (null must not become 0, 0 at 1970)', () => {
+  assert.equal(trackPointOk({ lat: 23.7, lng: 90.4, time: '2026-11-20T10:00:00Z' }), true);
+  assert.equal(trackPointOk({ lat: 0, lng: 0, time: '2026-11-20T10:00:00Z' }), true);
+  assert.equal(trackPointOk({ lat: null, lng: 90.4, time: '2026-11-20T10:00:00Z' }), false);
+  assert.equal(trackPointOk({ lat: 23.7, lng: '', time: '2026-11-20T10:00:00Z' }), false);
+  assert.equal(trackPointOk({ lat: 23.7, lng: 90.4 }), false);
+  assert.equal(trackPointOk(null), false);
+});

@@ -31,11 +31,13 @@ export default function Shop() {
   const set = patch => setF(s => ({ ...s, ...patch }));
 
   // the design resets filters and shows a short skeleton whenever the category or search changes
+  // (the page number is not part of this: moving to page 2 of a filtered list must keep the filters)
+  const searchNoPage = (() => { const u = new URLSearchParams(search); u.delete('page'); return u.toString(); })();
   useEffect(() => {
     setF(FILTERS0); setBoot(true);
     const t = setTimeout(() => setBoot(false), 200);
     return () => clearTimeout(t);
-  }, [cat, search]);
+  }, [cat, searchNoPage]);
 
   // real page links: scroll to the top when only the page number changed
   const prevPg = useRef({ page, cat, q });
@@ -84,7 +86,7 @@ export default function Shop() {
   const setV = v => { setView(v); try { localStorage.setItem('arShopView', v); } catch { /* storage unavailable */ } };
   const skels = boot ? Array.from({ length: Math.min(PG, items.length || 8) }, (_, i) => i) : [];
 
-  if (!boot && page > 1 && items.length > 0 && offset >= items.length && f === FILTERS0) {
+  if (!boot && page > 1 && items.length > 0 && offset >= items.length) {
     const u = new URLSearchParams(sp); u.delete('page');
     const qs = u.toString();
     return <Navigate replace to={pathname + (qs ? '?' + qs : '')} />;

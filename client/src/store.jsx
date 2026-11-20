@@ -23,7 +23,7 @@ export function computeTotals(cartLines, site, { area = 'inside', deliveryBase, 
   const saved = lines.reduce((a, l) => a + Math.max(0, (l.old || l.price) - l.price) * l.chargeQty, 0);
   const cu = coupon.trim().toUpperCase();
   const welcome = cu === 'WELCOME10';
-  const okCoupon = !!cu && (cu === String(site.coupon).toUpperCase() || welcome);
+  const okCoupon = !!cu && ((!!site.coupon && cu === String(site.coupon).toUpperCase()) || welcome); // an empty coupon setting must not make the text "UNDEFINED" valid (the server has the same guard)
   const discount = okCoupon ? Math.round(subtotal * (welcome ? 10 : site.couponPct) / 100) : 0;
   const memberPct = member ? site.memberPct : 0;
   const memberOff = Math.round((subtotal - discount) * memberPct / 100);
@@ -64,6 +64,12 @@ export function StoreProvider({ children }) {
         .catch(e => { if (e.status === 401 || e.status === 403) setToken(null); }) // only a rejected session clears the flag; a network blip must not sign the customer out
         .finally(() => setAuthReady(true));
     }
+  }, []);
+
+  useEffect(() => { // any account call answered 401 (session replaced or expired): show the signed-out state instead of an endless spinner
+    const ended = () => { setToken(null); setUser(null); };
+    window.addEventListener('ar:session-ended', ended);
+    return () => window.removeEventListener('ar:session-ended', ended);
   }, []);
 
   /** Shows a toast. kind: 'success' | 'error' | 'info' | 'cart'; when omitted it is worked out from the text and link. */

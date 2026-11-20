@@ -65,6 +65,9 @@ router.post('/receipts', guard(MANAGE), wrap(async (req, res) => {
     const lines = await cleanLines(conn, b.lines);
     const poId = text(b.poId, 20) || null;
     if (poId) {
+      const [[po]] = await conn.query('SELECT vendor_id, status FROM field_purchase_orders WHERE id = ?', [poId]);
+      if (!po || po.status !== 'Approved') throw fail(400, `${poId} is not an approved purchase order`);
+      if (po.vendor_id !== v.id) throw fail(400, `${poId} belongs to a different vendor`);
       const [[dup]] = await conn.query("SELECT id FROM stock_receipts WHERE po_id = ? AND status <> 'Rejected' LIMIT 1", [poId]);
       if (dup) throw fail(409, `${poId} was already received as ${dup.id}`);
     }

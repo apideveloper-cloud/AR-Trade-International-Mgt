@@ -14,10 +14,11 @@ const Card = ({ title, children }) => <section className="pf-card"><h4>{title}</
 export function Editor({ product, cats, onClose, onSaved, purchase = false, initial }) {
   const [f, setF] = useState({ ...BLANK_PRODUCT, cat: cats[0]?.id || '', ...initial, ...product });
   const [specText, setSpecText] = useState('');
+  const [specsKnown, setSpecsKnown] = useState(!product); // false until the saved specs are loaded (or typed): saving then must not overwrite them with an empty list
   useEffect(() => {
     if (!product) return undefined;
     let stale = false;
-    adm.get(`/products/${product.id}/full`).then(r => { if (!stale) setSpecText(specsToText(r.specs)); }).catch(() => {});
+    adm.get(`/products/${product.id}/full`).then(r => { if (!stale) { setSpecText(specsToText(r.specs)); setSpecsKnown(true); } }).catch(() => {});
     return () => { stale = true; };
   }, [product]);
   const [err, setErr] = useState('');
@@ -25,7 +26,7 @@ export function Editor({ product, cats, onClose, onSaved, purchase = false, init
   const [warn, setWarn] = useState('');
   const on = k => e => setF(s => ({ ...s, [k]: e.target.value }));
   const isNew = !product;
-  const off = f.old > f.price && f.price ? Math.round((1 - f.price / f.old) * 100) : 0;
+  const off = Number(f.old) > Number(f.price) && Number(f.price) ? Math.round((1 - Number(f.price) / Number(f.old)) * 100) : 0; // inputs hold strings: compare as numbers
   const gallery = useProductGallery(f, setF, setErr, setBusy);
 
   const submit = async e => {
@@ -39,7 +40,7 @@ export function Editor({ product, cats, onClose, onSaved, purchase = false, init
       const saved = isNew ? await adm.post('/products', f) : await adm.put('/products/' + product.id, f);
       if (isNew && (f.metaTitle || f.metaDesc || f.metaKeywords)) await adm.put('/products/' + saved.id, { metaTitle: f.metaTitle, metaDesc: f.metaDesc, metaKeywords: f.metaKeywords });
       const specs = parseSpecs(specText);
-      if (specs.length || !isNew) await adm.put(`/products/${isNew ? saved.id : product.id}/specs`, { specs });
+      if (specsKnown && (specs.length || !isNew)) await adm.put(`/products/${isNew ? saved.id : product.id}/specs`, { specs });
       if (saved.gtinWarning) { onSaved(); setWarn(saved.gtinWarning); return; } // stays open so the warning is read; the button stays off so a new product is not added twice
       onSaved(); onClose();
     } catch (er) { setErr(er.message); setBusy(false); }
@@ -90,7 +91,7 @@ export function Editor({ product, cats, onClose, onSaved, purchase = false, init
             <textarea className="a-input pf-desc" rows={8} value={f.description || ''} onChange={on('description')} placeholder="<p>…</p>" />
           </Card>
           <Card title={<>Specifications <small>one per line: Name: value</small></>}>
-            <textarea className="a-input pf-specs" rows={9} value={specText} onChange={e => setSpecText(e.target.value)} placeholder={'Page yield: 1,500 pages\nColour: Black'} />
+            <textarea className="a-input pf-specs" rows={9} value={specText} onChange={e => { setSpecText(e.target.value); setSpecsKnown(true); }} placeholder={'Page yield: 1,500 pages\nColour: Black'} />
           </Card>
           {!purchase && <Card title="SEO · Google listing">
             {isNew ? <small className="pf-hint">Save the product first to edit its SEO.</small> : <SeoItemEditor type="product" id={product.id} mode="full" />}

@@ -6,9 +6,11 @@ export const hashIp = ip => crypto.createHash('sha256').update('review-ip:' + St
 /** Hits per key in a sliding window: hit(key) returns how many hits that key has now (including this one). */
 export function makeIpLimiter({ max = 5, windowMs = 3600e3, now = () => Date.now() } = {}) {
   const m = new Map();
+  const sweep = t => { for (const [k, a] of m) if (!a.length || t - a[a.length - 1] >= windowMs) m.delete(k); }; // keys that went quiet are forgotten
   return {
     max,
-    hit(key) { const t = now(), a = (m.get(key) || []).filter(x => t - x < windowMs); a.push(t); m.set(key, a); return a.length; },
+    size: () => m.size,
+    hit(key) { const t = now(), a = (m.get(key) || []).filter(x => t - x < windowMs); a.push(t); m.set(key, a); if (m.size > 2000) sweep(t); return a.length; },
     over(key) { return this.hit(key) > max; }
   };
 }

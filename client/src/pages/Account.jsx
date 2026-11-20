@@ -23,9 +23,13 @@ export default function Account() {
   const [profile, setProfile] = useState(null);
   const [rems, setRems] = useState(null);
   const loadRems = useCallback(() => acc.get('/reminders').then(setRems).catch(() => setRems([])), []);
-  useEffect(() => { if (user) { acc.get('/profile').then(setProfile).catch(() => {}); loadRems(); } }, [user, loadRems]);
+  const [loadErr, setLoadErr] = useState('');
+  const loadProfile = useCallback(() => { setLoadErr(''); acc.get('/profile').then(setProfile).catch(e => { if (e.status !== 401) setLoadErr(e.message); }); }, []); // a 401 signs the customer out (see api.js), which sends them to /login below
+  useEffect(() => { if (user) { loadProfile(); loadRems(); } }, [user, loadProfile, loadRems]);
   if (!user) return authReady ? <Navigate to="/login" replace /> : <div className="ac-loading"><span className="spin" /></div>; // a reload must not bounce a signed-in customer to /login before the session check finishes
-  if (!profile) return <div className="ac-loading"><span className="spin" /></div>;
+  if (!profile) return loadErr
+    ? <div className="ac-loading"><div className="ac-card ac-empty">Could not load your account: {loadErr} <button type="button" className="ac-btn dark" onClick={loadProfile}>Try again</button></div></div>
+    : <div className="ac-loading"><span className="spin" /></div>;
 
   return (
     <div className="ac-page">

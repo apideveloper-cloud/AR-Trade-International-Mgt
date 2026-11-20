@@ -20,7 +20,7 @@ registerDict({
   'Saving...': 'সংরক্ষণ হচ্ছে...',
   'Saved.': 'সংরক্ষণ হয়েছে।',
   'Done.': 'হয়ে গেছে।',
-  'Discard': 'বাতিল করুন',
+  'Discard': 'বাদ দিন',
   'Show': 'দেখান',
   'Search': 'খুঁজুন',
   'unknown': 'জানা নেই',
@@ -41,7 +41,7 @@ registerDict({
   'Unknown': 'অজানা',
   'Indexed': 'ইনডেক্স হয়েছে',
   'Not indexed': 'ইনডেক্স হয়নি',
-  'Not checked yet': 'এখনও যাচাই হয়নি',
+  'Not checked yet': 'এখনো যাচাই হয়নি',
   'Not checked': 'যাচাই হয়নি',
   'All': 'সব',
   'Sync now': 'এখনই সিঙ্ক করুন',
@@ -60,15 +60,15 @@ registerDict({
   'This is not set up yet.': 'এটি এখনও সেট আপ করা হয়নি।',
   'The server had a problem. Please try again.': 'সার্ভারে সমস্যা হয়েছে। আবার চেষ্টা করুন।',
   'Something went wrong. Please try again.': 'কিছু একটা ভুল হয়েছে। আবার চেষ্টা করুন।',
-  "Can't reach the server. Check your internet connection and try again.": 'সার্ভারের সাথে যোগাযোগ করা যাচ্ছে না। ইন্টারনেট সংযোগ দেখে আবার চেষ্টা করুন।',
+  "Can't reach the server. Check your internet connection and try again.": 'সার্ভারের সাথে যোগাযোগ হচ্ছে না। ইন্টারনেট সংযোগ দেখে আবার চেষ্টা করুন।',
   'The test did not work.': 'পরীক্ষা সফল হয়নি।',
 
   // reasons (REASON_TEXT / FEED_REASONS)
   'No picture': 'ছবি নেই',
   'No price': 'দাম নেই',
-  'Price is 0': 'দাম ০',
+  'Price is 0': 'দাম 0',
   'Not published': 'প্রকাশিত নয়',
-  'Out of stock': 'স্টকে নেই',
+  'Out of stock': 'স্টক নেই',
   'Picture too small': 'ছবি খুব ছোট',
   'Excluded by you': 'আপনি বাদ দিয়েছেন',
   'Category excluded': 'ক্যাটেগরি বাদ দেওয়া',
@@ -88,7 +88,7 @@ registerDict({
 
   // McStatus
   'The product feed is switched off. Turn on Merchant feed in SEO > Settings > Automation.': 'পণ্যের ফিড বন্ধ আছে। SEO > সেটিংস > অটোমেশনে গিয়ে Merchant ফিড চালু করুন।',
-  'Open SEO settings': 'SEO সেটিংস খুলুন',
+  'Open SEO settings': 'এসইও সেটিংস খুলুন',
   'Products in the feed': 'ফিডে থাকা পণ্য',
   'Synced to Google': 'গুগলে সিঙ্ক হয়েছে',
   'Nothing left out': 'কিছুই বাদ পড়েনি',
@@ -159,7 +159,7 @@ registerDict({
 
   // McSync
   'Connected to {account}.': '{account} এর সাথে সংযুক্ত হয়েছে।',
-  'Connected.': 'সংযুক্ত হয়েছে।',
+  'Connected.': 'সংযুক্ত।',
   'Send every product to Google again? This can take a while.': 'সব পণ্য আবার গুগলে পাঠাবেন? এতে কিছুক্ষণ সময় লাগতে পারে।',
   'Yes, sync everything': 'হ্যাঁ, সব সিঙ্ক করুন',
   'Sync started. Press Refresh Google status in a minute.': 'সিঙ্ক শুরু হয়েছে। এক মিনিট পরে "গুগলের অবস্থা রিফ্রেশ করুন" চাপুন।',

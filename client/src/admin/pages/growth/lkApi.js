@@ -1,6 +1,6 @@
 import { getAdminToken } from '../../adminApi.js';
 export { send } from './pricesApi.js';
-export { mcMsg, sendDelete } from './mcApi.js';
+export { mcMsg, sendDelete, trMsg } from './mcApi.js';
 
 /** PUT that keeps the error body: returns { status, ok, body }. Never throws. */
 export async function sendPut(url, body) {
@@ -14,9 +14,6 @@ export async function sendPut(url, body) {
     return { status: 0, ok: false, body: { error: "Can't reach the server. Check your internet connection and try again." } };
   }
 }
-
-/** Translates the text of a { ok, text } message at display time. */
-export const trMsg = (tr, m) => (m && m.text ? { ...m, text: tr(m.text) } : m);
 
 // The labels are English keys: translate them with tr() where they are shown.
 export const KINDS = [['citation', 'Business listing'], ['backlink', 'Link from another site'], ['social', 'Social profile'], ['press', 'Press mention'], ['supplier', 'Supplier']];

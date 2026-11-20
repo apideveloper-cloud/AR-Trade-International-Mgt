@@ -4,7 +4,7 @@ import { totalsOf } from './totals.js';
 
 /** Cleans the item lines of a request body: at most 60, trimmed, empty descriptions dropped. */
 export function cleanLines(rawLines) {
-  return (Array.isArray(rawLines) ? rawLines : []).slice(0, 60).map(l => ({
+  return (Array.isArray(rawLines) ? rawLines : []).slice(0, 60).map(l => l || {}).map(l => ({
     productId: parseInt(l.productId, 10) || null, description: text(l.description, 400), qty: Math.max(1, int(l.qty, 100000)), unit: text(l.unit, 12).toUpperCase() || 'PCS', warranty: text(l.warranty, 60), unitPrice: int(l.unitPrice)
   })).filter(l => l.description);
 }

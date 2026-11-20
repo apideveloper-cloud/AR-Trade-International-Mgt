@@ -40,8 +40,9 @@ export function LiveMap({ office, members, route, sel, onPick }) {
       L.circleMarker(line[0], { radius: 6, color: '#2f7de1', weight: 3, fillColor: '#fff', fillOpacity: 1 }).bindTooltip('Start of the day').addTo(g);
     }
     if (!fitted.current) { m.fitBounds(pts, { padding: [40, 40], maxZoom: 15 }); fitted.current = true; }
-    if (sel !== lastSel.current) {
-      lastSel.current = sel;
+    const fitKey = sel + '|' + (route.length > 1); // zoom again once the picked person's route has arrived
+    if (fitKey !== lastSel.current) {
+      lastSel.current = fitKey;
       const me = members.find(x => x.id === sel);
       if (sel && route.length > 1) m.fitBounds(route.map(r => [r.lat, r.lng]), { padding: [50, 50], maxZoom: 16 });
       else if (me && me.lat != null) m.setView([me.lat, me.lng], Math.max(m.getZoom(), 14));

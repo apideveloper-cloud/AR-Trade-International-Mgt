@@ -59,7 +59,7 @@ registerDict({
   'Rebuild the feed (SEO > Merchant feed) and run the check again.': 'ফিড আবার তৈরি করুন (SEO > Merchant feed) এবং যাচাই আবার চালান।',
   'Clear the old price or set a new end date.': 'পুরনো দাম মুছুন বা নতুন শেষের তারিখ দিন।',
   'Correct or clear the old price.': 'পুরনো দাম ঠিক করুন বা মুছুন।',
-  'Set a price or make the product inactive.': 'দাম দিন অথবা পণ্যটি বন্ধ করুন।',
+  'Set a price or make the product inactive.': 'দাম দিন অথবা পণ্যটি নিষ্ক্রিয় করুন।',
   'Add a SKU so orders and the feed can identify it.': 'SKU যোগ করুন, যাতে অর্ডার ও ফিড পণ্যটি চিনতে পারে।',
   'Confirm the price is still right with the supplier.': 'সরবরাহকারীর কাছ থেকে নিশ্চিত হোন দামটি এখনও ঠিক আছে কি না।',
 
@@ -70,7 +70,7 @@ registerDict({
   'Search ID, SKU, name or part no.': 'ID, SKU, নাম বা পার্ট নম্বর খুঁজুন',
   'Search products': 'পণ্য খুঁজুন',
   'All products': 'সব পণ্য',
-  'Clear filters': 'ফিল্টার মুছুন',
+  'Clear filters': 'ফিল্টার সরান',
   'Name': 'নাম',
   'Price (৳)': 'দাম (৳)',
   'Old price (৳)': 'পুরনো দাম (৳)',
@@ -173,7 +173,7 @@ registerDict({
   'Send to this e-mail': 'এই ইমেইলে পাঠান',
   'Save': 'সংরক্ষণ করুন',
   'Send test now': 'এখনই টেস্ট পাঠান',
-  'Saved.': 'সংরক্ষিত হয়েছে।',
+  'Saved.': 'সংরক্ষণ হয়েছে।',
   'A test e-mail was sent.': 'একটি টেস্ট ইমেইল পাঠানো হয়েছে।',
   'That did not work. Please try again.': 'কাজটি হয়নি। আবার চেষ্টা করুন।',
 

@@ -14,7 +14,11 @@ async function call(method, url, body) {
     throw Object.assign(e instanceof Error ? e : new Error('Network error'), { status: 0 }); // offline / DNS / CORS: same shape as an HTTP error
   }
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw Object.assign(new Error(data.error || 'Something went wrong'), { status: res.status });
+  if (!res.ok) {
+    // a protected call answered 401: the session ended (e.g. the customer signed in on another device), so the app drops its signed-in state
+    if (res.status === 401 && !url.startsWith('/auth/')) { try { window.dispatchEvent(new Event('ar:session-ended')); } catch { /* no window */ } }
+    throw Object.assign(new Error(data.error || 'Something went wrong'), { status: res.status });
+  }
   return data;
 }
 

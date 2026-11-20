@@ -7,10 +7,12 @@ const TYPES = ['Printer servicing', 'Photocopier servicing', 'Computer servicing
 export default function BookingCard({ user }) {
   const [sentId, setSentId] = useState('');
   const [err, setErr] = useState('');
+  const [busy, setBusy] = useState(false); // blocks a second click while the first booking is on its way
   const submit = async e => {
-    e.preventDefault(); setErr('');
+    e.preventDefault(); if (busy) return; setErr(''); setBusy(true);
     const d = Object.fromEntries(new FormData(e.target).entries());
     try { const r = await api.post('/services', { ...d, mkt: !!d.mkt }); setSentId(r.id); } catch (er) { setErr(er.message); }
+    setBusy(false);
   };
   return (
     <div className="white-card sv-book">
@@ -30,7 +32,7 @@ export default function BookingCard({ user }) {
             <input name="mktEmail" type="email" placeholder="Email (only if ticked)" className="sv-mkt-email" />
           </div>
           {err && <div className="err">{err}</div>}
-          <button className="btn btn-dark btn-pill sv-submit">Request booking</button>
+          <button className="btn btn-dark btn-pill sv-submit" disabled={busy}>{busy ? "Sending…" : "Request booking"}</button>
         </form>
       ) : (
         <div className="sv-sent">

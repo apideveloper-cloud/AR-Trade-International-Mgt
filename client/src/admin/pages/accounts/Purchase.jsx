@@ -21,7 +21,7 @@ export function AccPurchase() {
   const [deciding, runDecide] = useBusy();
   const by = po.data.summary?.by || {};
   const sum = s => by[s]?.grand || 0;
-  const d = det.data;
+  const d = det.data?.id === open ? det.data : null; // the previous order stays in det.data while the next one loads: never show it (or decide on it) under another number
   const decide = status => runDecide(async () => {
     setMsg('');
     try { await fld.put(`/approvals/purchase/${open}/decision`, { status, remarks: rej.trim() }); setReject(false); setRej(''); po.reload(); det.reload(); } catch (e) { setMsg(e.message); }
@@ -63,7 +63,7 @@ export function AccPurchase() {
       )}
       {open && (
         <Drawer title={open} sub={d ? `${d.vendor} · ${d.statusLabel}` : 'Loading…'} onClose={() => setOpen(null)}>
-          {!d ? <Skeleton rows={7} /> : (
+          {!d ? (det.err ? <Notice err={det.err} onRetry={det.reload} /> : <Skeleton rows={7} />) : (
             <>
               <div className="fd-facts">
                 <Fact k="Vendor">{d.vendor}</Fact><Fact k="Raised by">{d.by}</Fact><Fact k="Deliver by">{d.deliverBy && fDate(d.deliverBy)}</Fact><Fact k="Deliver to">{d.deliverTo}</Fact><Fact k="Payment terms">{d.paymentTerms}</Fact><Fact k="Note">{d.note}</Fact>

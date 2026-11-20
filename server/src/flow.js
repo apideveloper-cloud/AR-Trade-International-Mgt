@@ -1,6 +1,6 @@
 // Order flow shared by the admin console, the Delivery Hub and the customer tracking page
 import { pool } from './db.js';
-import { fail } from './util.js';
+import { fail, tx } from './util.js';
 import { noteCatalogChange } from './growth/changeHooks.js';
 import { noteOrderDelivered } from './growth/reviewRequests.js';
 
@@ -56,14 +56,18 @@ export async function applyFlow(orderId, flow, note = '', extra = {}, by = '') {
   if (flow === 'Delivered') noteOrderDelivered(orderId); // queues a review request (not awaited, never throws)
 }
 
-/** Cancels an open order and puts its stock back, once: a second call (or a closed order) fails instead of double-restocking. */
+/** Cancels an open order and puts its stock back, once: a second call (or a closed order) fails instead of double-restocking.
+ *  The status change, the restock and the history line are one transaction, so a failure half-way cannot leave a cancelled order whose stock is never returned. */
 export async function cancelOrder(orderId, note = '', by = '') {
-  const [r] = await pool.query("UPDATE orders SET flow = 'Cancelled', status = 'Cancelled' WHERE id = ? AND flow NOT IN ('Delivered','Cancelled','Returned')", [orderId]);
-  if (!r.affectedRows) throw fail(400, 'This order is already closed');
-  const [items] = await pool.query('SELECT product_id, qty, backorder FROM order_items WHERE order_id = ?', [orderId]);
-  for (const i of items) await pool.query('UPDATE products SET stock = stock + ? WHERE id = ?', [Math.max(0, i.qty - i.backorder), i.product_id]);
-  noteCatalogChange({ productIds: items.map(i => i.product_id), reason: 'order' });
-  await pool.query('INSERT INTO order_history (order_id,status,flow,note,by_name) VALUES (?,?,?,?,?)', [orderId, 'Cancelled', 'Cancelled', String(note).slice(0, 255), String(by).slice(0, 120)]);
+  const productIds = await tx(async conn => {
+    const [r] = await conn.query("UPDATE orders SET flow = 'Cancelled', status = 'Cancelled' WHERE id = ? AND flow NOT IN ('Delivered','Cancelled','Returned')", [orderId]);
+    if (!r.affectedRows) throw fail(400, 'This order is already closed');
+    const [items] = await conn.query('SELECT product_id, qty, backorder FROM order_items WHERE order_id = ?', [orderId]);
+    for (const i of items) await conn.query('UPDATE products SET stock = stock + ? WHERE id = ?', [Math.max(0, i.qty - i.backorder), i.product_id]);
+    await conn.query('INSERT INTO order_history (order_id,status,flow,note,by_name) VALUES (?,?,?,?,?)', [orderId, 'Cancelled', 'Cancelled', String(note).slice(0, 255), String(by).slice(0, 120)]);
+    return items.map(i => i.product_id);
+  });
+  noteCatalogChange({ productIds, reason: 'order' });
 }
 
 export function returnEligible(order, reason) {

@@ -21,7 +21,7 @@ export function FieldAttendance() {
     fld.get('/attendance/report' + (date ? '?date=' + date : '')).then(r => { if (!stale) setD(r); }).catch(e => { if (!stale) setErr(e.message); });
     return () => { stale = true; };
   }, [date]);
-  const shift = n => setDate(new Date(Date.parse((d?.date || '') + 'T00:00:00Z') + n * 864e5).toISOString().slice(0, 10));
+  const shift = n => setDate(new Date(Date.parse((date || d?.date || '') + 'T00:00:00Z') + n * 864e5).toISOString().slice(0, 10));
   const rows = (d?.rows || []).filter(r => (f === 'all' || r.status === f) && (!q.trim() || (r.name + ' ' + r.roleLabel).toLowerCase().includes(q.trim().toLowerCase())));
   const pg = usePaged(rows);
   const n = st => (d?.rows || []).filter(r => r.status === st).length;

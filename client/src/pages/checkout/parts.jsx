@@ -1,13 +1,21 @@
 import { useState } from 'react';
+import { COUPON_KEY, readSession, writeSession } from './constants.js';
 
 /** A label / value line of an order summary. */
 export const Row = ({ k, v, cls }) => <div className={cls ? 'r ' + cls : 'r'}><span>{k}</span><span>{v}</span></div>;
+
+/** The coupon code typed in the cart or the checkout, kept for the visit so the discount seen in the cart is still there at checkout. */
+export function useCoupon() {
+  const [coupon, set] = useState(() => { const c = readSession(COUPON_KEY); return typeof c === 'string' ? c : ''; });
+  const setCoupon = v => { set(v); writeSession(COUPON_KEY, v || null); };
+  return [coupon, setCoupon];
+}
 
 /** Coupon code input with the "applied" tick. */
 export function CouponBox({ value, onChange, ok }) {
   return (
     <>
-      <input className="pill-in" value={value} onChange={e => onChange(e.target.value)} placeholder="Coupon code" />
+      <input className="pill-in" value={value} onChange={e => onChange(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') e.preventDefault(); }} aria-label="Coupon code" placeholder="Coupon code" />
       {ok && <span className="ct-coupon-ok">✓ Coupon applied</span>}
     </>
   );

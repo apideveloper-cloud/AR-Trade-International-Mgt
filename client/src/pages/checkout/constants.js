@@ -30,3 +30,6 @@ export function readSession(key) {
 export function writeSession(key, value) {
   try { if (value == null) sessionStorage.removeItem(key); else sessionStorage.setItem(key, JSON.stringify(value)); } catch { /* storage unavailable */ }
 }
+
+/** sessionStorage key of the coupon code typed in the cart, so the checkout starts with the same discount. */
+export const COUPON_KEY = 'ar_coupon';

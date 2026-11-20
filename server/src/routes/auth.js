@@ -178,7 +178,7 @@ export function mountAuthRoutes(app) {
       if (dup.length) throw fail(409, 'That mobile number is already used by another account');
     }
     await pool.query('UPDATE users SET name = COALESCE(?,name), phone = COALESCE(?,phone), address = COALESCE(?,address), area = COALESCE(?,area) WHERE id = ?',
-      [typeof name === 'string' ? name.slice(0, 120) : null, phone != null ? normPhone(phone) : null, typeof address === 'string' ? address.slice(0, 500) : null, AREAS.includes(area) ? area : null, req.user.id]);
+      [typeof name === 'string' ? name.slice(0, 120) : null, digits(phone) ? normPhone(phone) : null, typeof address === 'string' ? address.slice(0, 500) : null, AREAS.includes(area) ? area : null, req.user.id]);
     res.json({ user: userOut(await getUser(req.user.id)) });
   }));
 }

@@ -67,7 +67,7 @@ export default function LoginModal() {
                 <label className="llbl">PASSWORD<input name="pw" type="password" required minLength={8} autoComplete="new-password" /></label>
                 <label className="llbl">CONFIRM PASSWORD<input name="pw2" type="password" required minLength={8} autoComplete="new-password" /></label>
               </div>
-            ) : <label className="llbl">PASSWORD<input name="pw" type="password" required minLength={8} /></label>}
+            ) : <label className="llbl">PASSWORD<input name="pw" type="password" required autoComplete="current-password" /></label>}
             {reg && <span className="ov-login-hint">Password: at least 8 characters, with a letter and a number.</span>}
             {err && <span className="err ov-login-err">{err}</span>}
             {!reg && !sentForgot && <button type="button" onClick={forgot} className="ov-login-forgot">Forgot password?</button>}

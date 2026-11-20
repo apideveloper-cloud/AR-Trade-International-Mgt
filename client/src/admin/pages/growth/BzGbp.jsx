@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Switch } from '../../ui.jsx';
 import { send, mcMsg, trMsg } from './bzApi.js';
 import { Msg, CopyBtn } from './parts.jsx';
@@ -13,14 +13,16 @@ export default function BzGbp({ gbp, copy, canEdit, onSaved }) {
   const [g, setG] = useState(gbp);
   const [m, setM] = useState(null);
   const [busy, setBusy] = useState(false);
-  useEffect(() => setG(gbp), [gbp]);
+  const typed = useRef(new Set()); // text boxes with a change that is not saved yet: a tick or a switch (saved on its own) must not wipe them
+  useEffect(() => setG(x => ({ ...gbp, ...Object.fromEntries([...typed.current].map(k => [k, x[k]])) })), [gbp]);
   const set = patch => setG(x => ({ ...x, ...patch }));
+  const edit = (k, v) => { typed.current.add(k); set({ [k]: v }); };
   const post = async (body, okText) => {
     setBusy(true); setM(null);
     const r = await send('/growth/business/gbp', body);
     setBusy(false);
     setM(mcMsg(r, okText));
-    if (r.ok) onSaved?.(r.body?.gbp);
+    if (r.ok) { if ('profileUrl' in body) typed.current.clear(); onSaved?.(r.body?.gbp); }
     return r.ok;
   };
   const tick = async (id, done) => {
@@ -51,7 +53,7 @@ export default function BzGbp({ gbp, copy, canEdit, onSaved }) {
       <div className="adbz-form">
         {URLS.map(([k, l, h]) => (
           <label key={k} className="adbz-field">{tr(l)}
-            <input className="a-in" value={g[k] || ''} placeholder="https://" disabled={!canEdit} onChange={e => set({ [k]: e.target.value })} /><small>{tr(h)}</small>
+            <input className="a-in" value={g[k] || ''} placeholder="https://" disabled={!canEdit} onChange={e => edit(k, e.target.value)} /><small>{tr(h)}</small>
           </label>
         ))}
       </div>
@@ -62,7 +64,7 @@ export default function BzGbp({ gbp, copy, canEdit, onSaved }) {
       <h4 className="adbz-sub">{tr('What Google shows today')}</h4>
       <p className="adbz-hint">{tr('Type what you see on Google right now. The check above compares it with your details.')}</p>
       <div className="adbz-form">
-        {LISTED.map(([k, l]) => <label key={k} className="adbz-field">{tr(l)}<input className="a-in" value={g[k] || ''} disabled={!canEdit} onChange={e => set({ [k]: e.target.value })} /></label>)}
+        {LISTED.map(([k, l]) => <label key={k} className="adbz-field">{tr(l)}<input className="a-in" value={g[k] || ''} disabled={!canEdit} onChange={e => edit(k, e.target.value)} /></label>)}
       </div>
       <div className="adbz-row"><button type="button" className="a-btn a-btn-primary" disabled={!canEdit || busy} onClick={save}>{tr('Save profile details')}</button><Msg m={trMsg(tr, m)} /></div>
     </section>
