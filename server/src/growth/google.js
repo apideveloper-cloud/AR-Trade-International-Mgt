@@ -2,10 +2,12 @@
 // token live in the vault; the access token is kept in memory only. API helpers return { ok, ..., error } and never throw.
 import jwt from 'jsonwebtoken';
 import { secret } from '../util.js';
-import { callApi, setIntegration } from './http.js';
+import { callApi, getIntegration, setIntegration } from './http.js';
 import { getSecret } from './vault.js';
+import { readGrowth, saveGrowth } from './siteFiles.js';
 
-export const SCOPES = ['https://www.googleapis.com/auth/webmasters', 'https://www.googleapis.com/auth/siteverification'];
+export const MERCHANT_SCOPE = 'https://www.googleapis.com/auth/content';
+export const SCOPES = ['https://www.googleapis.com/auth/webmasters', 'https://www.googleapis.com/auth/siteverification', MERCHANT_SCOPE];
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const WM = 'https://www.googleapis.com/webmasters/v3/sites';
 const SV = 'https://www.googleapis.com/siteVerification/v1';
@@ -33,8 +35,22 @@ export async function exchangeCode(code, redirectUri) {
   if (!r.ok) return { ok: false, error: r.error || 'Google did not accept the code' };
   if (!r.data?.refresh_token) return { ok: false, error: 'Google did not return long-term access. Remove AR Trade from your Google account permissions and connect again.' };
   if (r.data.access_token) cache = { token: r.data.access_token, exp: Date.now() + (Number(r.data.expires_in) || 3600) * 1000 };
-  return { ok: true, refreshToken: r.data.refresh_token };
+  const scopes = String(r.data.scope || '').split(/\s+/).filter(Boolean);
+  // Stored in the growth settings (the callback rewrites the integration meta right after this call, which would drop it) and, when a caller
+  // wants, in meta.scopes via saveGrantedScopes().
+  await saveGrowth({ googleScopes: scopes }).catch(() => {});
+  return { ok: true, refreshToken: r.data.refresh_token, scopes };
 }
+
+/** Also keeps the granted scopes in the integration meta (meta.scopes). */
+export async function saveGrantedScopes(scopes) { await setIntegration('google', { meta: { ...((await getIntegration('google')).meta || {}), scopes: Array.isArray(scopes) ? scopes : [] } }); }
+/** Scopes granted to the stored refresh token ([] for connections made before the Merchant scope existed). */
+export async function grantedScopes() {
+  const m = (await getIntegration('google')).meta;
+  if (Array.isArray(m?.scopes) && m.scopes.length) return m.scopes;
+  const g = await readGrowth(); return Array.isArray(g.googleScopes) ? g.googleScopes : [];
+}
+export async function hasScope(scope) { return (await grantedScopes()).includes(scope); }
 
 /** A valid access token (refreshed when within 60 s of expiry). Throws Error with a plain message when Google access is gone. */
 export async function accessToken() {

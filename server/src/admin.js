@@ -23,6 +23,7 @@ import { mountGrowthRoutes } from './admin/growth.js';
 import { mountGrowthPriceRoutes } from './admin/growthPrice.js';
 import { mountGrowthCheckRoutes } from './admin/growthChecks.js';
 import { mountGrowthReviewRoutes } from './admin/growthReviews.js';
+import { mountGrowthMerchantRoutes } from './admin/growthMerchant.js';
 import { afterAdminWrite } from './seoAutomation.js';
 
 export { guard }; // other route files (field, hub, inventory, audit, ...) import the guard from here
@@ -44,6 +45,7 @@ mountGrowthRoutes(router, guard); // Google / Bing connections, verification fil
 mountGrowthPriceRoutes(router, guard); // price and stock grid, CSV, history (Search & Growth)
 mountGrowthCheckRoutes(router, guard); // price consistency checker (Search & Growth)
 mountGrowthReviewRoutes(router, guard); // review requests: stats, list, settings, templates (Search & Growth)
+mountGrowthMerchantRoutes(router, guard); // Merchant Center feed settings, product grid, API sync (Search & Growth)
 mountCustomerRoutes(router, guard); // customers, password resets, service requests
 router.use(contentRouter(guard));
 mountEngageRoutes(router, guard);

@@ -43,6 +43,7 @@ export function AdminRoutes({ staff, cats, loadCats, go, home }) {
       <Route path="growth" element={<P.Growth staff={staff} go={go} />} />
       <Route path="growth-prices" element={<P.GrowthPrices staff={staff} go={go} />} />
       <Route path="growth-reviews" element={<P.GrowthReviews staff={staff} go={go} />} />
+      <Route path="growth-merchant" element={<P.GrowthMerchant staff={staff} go={go} />} />
       <Route path="inv-vendors" element={<P.InvVendors staff={staff} />} />
       <Route path="quotes" element={<P.Quotations staff={staff} />} />
       <Route path="inv-purchases" element={<P.InvPurchases staff={staff} />} />

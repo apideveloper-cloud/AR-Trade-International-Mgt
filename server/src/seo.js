@@ -11,7 +11,9 @@ import { legacySlug, productIdOf, productPath, productSlug } from './slug.js';
 
 import { makeSitemapCache, makeRedirectLookup, redirectTarget, NAME, PER_PAGE, SHORT, applyProductOverrides, applySeoMeta, availabilityOf, brandProducts, brandSlug, breadcrumbLd, conditionOf, customText, pagedTitle, parseFaq, pickText, validUntil, clip, collectionLd, esc, isAutoDesc, isAutoTitle, listTitle, pageUrl, pagesOf, parsePage, plain, productDescription, productTitle } from './seoHelpers.js';
 import { faqDl, faqBlock, linkBlock, link, listFallback, notFoundFallback, pageFallback, policyBlocks, productFallback, productLine, textBlock } from './seoFallback.js';
-import { buildFeed } from './merchantFeed.js';
+import { buildFeed, buildFeedTable, feedAccess } from './merchantFeed.js';
+import { readGrowth } from './growth/siteFiles.js';
+export { feedAccess };
 import { mergeSeoSettings, validateRobotsTxt } from './seoSettings.js';
 import { DEFAULT_TEMPLATES, renderTemplate, varsFor } from './seoTemplate.js';
 import { indexNowKeyOf, analyticsSnippet, NO_ANALYTICS, imageEntry, imageLd, CHILD_SITEMAPS, robotsFor, verifyTags, aggregateLd, faqLd, heroImage, isVariantQuery, latestDay, offerExtras, policyMeta, productExtras, reviewsLd, robotsTxt, sameAsOf, serviceLd, sitemapIndex, storeLd, urlEntry, urlset } from './seoSchema.js';
@@ -152,32 +154,60 @@ export async function sitemapStatus() {
 }
 
 // ---------- Merchant Center feed ----------
-/** The feed built from the live catalogue: { xml, items, skipped }. A picture file that is missing counts as no image (the product is skipped). */
+let feedVer = 0, reportMemo = null;
+/** The admin calls this after saving the Merchant settings (growth.merchant): the feed and the report are rebuilt on the next request. */
+export function bumpFeedSettings() { feedVer++; reportMemo = null; cache.markDirty(); }
+/** The feed built from the live catalogue: { xml, items, skipped, rows, warnings }. A picture file that is missing counts as no image (the product is skipped). */
 async function loadFeed(base) {
   const [rows] = await pool.query('SELECT * FROM products WHERE active = 1 ORDER BY id');
-  const gal = new Map();
-  try { for (const r of (await pool.query('SELECT product_id, path FROM product_images ORDER BY product_id, position'))[0]) { const a = gal.get(r.product_id) || []; if (a.length < 10 && r.path && hasPicture(r.path)) { a.push(r.path); gal.set(r.product_id, a); } } } catch { /* no gallery table */ }
-  const products = rows.map(r => ({ ...r, img: hasPicture(r.img) ? r.img : '', images: gal.get(r.id) || [] }));
+  const gal = new Map(), dim = new Map();
+  try {
+    for (const r of (await pool.query('SELECT product_id, path, width, height FROM product_images ORDER BY product_id, position, id'))[0]) {
+      if (!dim.has(r.product_id)) dim.set(r.product_id, { w: Number(r.width) || 0, h: Number(r.height) || 0 }); // the first row of a product is its main picture
+      const a = gal.get(r.product_id) || [];
+      if (a.length < 10 && r.path && hasPicture(r.path)) { a.push(r.path); gal.set(r.product_id, a); }
+    }
+  } catch { /* no gallery table (or no width/height columns yet) */ }
+  const products = rows.map(r => ({ ...r, img: hasPicture(r.img) ? r.img : '', images: gal.get(r.id) || [], img_w: dim.get(r.id)?.w || 0, img_h: dim.get(r.id)?.h || 0 }));
   const [categories] = await pool.query('SELECT id, title FROM categories WHERE hidden = 0');
   const site = parseJson((await pool.query('SELECT v FROM settings WHERE k = "site"'))[0][0]?.v) || {};
   const { S } = await catalog();
-  return buildFeed({ base, site, settings: S, products, categories, now: new Date() });
+  let merchant = {};
+  try { merchant = (await readGrowth())?.merchant || {}; } catch { merchant = {}; }
+  return buildFeed({ base, site, settings: S, products, categories, now: new Date(), merchant });
 }
 const feedBase = (S, base) => String(S?.general?.preferredDomain || base).replace(/\/$/, '');
 function feedDoc(base, force = false) {
-  return catalog().then(({ S }) => { const b = feedBase(S, base); return cache.get(b + '|feed', async () => { const r = await loadFeed(b); return { body: r.xml, count: r.items.length, meta: { items: r.items, skipped: r.skipped } }; }, force); });
+  return catalog().then(({ S }) => { const b = feedBase(S, base); return cache.get(b + '|feed|' + feedVer, async () => { const r = await loadFeed(b); return { body: r.xml, count: r.items.length, meta: { items: r.items, skipped: r.skipped, rows: r.rows, warnings: r.warnings } }; }, force); });
 }
-/** { enabled, items, skipped:[{reason,count}], generatedAt } of the (cached) feed. */
+/** { enabled, items, skipped:[{reason,count}], warnings:[{reason,count}], generatedAt } of the (cached) feed. */
 export async function feedStatus() {
   const { S } = await catalog();
   const e = await feedDoc(defaultBase());
-  return { enabled: S.flags?.merchantFeed === true, items: e.count, skipped: e.meta.skipped, generatedAt: new Date(e.at).toISOString() };
+  return { enabled: S.flags?.merchantFeed === true, items: e.count, skipped: e.meta.skipped, warnings: e.meta.warnings || [], generatedAt: new Date(e.at).toISOString() };
 }
 /** The first `limit` feed items as plain objects. */
 export async function feedPreview(limit = 20) {
   const e = await feedDoc(defaultBase());
   return e.meta.items.slice(0, Math.max(0, Math.floor(Number(limit)) || 0));
 }
+/** Fresh (not the cached feed) build, kept 60 s: { items, rows, skipped:[{reason,count,sample:[{id,name}]}], warnings:[{reason,count,sample}] }. */
+export async function loadFeedReport(base = defaultBase()) {
+  const { S } = await catalog();
+  const b = feedBase(S, base);
+  if (reportMemo && reportMemo.b === b && Date.now() - reportMemo.t < 60000) return reportMemo.r;
+  const r = await loadFeed(b);
+  const label = new Map();
+  try { for (const [id, name] of (await pool.query('SELECT id, name FROM products WHERE active = 1'))[0].map(p => [p.id, p.name])) label.set(id, name); } catch { /* names are optional */ }
+  const sample = pids => pids.slice(0, 5).map(id => ({ id, name: String(label.get(id) ?? '') }));
+  const skipped = r.skipped.map(s => ({ ...s, sample: sample(r.rows.filter(w => !w.included && w.reason === s.reason).map(w => w.pid)) }));
+  const warnings = r.warnings.map(s => ({ ...s, sample: sample(r.rows.filter(w => w.included && w.warnings.includes(s.reason)).map(w => w.pid)) }));
+  const out = { items: r.items, rows: r.rows, skipped, warnings };
+  reportMemo = { b, t: Date.now(), r: out };
+  return out;
+}
+/** The items of loadFeedReport(). */
+export async function loadFeedItems(base) { return (await loadFeedReport(base)).items; }
 
 let shell = { t: 0, html: '' };
 function template(dist) {
@@ -249,12 +279,21 @@ export function mountSeo(app, dist) {
   for (const path of CHILD_SITEMAPS) app.get(path, wrap(async (req, res) => { const base = baseUrl(req); lastBase = base; sendCached(res, await sitemapDoc(base, path), 'application/xml'); }));
 
   // Google Merchant Center feed: 404 (normal not-found handling) until the merchantFeed flag is switched on
-  app.get('/feeds/google-merchant.xml', async (req, res, next) => {
+  // With a token set (Merchant settings) the feed needs ?token=...; a wrong or missing token is a plain 404 (the feed's existence is not revealed)
+  const FEED_TYPES = { xml: 'application/xml; charset=utf-8', tsv: 'text/tab-separated-values; charset=utf-8', csv: 'text/csv; charset=utf-8' };
+  for (const [ext, type] of Object.entries(FEED_TYPES)) app.get('/feeds/google-merchant.' + ext, async (req, res, next) => {
     try {
       const { S } = await catalog();
-      if (S.flags?.merchantFeed !== true) return next();
+      let m = {};
+      try { m = (await readGrowth())?.merchant || {}; } catch { m = {}; }
+      const acc = feedAccess(m, S.flags?.merchantFeed === true, req.query.token);
+      if (acc !== 'ok') return next();
       const base = baseUrl(req); lastBase = base;
-      sendCached(res, await feedDoc(base), 'application/xml; charset=utf-8');
+      const e = await feedDoc(base);
+      res.set('X-Robots-Tag', 'noindex');
+      if (m.feedToken) res.set('Cache-Control', 'private, no-store');
+      else res.set('Cache-Control', 'public, max-age=300');
+      res.set('Last-Modified', new Date(e.at).toUTCString()).type(type).send(ext === 'xml' ? e.body : buildFeedTable(e.meta.items, ext === 'csv' ? ',' : '\t'));
     } catch (e) { next(e); }
   });
 

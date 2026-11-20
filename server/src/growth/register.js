@@ -4,6 +4,7 @@ import { submitSitemapAll } from './sitemapSubmit.js';
 import './registerPrice.js';
 import './registerChecks.js';
 import './registerReviews.js';
+import './registerMerchant.js';
 
 export async function sitemapResubmit() {
   let results;

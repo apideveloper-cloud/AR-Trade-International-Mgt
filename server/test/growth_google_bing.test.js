@@ -19,7 +19,7 @@ test('authUrl has scopes, offline access and consent', async () => {
   assert.equal(u.host, 'accounts.google.com');
   assert.equal(u.searchParams.get('access_type'), 'offline'); assert.equal(u.searchParams.get('prompt'), 'consent');
   assert.equal(u.searchParams.get('state'), 'ST'); assert.equal(u.searchParams.get('client_id'), 'cid');
-  assert.equal(u.searchParams.get('scope'), 'https://www.googleapis.com/auth/webmasters https://www.googleapis.com/auth/siteverification');
+  assert.equal(u.searchParams.get('scope'), 'https://www.googleapis.com/auth/webmasters https://www.googleapis.com/auth/siteverification https://www.googleapis.com/auth/content');
 });
 test('state token round trip, and a wrong token is refused', () => {
   assert.equal(google.readState(google.signState(7)), 7);
@@ -28,7 +28,7 @@ test('state token round trip, and a wrong token is refused', () => {
 test('exchangeCode posts a form and returns the refresh token', async () => {
   const { f } = await init([res(200, { access_token: 'a', refresh_token: 'RT-new', expires_in: 3600 })]);
   const r = await google.exchangeCode('CODE', 'https://x.test/cb');
-  assert.deepEqual(r, { ok: true, refreshToken: 'RT-new' });
+  assert.deepEqual(r, { ok: true, refreshToken: 'RT-new', scopes: [] });
   assert.equal(f.calls[0].url, 'https://oauth2.googleapis.com/token');
   const p = new URLSearchParams(f.calls[0].body);
   assert.equal(p.get('grant_type'), 'authorization_code'); assert.equal(p.get('code'), 'CODE'); assert.equal(p.get('redirect_uri'), 'https://x.test/cb');

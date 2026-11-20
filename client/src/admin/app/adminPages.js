@@ -22,3 +22,4 @@ export const { Seo } = pick(() => import('../pages/Seo.jsx'), 'Seo');
 export const { Growth } = pick(() => import('../pages/growth/GrowthPage.jsx'), 'Growth');
 export const { GrowthPrices } = pick(() => import('../pages/growth/GrowthPrices.jsx'), 'GrowthPrices');
 export const { GrowthReviews } = pick(() => import('../pages/growth/GrowthReviews.jsx'), 'GrowthReviews');
+export const { GrowthMerchant } = pick(() => import('../pages/growth/GrowthMerchant.jsx'), 'GrowthMerchant');
