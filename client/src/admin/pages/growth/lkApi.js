@@ -15,6 +15,10 @@ export async function sendPut(url, body) {
   }
 }
 
+/** Translates the text of a { ok, text } message at display time. */
+export const trMsg = (tr, m) => (m && m.text ? { ...m, text: tr(m.text) } : m);
+
+// The labels are English keys: translate them with tr() where they are shown.
 export const KINDS = [['citation', 'Business listing'], ['backlink', 'Link from another site'], ['social', 'Social profile'], ['press', 'Press mention'], ['supplier', 'Supplier']];
 export const KIND_TEXT = Object.fromEntries(KINDS);
 export const STATUSES = [['planned', 'Planned', '○'], ['submitted', 'Submitted', '➤'], ['live', 'Live', '✔'], ['lost', 'Lost', '⚠'], ['rejected', 'Rejected', '✖']];

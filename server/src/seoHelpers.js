@@ -7,8 +7,8 @@ export const PER_PAGE = 24;
 
 export const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const ENTITY = { '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&apos;': "'", '&#39;': "'", '&#x27;': "'" };
-/** Plain one-line text from HTML: tags removed (also a tag whose closing > was saved as &gt;), common entities decoded once, spaces collapsed. Callers escape it again for HTML. */
-export const plain = h => String(h || '').replace(/<[a-z][^<>]*?&gt;/gi, ' ').replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&(?:amp|lt|gt|quot|apos|#39|#x27);/gi, m => ENTITY[m.toLowerCase()]).replace(/\s+/g, ' ').trim();
+/** Plain one-line text from HTML: tags removed (also a tag whose closing > was saved as &gt;, or an attribute fragment left behind such as class=”x”&gt;), common entities decoded once, spaces collapsed. Callers escape it again for HTML. */
+export const plain = h => String(h || '').replace(/<[a-z][^<>]*?&gt;/gi, ' ').replace(/\b(?:class|id|style)\s*=\s*[“”"'][^“”"'<>]*[“”"'](?:&gt;|>)/gi, ' ').replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&(?:amp|lt|gt|quot|apos|#39|#x27);/gi, m => ENTITY[m.toLowerCase()]).replace(/\s+/g, ' ').trim();
 /** Cuts at a word boundary, never inside a word. */
 export const clip = (s, n) => (s.length <= n ? s : s.slice(0, n).replace(/\s+\S*$/, ''));
 export const taka = n => '৳' + Math.round(Number(n) || 0).toLocaleString('en-US');

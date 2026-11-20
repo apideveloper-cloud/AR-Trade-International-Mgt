@@ -3,6 +3,7 @@
 // plain data mistakes (expired sale, old price below price, zero price, no SKU, price untouched for months).
 // Each check is a small pure function over plain objects returning [{ code, detail }].
 import { pool } from '../db.js';
+import { startProgress, setProgress, endProgress, getProgress } from './progress.js';
 import { availabilityOf, dayOf } from '../seoHelpers.js';
 import { availabilityText } from '../merchantFeed.js';
 import { productPath } from '../slug.js';
@@ -137,7 +138,13 @@ async function historyColumn(query) {
 }
 
 /** Checks the active products batch by batch. Returns { checked, issues, byCode }. Never throws for one bad product. */
+/** Runs the whole check and reports its progress (price_check) for the admin progress bar. */
 export async function runCheck(o = {}) {
+  if (!o.query && getProgress('price_check').running) return { skipped: true, reason: 'a check is already running' }; // one run at a time (a scheduled run meets a manual one)
+  startProgress('price_check', 0, 'Checking products');
+  try { return await runCheckInner(o); } finally { endProgress('price_check'); }
+}
+async function runCheckInner(o = {}) {
   const query = o.query || defaultQuery, tx = o.tx || (o.query ? cb => cb(query) : defaultTx);
   const preview = o.preview || defaultPreview, now = o.now ? new Date(o.now) : new Date();
   const cap = o.cap || CAP, size = o.batch || BATCH, yieldFn = o.yieldFn || tick;
@@ -145,6 +152,7 @@ export async function runCheck(o = {}) {
   const t0 = Date.now(), today = dhakaToday(now), byCode = {};
   const hist = o.history !== undefined ? o.history : await historyColumn(query);
   let checked = 0, issues = 0, lastId = 0, truncated = false;
+  try { const c = await query('SELECT COUNT(*) AS n FROM products WHERE active = 1', []); setProgress('price_check', 0, Math.min(cap, Number((Array.isArray(c) ? c[0] : c)?.n || 0))); } catch { /* the total stays unknown */ }
   while (true) {
     const left = cap - checked;
     if (left <= 0) { truncated = true; break; }
@@ -167,6 +175,7 @@ export async function runCheck(o = {}) {
       if (found.length) await q('INSERT IGNORE INTO growth_price_issues (product_id, code, detail) VALUES ?', [found]);
     });
     checked += rows.length; issues += found.length;
+    setProgress('price_check', checked);
     if (rows.length < Math.min(size, left)) break;
     await yieldFn(); // let the API answer between batches
   }

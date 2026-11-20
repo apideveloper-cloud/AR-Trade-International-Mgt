@@ -1,8 +1,8 @@
 // Admin routes of Search & Growth Phase 5 (Schema): the JSON-LD validator findings and a manual run.
 import { pool } from '../db.js';
 import { fail, wrap } from '../util.js';
-import { enqueue } from '../growth/jobs.js';
-import { CODES, schemaSummary } from '../growth/schemaCheck.js';
+import { CODES, schemaSummary, runSchemaCheck } from '../growth/schemaCheck.js';
+import { getProgress, KEYS as PROGRESS_KEYS } from '../growth/progress.js';
 
 export const RUN_GAP_MS = 60000;
 export const KINDS = ['home', 'shop', 'category', 'brand', 'blog', 'post', 'service', 'info', 'product'];
@@ -20,7 +20,8 @@ export function parseFilters(q = {}) {
   return { severity, code, kind, limit: int(q.limit, 15, 1, 100), page: int(q.page, 1, 1, 1e6) };
 }
 
-export function mountGrowthSchemaRoutes(router, guard) {
+export function mountGrowthSchemaRoutes(router, guard, deps = {}) {
+  const start = deps.start || runSchemaCheck;
   const R = guard('seo.manage');
 
   router.get('/growth/schema-checks', R, wrap(async (req, res) => {
@@ -46,10 +47,19 @@ export function mountGrowthSchemaRoutes(router, guard) {
     });
   }));
 
+  // progress of a running check (structured data or price): the admin pages poll it to draw a progress bar
+  router.get('/growth/progress', R, wrap(async (req, res) => {
+    const key = String(req.query.key || '');
+    if (!PROGRESS_KEYS.includes(key)) throw fail(400, 'Unknown check');
+    res.set('Cache-Control', 'no-store').json(getProgress(key));
+  }));
+
   router.post('/growth/schema-checks/run', R, wrap(async (req, res) => {
     if (Date.now() - lastRun < RUN_GAP_MS) throw fail(429, 'A check was started a moment ago. Wait a minute and try again');
     lastRun = Date.now();
-    const id = await enqueue('schema_check', {}, { dedupeKey: 'schema_check_manual', maxAttempts: 2 });
-    res.json(id ? { queued: true } : { queued: false, message: 'A check is already waiting' });
+    // start now, in this process (not behind other background jobs): the progress bar then moves right away
+    if (getProgress('schema_check').running) return res.json({ queued: false, message: 'A check is already running' });
+    start().catch(e => console.error('structured data check failed:', e.message));
+    res.json({ queued: true, started: true });
   }));
 }

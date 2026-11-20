@@ -13,26 +13,35 @@ import { AdminSidebar } from './app/AdminSidebar.jsx';
 import { NoAccess } from './app/NoAccess.jsx';
 import { useAdminMenu } from './app/useAdminMenu.js';
 import { useAdminSession } from './app/useAdminSession.js';
+import { LangProvider, useT, useLang } from './i18n/lang.jsx';
+import './i18n/dict/nav.js';
+import './i18n/lang.css';
 
 // the sign-in screen is shared with the Email Center and the Delivery Hub, which import it from here
 export { Login };
 
 /** The admin console shell: sign-in gate, permitted menu, top bar, page area (lazy routes) and footer. */
 export default function AdminApp() {
+  return <LangProvider><AdminShell /></LangProvider>;
+}
+
+function AdminShell() {
+  const tr = useT();
+  const { lang } = useLang();
   const { staff, setStaff, ready, cats, loadCats, mods, logout } = useAdminSession();
   const nav = useNavigate();
   const { pathname } = useLocation();
   const pageKey = pathname.split('/')[2] || '';
   const menu = useAdminMenu(pageKey);
 
-  if (!ready) return <PageLoader label="Checking your sign-in…" />;
+  if (!ready) return <PageLoader label={tr('Checking your sign-in…')} />;
   if (!staff) return <Login onDone={s => { setStaff(s); }} />;
 
   const groups = NAV.map(([g, items]) => [g, items.filter(i => can(staff, i[3]) && (!MODULE_OF[i[0]] || !mods || mods.includes(MODULE_OF[i[0]])))]).filter(([, i]) => i.length);
   if (!groups.length) return <NoAccess role={staff.role} onSignOut={logout} />;
   const home = groups[0][1][0][0];
   const mq = menu.menuQ.trim().toLowerCase();
-  const shown = mq ? groups.map(([g, items]) => [g, items.filter(i => (i[1] + ' ' + g).toLowerCase().includes(mq))]).filter(([, i]) => i.length) : groups;
+  const shown = mq ? groups.map(([g, items]) => [g, items.filter(i => (i[1] + ' ' + g + ' ' + tr(i[1]) + ' ' + tr(g)).toLowerCase().includes(mq))]).filter(([, i]) => i.length) : groups;
   const page = pageKey || home;
   const go = k => nav('/admin/' + k);
   const allowed = groups.flatMap(([, i]) => i.map(x => x[0]));
@@ -40,14 +49,14 @@ export default function AdminApp() {
 
   return (
     <StaffCtx.Provider value={staff}>
-      <div className="adm">
+      <div className="adm" lang={lang === 'bn' ? 'bn' : 'en'}>
         <AdminSidebar shown={shown} menu={menu} page={page} go={go} />
         <DialogHost />
         <main className="adm-main">
-          <TopBar staff={staff} groups={groups} page={page} title={allowed.includes(page) ? TITLES[page] || 'Admin' : 'No access'} go={go} logout={logout} />
+          <TopBar staff={staff} groups={groups} page={page} title={allowed.includes(page) ? tr(TITLES[page] || 'Admin') : tr('No access')} go={go} logout={logout} />
           <div className="adm-body" key={page}>
-            {!allowed.includes(page) ? <div className="a-msg err">Your role cannot open this page.</div> : (
-              <Suspense fallback={<PageLoader inline label="Loading the page…" />}>
+            {!allowed.includes(page) ? <div className="a-msg err">{tr('Your role cannot open this page.')}</div> : (
+              <Suspense fallback={<PageLoader inline label={tr('Loading the page…')} />}>
                 <AdminRoutes staff={staff} cats={cats} loadCats={loadCats} go={go} home={home} />
               </Suspense>
             )}

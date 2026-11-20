@@ -1,14 +1,18 @@
 import { useEffect, useState } from 'react';
 import { STATUS_COLORS } from './adminApi.js';
 import { useDebouncedCallback } from './hooks/useDebouncedCallback.js';
+import { useT } from './i18n/lang.jsx';
+import './i18n/dict/common.js';
 
 export function Pill({ s, label }) {
+  const tr = useT();
   const [bg, fg] = STATUS_COLORS[s] || ['#eef2f8', '#2b3550'];
-  return <span className="a-pill" style={{ background: bg, color: fg }}>{label || s}</span>;
+  return <span className="a-pill" style={{ background: bg, color: fg }}>{tr(label || s)}</span>;
 }
 
 /** Search box + optional filter selects + page size, like the design's grid toolbar. */
 export function Toolbar({ t, search = true, filters = [], sizes = [10, 25, 50, 100], children }) {
+  const tr = useT();
   const { params, set, data, loading } = t;
   const typed = useDebouncedCallback(v => set({ q: v }), 300);
   const dirty = params.q || filters.some(f => params[f.key]);
@@ -16,36 +20,40 @@ export function Toolbar({ t, search = true, filters = [], sizes = [10, 25, 50, 1
   const to = Math.min(params.page * params.size, data.total);
   return (
     <div className={'a-bar' + (search ? '' : ' slim')}>
-      {search && <label className="q"><span style={{ color: '#8a8f9b' }}>⌕</span><input defaultValue={params.q} key={params.q === '' ? 'empty' : 'q'} onChange={e => typed(e.target.value)} placeholder="Search…" /></label>}
+      {search && <label className="q"><span style={{ color: '#8a8f9b' }}>⌕</span><input defaultValue={params.q} key={params.q === '' ? 'empty' : 'q'} onChange={e => typed(e.target.value)} placeholder={tr('Search…')} /></label>}
       {filters.map(f => (
-        <select key={f.key} title={f.label} value={params[f.key] || ''} onChange={e => set({ [f.key]: e.target.value })}>
-          <option value="">{f.label}</option>{f.options.map(o => <option key={o.v ?? o} value={o.v ?? o}>{o.t ?? o}</option>)}
+        <select key={f.key} title={tr(f.label)} value={params[f.key] || ''} onChange={e => set({ [f.key]: e.target.value })}>
+          <option value="">{tr(f.label)}</option>{f.options.map(o => <option key={o.v ?? o} value={o.v ?? o}>{tr(o.t ?? o)}</option>)}
         </select>
       ))}
-      {dirty && <button className="clr" onClick={() => set(Object.fromEntries(['q', ...filters.map(f => f.key)].map(k => [k, ''])))}>Clear ×</button>}
+      {dirty && <button className="clr" onClick={() => set(Object.fromEntries(['q', ...filters.map(f => f.key)].map(k => [k, ''])))}>{tr('Clear')} ×</button>}
       {children}
-      <span className="info">{loading ? <b style={{ color: 'oklch(0.5 0.15 252)' }}>⟳ Fetching…</b> : `${from}–${to} of ${data.total}`}</span>
-      <select value={params.size} onChange={e => set({ size: +e.target.value })}>{sizes.map(s => <option key={s} value={s}>{s} / page</option>)}</select>
+      <span className="info">{loading ? <b style={{ color: 'oklch(0.5 0.15 252)' }}>⟳ {tr('Fetching…')}</b> : tr('{from}–{to} of {total}', { from, to, total: data.total })}</span>
+      <select value={params.size} onChange={e => set({ size: +e.target.value })}>{sizes.map(s => <option key={s} value={s}>{tr('{n} / page', { n: s })}</option>)}</select>
     </div>
   );
 }
 
 export function Pager({ t }) {
+  const tr = useT();
   const { params, go, data } = t;
   const pages = Math.max(1, Math.ceil(data.total / params.size));
   if (pages <= 1) return null;
   const list = [...new Set([1, params.page - 1, params.page, params.page + 1, pages].filter(p => p >= 1 && p <= pages))].sort((a, b) => a - b);
   return (
     <div className="a-pager">
-      <span>Page {params.page} of {pages}</span>
-      <button disabled={params.page <= 1} onClick={() => go(params.page - 1)}>‹ Prev</button>
+      <span>{tr('Page {n} of {m}', { n: params.page, m: pages })}</span>
+      <button disabled={params.page <= 1} onClick={() => go(params.page - 1)}>‹ {tr('Prev')}</button>
       {list.map(p => <button key={p} className={p === params.page ? 'on' : ''} onClick={() => go(p)}>{p}</button>)}
-      <button disabled={params.page >= pages} onClick={() => go(params.page + 1)}>Next ›</button>
+      <button disabled={params.page >= pages} onClick={() => go(params.page + 1)}>{tr('Next')} ›</button>
     </div>
   );
 }
 
-export const Empty = ({ t }) => (!t.loading && !t.data.rows.length ? <div className="a-empty">{t.error || 'No records match your search or filters.'}</div> : null);
+export function Empty({ t }) {
+  const tr = useT();
+  return !t.loading && !t.data.rows.length ? <div className="a-empty">{t.error || tr('No records match your search or filters.')}</div> : null;
+}
 
 export function Switch({ on, onChange, title }) {
   return <button type="button" className={'a-sw' + (on ? ' on' : '')} title={title} onClick={() => onChange(!on)} />;

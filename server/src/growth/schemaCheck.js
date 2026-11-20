@@ -1,6 +1,7 @@
 // Nightly JSON-LD (rich result) validator of the Search & Growth console (Phase 5). Renders every public page on the server with previewMeta
 // (no HTTP), runs the pure rules of schemaRules.js on its JSON-LD and keeps the findings in growth_schema_issues.
 import { pool } from '../db.js';
+import { startProgress, setProgress, endProgress, getProgress } from './progress.js';
 import { productPath } from '../slug.js';
 import { CODES, validateLd } from './schemaRules.js';
 
@@ -45,7 +46,13 @@ export async function listPages(query, posts = POSTS) {
 }
 
 /** Runs the check. deps: { query, tx, preview(path), now, cap, batch, posts, yieldFn }. Returns { checked, errors, warnings, byCode, ms }. */
+/** Runs the whole check and reports its progress (schema_check) for the admin progress bar. */
 export async function runSchemaCheck(o = {}) {
+  if (!o.query && getProgress('schema_check').running) return { skipped: true, reason: 'a check is already running' }; // one run at a time (a scheduled run meets a manual one)
+  startProgress('schema_check', 0, 'Checking pages');
+  try { return await runSchemaCheckInner(o); } finally { endProgress('schema_check'); }
+}
+async function runSchemaCheckInner(o = {}) {
   const query = o.query || defaultQuery, preview = o.preview || o.previewMeta || defaultPreview;
   const tx = o.tx || (o.query ? cb => cb(query) : async cb => {
     const c = await pool.getConnection();
@@ -71,6 +78,9 @@ export async function runSchemaCheck(o = {}) {
 
   // 1. the pages that are not products (counted against the cap too)
   const pages = (await listPages(query, o.posts || POSTS)).slice(0, cap);
+  let total = pages.length;
+  try { const [c] = await query('SELECT COUNT(*) AS n FROM products WHERE active = 1', []); total = Math.min(cap, pages.length + Number(c?.n || 0)); } catch { /* the total stays the page count: the bar then reaches the end early */ }
+  setProgress('schema_check', 0, total);
   for (let i = 0; i < pages.length; i += size) {
     const part = pages.slice(i, i + size), found = [];
     for (const p of part) found.push(...await checkPage(p.url, p.kind, null));
@@ -79,6 +89,7 @@ export async function runSchemaCheck(o = {}) {
       if (found.length) await q(INS, [found]);
     });
     tally(found); checked += part.length;
+    setProgress('schema_check', checked);
     await yieldFn();
   }
 
@@ -98,6 +109,7 @@ export async function runSchemaCheck(o = {}) {
       if (found.length) await q(INS, [found]);
     });
     tally(found); checked += rows.length;
+    setProgress('schema_check', checked);
     if (rows.length < want) break;
     await yieldFn(); // let the API answer between batches
   }

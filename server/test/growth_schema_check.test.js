@@ -123,10 +123,10 @@ test('parseFilters validates and clamps', () => {
   for (const q of [{ severity: 'bad' }, { code: 'nope' }, { kind: 'nope' }]) assert.throws(() => parseFilters(q), e => e.status === 400);
 });
 
-async function boot(handler) {
+async function boot(handler, deps = {}) {
   const orig = pool.query; pool.query = handler;
   const router = express.Router(); router.use(express.json());
-  mountGrowthSchemaRoutes(router, () => (req, res, next) => next());
+  mountGrowthSchemaRoutes(router, () => (req, res, next) => next(), deps);
   const app = express(); app.use(router);
   const srv = await new Promise(r => { const s = app.listen(0, () => r(s)); });
   const call = (m, path) => fetch(`http://127.0.0.1:${srv.address().port}${path}`, { method: m }).then(async r => ({ status: r.status, body: await r.json() }));
@@ -166,19 +166,19 @@ test('GET with missing tables answers an empty list', async () => {
   } finally { t.close(); }
 });
 
-test('POST run enqueues once, a second call within a minute is 429, an active job is reported', async () => {
+test('POST run starts the check at once, a second call within a minute is 429, a running check is reported', async () => {
   _resetRunGap();
-  let affected = 1; const inserts = [];
-  const t = await boot(async (sql, p) => {
-    if (sql.startsWith('INSERT IGNORE INTO growth_jobs')) { inserts.push(p); return [{ affectedRows: affected, insertId: 9 }]; }
-    return [{}];
-  });
+  let started = 0;
+  const t = await boot(async () => [{}], { start: async () => { started++; } });
   try {
-    assert.deepEqual((await t.call('POST', '/growth/schema-checks/run')).body, { queued: true });
-    assert.equal(inserts[0][0], 'schema_check'); assert.equal(inserts[0][4], 'schema_check_manual');
+    assert.deepEqual((await t.call('POST', '/growth/schema-checks/run')).body, { queued: true, started: true });
+    assert.equal(started, 1);
     assert.equal((await t.call('POST', '/growth/schema-checks/run')).status, 429);
-    _resetRunGap(); affected = 0;
+    _resetRunGap();
+    const { startProgress, endProgress } = await import('../src/growth/progress.js');
+    startProgress('schema_check', 10, 'x');
     const r = await t.call('POST', '/growth/schema-checks/run');
-    assert.equal(r.body.queued, false); assert.ok(r.body.message);
+    assert.equal(r.body.queued, false); assert.ok(r.body.message); assert.equal(started, 1);
+    endProgress('schema_check');
   } finally { t.close(); _resetRunGap(); }
 });

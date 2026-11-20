@@ -13,14 +13,14 @@ export const SEV = {
 export const sevOf = s => SEV[s] || SEV.low;
 
 /** Change vs the previous period as { text, cls }. `good` = which direction is better. */
-export function change(d, { good = 'up', unit = '' } = {}) {
-  if (!isNum(d)) return { text: 'No earlier figure to compare', cls: 'adov-flat' };
-  if (d === 0) return { text: 'No change', cls: 'adov-flat' };
+export function change(d, { good = 'up', unit = '', tr = x => x } = {}) {
+  if (!isNum(d)) return { text: tr('No earlier figure to compare'), cls: 'adov-flat' };
+  if (d === 0) return { text: tr('No change'), cls: 'adov-flat' };
   const up = d > 0;
   const val = Math.abs(Math.round(d * 10) / 10);
-  return { text: (up ? '▲ Up ' : '▼ Down ') + val + unit + ' from the previous 28 days', cls: (good === 'up') === up ? 'adov-good' : 'adov-bad' };
+  return { text: tr(up ? '▲ Up {v} from the previous 28 days' : '▼ Down {v} from the previous 28 days', { v: val + unit }), cls: (good === 'up') === up ? 'adov-good' : 'adov-bad' };
 }
 
 export const pathOf = u => { try { const x = new URL(u, 'https://x.invalid'); return x.pathname + x.search; } catch { return String(u || ''); } };
 export const richUrl = u => 'https://search.google.com/test/rich-results?url=' + encodeURIComponent(u);
-export const when = t => (t ? new Date(t).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Never');
+export const when = (t, tr) => (t ? new Date(t).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : tr ? tr('Never') : 'Never');

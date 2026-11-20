@@ -18,8 +18,8 @@ export const STOCK_STATUS = [['', 'Auto'], ['in_stock', 'In stock'], ['out_of_st
 export const ISSUES = [['no_sku', 'No SKU'], ['sale_expired', 'Sale ended'], ['zero_price', 'Price is 0'], ['out_of_stock', 'Out of stock'], ['low_stock', 'Low stock'], ['no_stock_status', 'No stock status']];
 export const money = n => (Number(n) || 0).toLocaleString('en-US');
 
-/** Turns a 409 needsConfirm list into the question shown to the owner. */
-export const jumpText = list => 'This changes the price by more than 50 % for:\n' + list.map(p => `${p.name || '#' + p.id} (${money(p.from)} to ${money(p.to)}${p.pct != null ? ', ' + Math.round(p.pct) + ' %' : ''})`).join('\n') + '\nIs this correct?';
+/** Turns a 409 needsConfirm list into the question shown to the owner (pass the page's tr to translate it). */
+export const jumpText = (list, tr = s => s) => tr('This changes the price by more than 50 % for:') + '\n' + list.map(p => `${p.name || '#' + p.id} (${tr('{from} to {to}', { from: money(p.from), to: money(p.to) })}${p.pct != null ? ', ' + Math.round(p.pct) + ' %' : ''})`).join('\n') + '\n' + tr('Is this correct?');
 
 /** Short text for a 400 { errors } answer. */
 export const errorLines = b => (b.errors || []).map(e => `#${e.id} ${e.field || ''}: ${e.message}`);

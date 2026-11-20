@@ -43,7 +43,7 @@ async function boot() {
     return base(sql, p);
   };
   const router = express.Router(); router.use(express.json());
-  mountGrowthCheckRoutes(router, () => (req, res, next) => next());
+  mountGrowthCheckRoutes(router, () => (req, res, next) => next(), { start: async () => {} });
   const app = express(); app.use(router);
   const srv = await new Promise(r => { const s = app.listen(0, () => r(s)); });
   const call = (m, path, body) => fetch(`http://127.0.0.1:${srv.address().port}${path}`, { method: m, headers: { 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined }).then(async r => ({ status: r.status, body: await r.json() }));
@@ -79,7 +79,22 @@ test('manual run: a second request within a minute is 429', async () => {
   try {
     _resetRunGap();
     const first = await call('POST', '/growth/price-checks/run');
-    assert.equal(first.status, 200); assert.deepEqual(first.body, { queued: true });
+    assert.equal(first.status, 200); assert.deepEqual(first.body, { queued: true, started: true });
     assert.equal((await call('POST', '/growth/price-checks/run')).status, 429);
   } finally { srv.close(); }
+});
+
+test('progress: percent grows with the work done and is 100 when the run has ended', async () => {
+  const { startProgress, setProgress, endProgress, getProgress } = await import('../src/growth/progress.js');
+  assert.equal(getProgress('price_check').running, false);
+  startProgress('price_check', 0, 'Checking products');
+  assert.equal(getProgress('price_check').percent, null); // total not known yet
+  setProgress('price_check', 0, 200);
+  assert.equal(getProgress('price_check').percent, 0);
+  setProgress('price_check', 50);
+  assert.equal(getProgress('price_check').percent, 25);
+  setProgress('price_check', 200);
+  assert.equal(getProgress('price_check').percent, 99); // never 100 before the run has really ended
+  endProgress('price_check');
+  const g = getProgress('price_check'); assert.equal(g.running, false); assert.equal(g.percent, 100); assert.ok(g.finishedAt);
 });

@@ -5,6 +5,7 @@ import RvStatus from './RvStatus.jsx';
 import RvSettings from './RvSettings.jsx';
 import RvRequests from './RvRequests.jsx';
 import RvOptouts from './RvOptouts.jsx';
+import '../../i18n/dict/growthB.js';
 import './growth.css';
 import './reviews.css';
 

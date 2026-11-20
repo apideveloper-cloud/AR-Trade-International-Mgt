@@ -15,4 +15,7 @@ export function normHours(list) {
 }
 
 export const SOURCE_TEXT = { site: 'the Settings page', 'seo.business': 'this page', 'content.social': 'Storefront content (social links)' };
-export const when = at => { const d = at ? new Date(at) : null; return d && !isNaN(d) ? d.toLocaleString() : 'never'; };
+/** tr is optional: pass the admin translator to get 'never' in Bangla. */
+export const when = (at, tr = s => s) => { const d = at ? new Date(at) : null; return d && !isNaN(d) ? d.toLocaleString() : tr('never'); };
+/** Translates the text of a { ok, text } message at display time. */
+export const trMsg = (tr, m) => (m && m.text ? { ...m, text: tr(m.text) } : m);

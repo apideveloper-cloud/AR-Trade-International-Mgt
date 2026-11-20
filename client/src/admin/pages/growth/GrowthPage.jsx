@@ -9,6 +9,8 @@ import SitemapCard from './SitemapCard.jsx';
 import StatusStrip from './StatusStrip.jsx';
 import VerifyCard from './VerifyCard.jsx';
 import Wizard from './Wizard.jsx';
+import { useT } from '../../i18n/lang.jsx';
+import '../../i18n/dict/growthA.js';
 import './growth.css';
 
 /** Reads ?google=ok or ?google=error&msg=... (set by the server after the Google sign-in), then cleans the address. */
@@ -24,15 +26,16 @@ function readReturn() {
 
 /** Admin > Search & Growth > Search engines. */
 export function Growth({ staff, go }) {
+  const tr = useT();
   const q = useApiData(() => adm.get('/growth/status'));
   const [banner] = useState(readReturn);
   const s = q.data;
   const canConn = can(staff, 'growth.integrations');
   return (
     <div className="adgr">
-      {banner && <div className={'adgr-msg ' + (banner.ok ? 'adgr-msg-ok' : 'adgr-msg-err')} role="status">{banner.text}</div>}
+      {banner && <div className={'adgr-msg ' + (banner.ok ? 'adgr-msg-ok' : 'adgr-msg-err')} role="status">{tr(banner.text)}</div>}
       {/* the same result is passed to the Google card so it stays visible beside the buttons */}
-      {q.error && <div className="a-msg err">{q.error} <button type="button" className="a-btn ghost sm" onClick={q.reload}>Try again</button></div>}
+      {q.error && <div className="a-msg err">{tr(q.error)} <button type="button" className="a-btn ghost sm" onClick={q.reload}>{tr('Try again')}</button></div>}
       {!s ? (!q.error && <span className="spin" />) : (
         <>
           <StatusStrip s={s} />

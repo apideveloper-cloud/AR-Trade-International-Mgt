@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { send, mcMsg, normHours, SOURCE_TEXT } from './bzApi.js';
+import { send, mcMsg, normHours, trMsg, SOURCE_TEXT } from './bzApi.js';
 import { Msg } from './parts.jsx';
 import BzHours from './BzHours.jsx';
+import { useT } from '../../i18n/lang.jsx';
 
 const TEXT = [
   ['legalName', 'Legal name', 'The registered company name, if different.', ''],
@@ -15,6 +16,7 @@ const TEXT = [
 
 /** Section A: the details form. */
 export default function BzDetails({ info, canEdit, onSaved }) {
+  const tr = useT();
   const [f, setF] = useState(null);
   const [m, setM] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -22,8 +24,8 @@ export default function BzDetails({ info, canEdit, onSaved }) {
   if (!f) return null;
   const set = patch => setF(x => ({ ...x, ...patch }));
   const save = async () => {
-    if (f.whatsapp && !/^\d+$/.test(String(f.whatsapp))) return setM({ ok: false, text: 'WhatsApp number: type digits only, for example 8801XXXXXXXXX.' });
-    for (const k of ['geoLat', 'geoLng']) if (f[k] !== '' && f[k] != null && isNaN(Number(f[k]))) return setM({ ok: false, text: 'Map position: type numbers only, for example 23.7381.' });
+    if (f.whatsapp && !/^\d+$/.test(String(f.whatsapp))) return setM({ ok: false, text: tr('WhatsApp number: type digits only, for example 8801XXXXXXXXX.') });
+    for (const k of ['geoLat', 'geoLng']) if (f[k] !== '' && f[k] != null && isNaN(Number(f[k]))) return setM({ ok: false, text: tr('Map position: type numbers only, for example 23.7381.') });
     setBusy(true); setM(null);
     const body = { legalName: f.legalName, phone: f.phone, whatsapp: f.whatsapp, email: f.email, address: f.address, priceRange: f.priceRange, logo: f.logo, hours: f.hours, geoLat: f.geoLat === '' ? null : Number(f.geoLat), geoLng: f.geoLng === '' ? null : Number(f.geoLng) };
     const r = await send('/growth/business', body);
@@ -34,36 +36,36 @@ export default function BzDetails({ info, canEdit, onSaved }) {
   const used = Object.entries(info.sources || {});
   return (
     <section className="a-card adbz-card" id="adbz-details">
-      <h3>Your business details</h3>
-      <p className="adbz-hint">Write them once here. The website, Google data and the weekly e-mail all use these same details.</p>
-      {!canEdit && <Msg m={{ ok: false, text: 'Only people with Settings permission can change these details.' }} />}
+      <h3>{tr('Your business details')}</h3>
+      <p className="adbz-hint">{tr('Write them once here. The website, Google data and the weekly e-mail all use these same details.')}</p>
+      {!canEdit && <Msg m={{ ok: false, text: tr('Only people with Settings permission can change these details.') }} />}
       <div className="adbz-form">
-        <label className="adbz-field">Shop name
+        <label className="adbz-field">{tr('Shop name')}
           <input className="a-in" value={info.name || ''} readOnly disabled />
-          <small>Change the name in Settings, not here.</small>
+          <small>{tr('Change the name in Settings, not here.')}</small>
         </label>
         {TEXT.map(([k, l, hint, ph]) => (
-          <label key={k} className="adbz-field">{l}
+          <label key={k} className="adbz-field">{tr(l)}
             <input className="a-in" value={f[k] ?? ''} placeholder={ph} disabled={!canEdit} onChange={e => set({ [k]: e.target.value })} />
-            <small>{hint}</small>
+            <small>{tr(hint)}</small>
           </label>
         ))}
-        <label className="adbz-field">Map position: latitude (optional)
+        <label className="adbz-field">{tr('Map position: latitude (optional)')}
           <input className="a-in" inputMode="decimal" value={f.geoLat} placeholder="23.7381" disabled={!canEdit} onChange={e => set({ geoLat: e.target.value })} />
         </label>
-        <label className="adbz-field">Map position: longitude (optional)
+        <label className="adbz-field">{tr('Map position: longitude (optional)')}
           <input className="a-in" inputMode="decimal" value={f.geoLng} placeholder="90.4066" disabled={!canEdit} onChange={e => set({ geoLng: e.target.value })} />
         </label>
       </div>
-      <p className="adbz-hint">How to find the map position: open Google Maps, right-click your shop, and click the two numbers at the top of the menu. The first is the latitude, the second the longitude.</p>
+      <p className="adbz-hint">{tr('How to find the map position: open Google Maps, right-click your shop, and click the two numbers at the top of the menu. The first is the latitude, the second the longitude.')}</p>
       <BzHours hours={f.hours} onChange={h => set({ hours: h })} disabled={!canEdit} />
       <div className="adbz-row">
-        <button type="button" className="a-btn a-btn-primary" disabled={!canEdit || busy} onClick={save}>{busy ? 'Saving...' : 'Save details'}</button>
-        <Msg m={m} />
+        <button type="button" className="a-btn a-btn-primary" disabled={!canEdit || busy} onClick={save}>{busy ? tr('Saving...') : tr('Save details')}</button>
+        <Msg m={trMsg(tr, m)} />
       </div>
       {used.length > 0 && (
-        <details><summary>Where each detail is used</summary>
-          <ul className="adbz-hint">{used.map(([k, v]) => <li key={k}>{k}: taken from {SOURCE_TEXT[v] || v}</li>)}</ul>
+        <details><summary>{tr('Where each detail is used')}</summary>
+          <ul className="adbz-hint">{used.map(([k, v]) => <li key={k}>{tr('{field}: taken from {source}', { field: tr(k), source: tr(SOURCE_TEXT[v] || v) })}</li>)}</ul>
         </details>
       )}
     </section>

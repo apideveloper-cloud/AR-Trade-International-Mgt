@@ -1,4 +1,6 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
+import { useT } from './i18n/lang.jsx';
+import './i18n/dict/common.js';
 import './filterCard.css';
 
 // One filter card for every list: search box, any number of drop-downs, a date period (quick ranges + from / to) and an optional amount range.
@@ -40,6 +42,7 @@ const ICONS = {
 const SPAN = { search: 'c4', select: 'c3', date: 'c3', amount: 'c4', reset: 'c2' };
 
 export function ListFilter({ t, title = 'Search & filter', noun = 'record', plural, search = { placeholder: 'Search…' }, selects = [], range, amount, resetSpan, children }) {
+  const tr = useT();
   const p = t.params;
   // With four or more other filters, the search box and the first filter share the first row and the rest sit on the row below.
   const searchRow = !!search && !search.span && selects.length > 0 && selects.length + (range ? 2 : 0) + (amount ? 1 : 0) >= 4;
@@ -57,37 +60,37 @@ export function ListFilter({ t, title = 'Search & filter', noun = 'record', plur
   const reset = () => { stopTyping(); t.set({ ...Object.fromEntries(keys.map(k => [k, ''])), ...(range ? dflt.current : {}) }); };
   const quick = range ? periods() : [];
   const current = (quick.find(r => r[2] === (p.from || '') && r[3] === (p.to || '')) || [])[0];
-  const found = t.loading ? 'Searching…' : `${t.data.total} ${t.data.total === 1 ? noun : plural || noun + 's'} found`;
+  const found = t.loading ? tr('Searching…') : tr('{n} {what} found', { n: t.data.total, what: tr(t.data.total === 1 ? noun : plural || noun + 's') });
   const input = (k, placeholder, icon, type = 'text') => (
-    <span className="os-in">{icon}<input key={k + (p[k] === '' ? '-e' : '')} type={type} defaultValue={p[k] || ''} placeholder={placeholder} onChange={e => typed(k, e.target.value)} /></span>
+    <span className="os-in">{icon}<input key={k + (p[k] === '' ? '-e' : '')} type={type} defaultValue={p[k] || ''} placeholder={placeholder ? tr(placeholder) : placeholder} onChange={e => typed(k, e.target.value)} /></span>
   );
   return (
     <section className="os-card">
       <div className="os-hd">
         <button type="button" className="os-tgl" onClick={() => setOpen(o => !o)} aria-expanded={open}>
           <span className="os-ic"><svg viewBox="0 0 24 24"><path d="M4 5h16l-6 8v6l-4-2v-4z" /></svg></span>
-          <b>{title}</b>{active > 0 && <i className="os-badge">{active} active</i>}
+          <b>{tr(title)}</b>{active > 0 && <i className="os-badge">{tr('{n} active', { n: active })}</i>}
         </button>
         {range && (
-          <span className="os-seg" role="group" aria-label={(range.label || 'Date') + ' period'}>
-            {quick.map(([k, label, from, to]) => <button key={k} type="button" className={current === k ? 'on' : ''} onClick={() => t.set({ from, to })}>{label}</button>)}
+          <span className="os-seg" role="group" aria-label={tr('{label} period', { label: tr(range.label || 'Date') })}>
+            {quick.map(([k, label, from, to]) => <button key={k} type="button" className={current === k ? 'on' : ''} onClick={() => t.set({ from, to })}>{tr(label)}</button>)}
           </span>
         )}
         <span className="os-sp" />
         <em className="os-found">{found}</em>
-        <button type="button" className="os-chev" onClick={() => setOpen(o => !o)} aria-label={open ? 'Collapse filters' : 'Expand filters'}>{open ? '▴' : '▾'}</button>
+        <button type="button" className="os-chev" onClick={() => setOpen(o => !o)} aria-label={open ? tr('Collapse filters') : tr('Expand filters')}>{open ? '▴' : '▾'}</button>
       </div>
       {open && (
         <div className="os-box">
           <div className="os-grid">
-            {search && <label className={'os-f os-s ' + (search.span || (searchRow ? 'cfull' : SPAN.search))}>{search.label || 'Search'}{input('q', search.placeholder, ICONS.search)}</label>}
+            {search && <label className={'os-f os-s ' + (search.span || (searchRow ? 'cfull' : SPAN.search))}>{tr(search.label || 'Search')}{input('q', search.placeholder, ICONS.search)}</label>}
             {selects.map((s, i) => (
               <Fragment key={s.key}>
-              <label className={'os-f ' + (s.span || SPAN.select) + (searchRow && i === 0 ? ' cfirst' : '')}>{s.label}
+              <label className={'os-f ' + (s.span || SPAN.select) + (searchRow && i === 0 ? ' cfirst' : '')}>{tr(s.label)}
                 <span className="os-in os-sel">{ICONS[s.icon || 'grid']}
                   <select value={p[s.key] || ''} onChange={e => t.set({ [s.key]: e.target.value })}>
-                    <option value="">{s.all || 'All'}</option>
-                    {s.options.map(o => <option key={o.v ?? o} value={o.v ?? o}>{o.t ?? o}</option>)}
+                    <option value="">{tr(s.all || 'All')}</option>
+                    {s.options.map(o => <option key={o.v ?? o} value={o.v ?? o}>{tr(o.t ?? o)}</option>)}
                   </select>
                 </span>
               </label>
@@ -95,20 +98,20 @@ export function ListFilter({ t, title = 'Search & filter', noun = 'record', plur
               </Fragment>
             ))}
             {range && <>
-              <label className={'os-f ' + SPAN.date}>{range.label || 'Date'} from<span className="os-in os-dt">{ICONS.cal}<input type="date" value={p.from || ''} max={p.to || undefined} onChange={e => t.set({ from: e.target.value })} /></span></label>
-              <label className={'os-f ' + SPAN.date}>{range.label || 'Date'} to<span className="os-in os-dt">{ICONS.cal}<input type="date" value={p.to || ''} min={p.from || undefined} onChange={e => t.set({ to: e.target.value })} /></span></label>
+              <label className={'os-f ' + SPAN.date}>{tr('{label} from', { label: tr(range.label || 'Date') })}<span className="os-in os-dt">{ICONS.cal}<input type="date" value={p.from || ''} max={p.to || undefined} onChange={e => t.set({ from: e.target.value })} /></span></label>
+              <label className={'os-f ' + SPAN.date}>{tr('{label} to', { label: tr(range.label || 'Date') })}<span className="os-in os-dt">{ICONS.cal}<input type="date" value={p.to || ''} min={p.from || undefined} onChange={e => t.set({ to: e.target.value })} /></span></label>
             </>}
             {amount && (
-              <div className={'os-f os-amt ' + SPAN.amount}>{amount.label || 'Amount'}
+              <div className={'os-f os-amt ' + SPAN.amount}>{tr(amount.label || 'Amount')}
                 <div><b>৳</b>
-                  <input key={'min' + (p.min === '' ? '-e' : '')} type="number" min="0" placeholder="Min" defaultValue={p.min || ''} onChange={e => typed('min', e.target.value)} aria-label="Minimum" />
-                  <span>to</span>
-                  <input key={'max' + (p.max === '' ? '-e' : '')} type="number" min="0" placeholder="Max" defaultValue={p.max || ''} onChange={e => typed('max', e.target.value)} aria-label="Maximum" />
+                  <input key={'min' + (p.min === '' ? '-e' : '')} type="number" min="0" placeholder={tr('Min')} defaultValue={p.min || ''} onChange={e => typed('min', e.target.value)} aria-label={tr('Minimum')} />
+                  <span>{tr('to')}</span>
+                  <input key={'max' + (p.max === '' ? '-e' : '')} type="number" min="0" placeholder={tr('Max')} defaultValue={p.max || ''} onChange={e => typed('max', e.target.value)} aria-label={tr('Maximum')} />
                 </div>
               </div>
             )}
             {children}
-            <div className={'os-f os-end ' + (resetSpan || SPAN.reset)}>{active > 0 || !isDefaultRange ? <button type="button" className="os-clr" onClick={reset}>↺ Reset</button> : <span className="os-hint">No filters</span>}</div>
+            <div className={'os-f os-end ' + (resetSpan || SPAN.reset)}>{active > 0 || !isDefaultRange ? <button type="button" className="os-clr" onClick={reset}>↺ {tr('Reset')}</button> : <span className="os-hint">{tr('No filters')}</span>}</div>
           </div>
         </div>
       )}

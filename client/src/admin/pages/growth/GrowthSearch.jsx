@@ -8,11 +8,14 @@ import GsTables from './GsTables.jsx';
 import GsHealth from './GsHealth.jsx';
 import GsInspections from './GsInspections.jsx';
 import { send, gsMsg } from './gsApi.js';
+import '../../i18n/dict/growthC.js';
+import { useT } from '../../i18n/lang.jsx';
 import './growth.css';
 import './search.css';
 
 /** Admin > Search & Growth > Search performance. */
 export function GrowthSearch({ staff, go }) {
+  const tr = useT();
   const [tick, setTick] = useState(0);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(null);
@@ -23,7 +26,7 @@ export function GrowthSearch({ staff, go }) {
     setBusy(true); setMsg(null);
     const r = await send('/growth/gsc/sync', {});
     setBusy(false);
-    setMsg(r.status === 429 ? { ok: false, text: 'Data was refreshed a moment ago. Please wait a few minutes and try again.' } : gsMsg(r, r.body?.queued ? 'Refresh started. New numbers will appear in a few minutes.' : 'Data refreshed.'));
+    setMsg(r.status === 429 ? { ok: false, text: tr('Data was refreshed a moment ago. Please wait a few minutes and try again.') } : gsMsg(r, r.body?.queued ? tr('Refresh started. New numbers will appear in a few minutes.') : tr('Data refreshed.'), tr));
     if (r.ok) refresh();
   };
   const connected = perf.data?.connected;

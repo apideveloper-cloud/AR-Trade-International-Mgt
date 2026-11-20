@@ -2,9 +2,9 @@
 import { pool } from '../db.js';
 import { fail, wrap } from '../util.js';
 import { mailReady, mailSetupHint } from '../mailer.js';
-import { enqueue } from '../growth/jobs.js';
+import { getProgress } from '../growth/progress.js';
 import { readGrowth, saveGrowth } from '../growth/siteFiles.js';
-import { CODES, looksLikeEmail, sendDigest } from '../growth/priceCheck.js';
+import { CODES, looksLikeEmail, sendDigest, runCheck } from '../growth/priceCheck.js';
 
 export const RUN_GAP_MS = 60000;
 let lastRun = 0; // manual run: once per minute per process
@@ -16,7 +16,8 @@ async function shopEmail() {
   try { const [r] = await pool.query('SELECT v FROM settings WHERE k = ?', ['site']); const s = r.length ? (typeof r[0].v === 'string' ? JSON.parse(r[0].v) : r[0].v) : null; return String(s?.email || '').trim(); } catch { return ''; }
 }
 
-export function mountGrowthCheckRoutes(router, guard) {
+export function mountGrowthCheckRoutes(router, guard, deps = {}) {
+  const start = deps.start || runCheck;
   const R = guard('seo.manage');
 
   router.get('/growth/price-checks', R, wrap(async (req, res) => {
@@ -40,8 +41,10 @@ export function mountGrowthCheckRoutes(router, guard) {
   router.post('/growth/price-checks/run', R, wrap(async (req, res) => {
     if (Date.now() - lastRun < RUN_GAP_MS) throw fail(429, 'A check was started a moment ago. Wait a minute and try again');
     lastRun = Date.now();
-    const id = await enqueue('price_check', {}, { dedupeKey: 'price_check_manual', maxAttempts: 2 });
-    res.json(id ? { queued: true } : { queued: false, message: 'A check is already waiting' });
+    // start now, in this process (not behind other background jobs): the progress bar then moves right away
+    if (getProgress('price_check').running) return res.json({ queued: false, message: 'A check is already running' });
+    start().catch(e => console.error('price check failed:', e.message));
+    res.json({ queued: true, started: true });
   }));
 
   router.get('/growth/price-digest', R, wrap(async (req, res) => {

@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { useT } from '../../../i18n/lang.jsx';
+import '../../../i18n/dict/common.js';
 
 /** Small on/off pill. tone: ok | warn | off */
 export const AuPill = ({ tone, children }) => <span className={'adau-pill adau-pill-' + tone}>{children}</span>;
@@ -13,11 +15,12 @@ export const AuBlock = ({ title, pill, children }) => (
 
 /** Button that copies text and says "Copied" for two seconds. */
 export function CopyBtn({ text, label }) {
+  const tr = useT();
   const [done, setDone] = useState(false);
   const go = async () => {
     try { await navigator.clipboard.writeText(text); setDone(true); setTimeout(() => setDone(false), 2000); } catch { setDone(false); }
   };
-  return <button type="button" className="a-btn ghost sm adau-copy" title={text} onClick={go}>{done ? 'Copied' : label || 'Copy'}</button>;
+  return <button type="button" className="a-btn ghost sm adau-copy" title={text} onClick={go}>{done ? tr('Copied') : tr(label || 'Copy')}</button>;
 }
 
 /** Inline result line: { ok, text } or null. */

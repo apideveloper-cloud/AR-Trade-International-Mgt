@@ -5,6 +5,7 @@ import IssueList from './IssueList.jsx';
 import PriceGrid from './PriceGrid.jsx';
 import CsvCard from './CsvCard.jsx';
 import DigestCard from './DigestCard.jsx';
+import '../../i18n/dict/growthB.js';
 import './growth.css';
 import './prices.css';
 

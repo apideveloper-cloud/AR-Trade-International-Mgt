@@ -6,6 +6,7 @@ import McFeedUrls from './McFeedUrls.jsx';
 import McCategories from './McCategories.jsx';
 import McGrid from './McGrid.jsx';
 import McSync from './McSync.jsx';
+import '../../i18n/dict/growthC.js';
 import './growth.css';
 import './merchant.css';
 
