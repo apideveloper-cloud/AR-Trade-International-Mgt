@@ -16,7 +16,7 @@ import { readGrowth } from './growth/siteFiles.js';
 export { feedAccess };
 import { mergeSeoSettings, validateRobotsTxt } from './seoSettings.js';
 import { DEFAULT_TEMPLATES, renderTemplate, varsFor } from './seoTemplate.js';
-import { indexNowKeyOf, analyticsSnippet, NO_ANALYTICS, imageEntry, imageLd, CHILD_SITEMAPS, robotsFor, verifyTags, aggregateLd, faqLd, heroImage, isVariantQuery, latestDay, offerExtras, policyMeta, productExtras, reviewsLd, robotsTxt, sameAsOf, serviceLd, sitemapIndex, storeLd, urlEntry, urlset } from './seoSchema.js';
+import { indexNowKeyOf, analyticsSnippet, NO_ANALYTICS, imageEntry, imageLd, CHILD_SITEMAPS, robotsFor, verifyTags, aggregateLd, faqLd, productVideoLd, heroImage, isVariantQuery, latestDay, offerExtras, policyMeta, productExtras, reviewsLd, robotsTxt, sameAsOf, serviceLd, sitemapIndex, storeLd, urlEntry, urlset } from './seoSchema.js';
 const baseUrl = req => (process.env.SITE_URL || `${req.get('x-forwarded-proto') || req.protocol}://${req.get('host')}`).replace(/\/$/, '');
 const LOGO = '/api/uploads/site/artrade-logo.png';
 const money = v => (v !== '' && v !== null && v !== undefined && Number.isFinite(Number(v)) ? String(Number(v)) : null);
@@ -334,7 +334,7 @@ async function resolveMeta({ base, p, query, qs }) {
     const { cats, prods, S } = await catalog();
     // storefront content (FAQs, policies, social links, hero slides) and the Store block that home and contact both carry
     const c = parseJson((await pool.query('SELECT v FROM settings WHERE k = "content"'))[0][0]?.v) || {};
-    const org = storeLd({ base, site, sameAs: sameAsOf(c.social) });
+    const org = storeLd({ base, site, sameAs: sameAsOf(c.social), business: S?.business });
     // a text made from a template the owner changed in the SEO settings (an untouched default gives '' so the built-in text is used)
     const tpl = (type, field, entity, max, always) => customText({ templates: S.templates, defaults: DEFAULT_TEMPLATES, type, field, render: renderTemplate, vars: () => varsFor(type, entity, S), max, always });
     const faqOf = meta => { const f = parseFaq(meta?.faq); return { f, ld: f.length ? faqLd(f) : null, html: faqDl(f) }; };
@@ -443,7 +443,7 @@ async function resolveMeta({ base, p, query, qs }) {
         const desc = (isAutoDesc(x.meta_desc) ? '' : x.meta_desc) || tpl('product', 'description', pv, 155) || productDescription({ name: label, price: x.price, cod: site.payments?.COD !== false });
         const related = prods.filter(q => q.category_id === x.category_id && q.id !== x.id).slice(0, 8);
         m = {
-          path: p, type: 'product', title, desc, keywords: x.meta_keywords, image: imgs[0], imageAlt: imgAlt || undefined, preload: imgs[0], ld: [prod, crumbs, ...(fq.ld ? [fq.ld] : [])],
+          path: p, type: 'product', title, desc, keywords: x.meta_keywords, image: imgs[0], imageAlt: imgAlt || undefined, preload: imgs[0], ld: [prod, crumbs, ...(fq.ld ? [fq.ld] : []), ...(productVideoLd(x, base) ? [productVideoLd(x, base)] : [])],
           fallback: productFallback({ x, cat: cat ? { id: x.category_id, title: cat.title } : null, price: x.price, related, cats, site, desc: clip(plain(x.short_desc) || plain(x.description), 1500), extra: fq.html })
         };
         m = applySeoMeta(m, meta, { forceNoindex: Number(x.noindex) === 1 });

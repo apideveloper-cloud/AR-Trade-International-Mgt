@@ -5,6 +5,10 @@ import './registerPrice.js';
 import './registerChecks.js';
 import './registerReviews.js';
 import './registerMerchant.js';
+import './registerGsc.js';
+import './registerSchema.js';
+import './registerBiz.js';
+import './registerLinks.js';
 
 export async function sitemapResubmit() {
   let results;

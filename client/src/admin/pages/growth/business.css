@@ -1,0 +1,31 @@
+.adbz { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.adbz * { box-sizing: border-box; }
+.adm .a-card.adbz-card { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.adbz-card h3 { margin: 0; }
+.adbz-hint { font-size: 13px; color: #667; margin: 0; overflow-wrap: anywhere; }
+.adbz-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.adbz-field { display: flex; flex-direction: column; gap: 4px; font-weight: 600; font-size: 13px; min-width: 0; }
+.adbz-field small { font-weight: 400; color: #667; }
+.adbz-field .a-in { width: 100%; min-width: 0; }
+.adbz-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.adbz-hours { display: flex; flex-direction: column; gap: 6px; }
+.adbz-day { display: grid; grid-template-columns: 90px 1fr 1fr auto; gap: 8px; align-items: center; }
+.adbz-day .a-in { min-width: 0; width: 100%; }
+.adbz-day label { display: flex; gap: 4px; align-items: center; font-size: 13px; white-space: nowrap; }
+.adbz-tablewrap { overflow-x: auto; max-width: 100%; }
+.adbz-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.adbz-table th, .adbz-table td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #e6e8ee; vertical-align: top; overflow-wrap: anywhere; }
+.adbz-st { font-weight: 700; white-space: nowrap; }
+.adbz-st-ok { color: #1f6b3c; }
+.adbz-st-bad { color: #b3261e; }
+.adbz-st-warn { color: #9a6700; }
+.adbz-check { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; }
+.adbz-check small { display: block; color: #667; }
+.adbz-box { width: 100%; min-height: 120px; font-family: inherit; font-size: 13px; }
+.adbz-pre { white-space: pre-wrap; overflow-wrap: anywhere; background: #f5f6f9; border-radius: 10px; padding: 10px; font-size: 13px; margin: 0; }
+.adbz-frame { width: 100%; height: 360px; border: 1px solid #e6e8ee; border-radius: 10px; background: #fff; }
+.adbz-sub { margin: 8px 0 0; font-size: 14px; }
+@media (max-width: 520px) {
+  .adbz-day { grid-template-columns: 1fr 1fr; }
+  .adbz-day > b { grid-column: 1 / -1; }
+}

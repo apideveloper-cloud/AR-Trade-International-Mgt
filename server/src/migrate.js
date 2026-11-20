@@ -15,12 +15,14 @@ import { ensureJobs } from './growth/jobs.js';
 import { ensureReviewColumns } from './growth/reviewSchema.js';
 import { ensureReviewRequests } from './growth/reviewRequests.js';
 import { ensureMerchantColumns } from './growth/merchantSchema.js';
+import { ensureVideoColumns } from './growth/videoSchema.js';
 import { ensurePriceHistory } from './growth/priceHistory.js';
 
 const STAFF_COLS = [['nid', 'VARCHAR(20)'], ['present_address', 'VARCHAR(300)'], ['contact_address', 'VARCHAR(300)'], ['ref_name', 'VARCHAR(120)'], ['ref_phone', 'VARCHAR(20)']];
 
 export async function ensureSchema() {
   await ensureVault(); await ensureIntegrationTables(); await ensureJobs(); // Search & Growth console: secrets, integration status/logs, job queue
+  try { await ensureVideoColumns(); } catch (e) { console.error('Video upgrades failed:', e.message); } // products: video_url, video_date, video_title
   try { await ensureMerchantColumns(); } catch (e) { console.error('Merchant upgrades failed:', e.message); } // products: merchant_exclude, item_group_id, google_category
   try { await ensureReviewColumns(); await ensureReviewRequests(); } catch (e) { console.error('Review upgrades failed:', e.message); } // reviews: reply, Spam status, review requests
   try { await (await import("./growth/priceCheck.js")).ensurePriceChecks(); } catch (e) { console.error("Price check tables were not created:", e.message); }

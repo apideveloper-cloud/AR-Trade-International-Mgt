@@ -24,6 +24,12 @@ import { mountGrowthPriceRoutes } from './admin/growthPrice.js';
 import { mountGrowthCheckRoutes } from './admin/growthChecks.js';
 import { mountGrowthReviewRoutes } from './admin/growthReviews.js';
 import { mountGrowthMerchantRoutes } from './admin/growthMerchant.js';
+import { mountGrowthGscRoutes } from './admin/growthGsc.js';
+import { mountGrowthSchemaRoutes } from './admin/growthSchema.js';
+import { mountGrowthOverviewRoutes } from './admin/growthOverview.js';
+import { mountGrowthBusinessRoutes } from './admin/growthBusiness.js';
+import { mountGrowthLinksRoutes } from './admin/growthLinks.js';
+import { mountGrowthVideosRoutes } from './admin/growthVideos.js';
 import { afterAdminWrite } from './seoAutomation.js';
 
 export { guard }; // other route files (field, hub, inventory, audit, ...) import the guard from here
@@ -46,6 +52,12 @@ mountGrowthPriceRoutes(router, guard); // price and stock grid, CSV, history (Se
 mountGrowthCheckRoutes(router, guard); // price consistency checker (Search & Growth)
 mountGrowthReviewRoutes(router, guard); // review requests: stats, list, settings, templates (Search & Growth)
 mountGrowthMerchantRoutes(router, guard); // Merchant Center feed settings, product grid, API sync (Search & Growth)
+mountGrowthGscRoutes(router, guard); // Search Console performance, URL Inspection (Search & Growth)
+mountGrowthSchemaRoutes(router, guard); // JSON-LD validator (Search & Growth)
+mountGrowthOverviewRoutes(router, guard); // Search & Growth overview and action items
+mountGrowthBusinessRoutes(router, guard); // business info (NAP), Google Business Profile checklist, weekly digest
+mountGrowthLinksRoutes(router, guard); // backlink and citation tracker
+mountGrowthVideosRoutes(router, guard); // product YouTube videos
 mountCustomerRoutes(router, guard); // customers, password resets, service requests
 router.use(contentRouter(guard));
 mountEngageRoutes(router, guard);

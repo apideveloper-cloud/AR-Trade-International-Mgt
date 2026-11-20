@@ -23,3 +23,8 @@ export const { Growth } = pick(() => import('../pages/growth/GrowthPage.jsx'), '
 export const { GrowthPrices } = pick(() => import('../pages/growth/GrowthPrices.jsx'), 'GrowthPrices');
 export const { GrowthReviews } = pick(() => import('../pages/growth/GrowthReviews.jsx'), 'GrowthReviews');
 export const { GrowthMerchant } = pick(() => import('../pages/growth/GrowthMerchant.jsx'), 'GrowthMerchant');
+export const { GrowthOverview } = pick(() => import('../pages/growth/GrowthOverview.jsx'), 'GrowthOverview');
+export const { GrowthSchema } = pick(() => import('../pages/growth/GrowthSchema.jsx'), 'GrowthSchema');
+export const { GrowthSearch } = pick(() => import('../pages/growth/GrowthSearch.jsx'), 'GrowthSearch');
+export const { GrowthLinks } = pick(() => import('../pages/growth/GrowthLinks.jsx'), 'GrowthLinks');
+export const { GrowthBusiness } = pick(() => import('../pages/growth/GrowthBusiness.jsx'), 'GrowthBusiness');

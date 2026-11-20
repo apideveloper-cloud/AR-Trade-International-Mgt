@@ -1,6 +1,7 @@
 // Pure JSON-LD / sitemap / robots builders. No database, no request. Every value comes from the caller (database or settings);
 // anything missing is left out, nothing is invented.
 import { NAME, clip, esc, plain } from './seoHelpers.js';
+import { dateText, embedUrl, thumbnailUrl, youtubeId } from './growth/youtube.js';
 
 const CTX = 'https://schema.org';
 const has = v => v !== undefined && v !== null && String(v).trim() !== '';
@@ -87,7 +88,8 @@ export function hoursLd(hours) {
 }
 const validGeo = o => o && Number.isFinite(Number(o.lat)) && Number.isFinite(Number(o.lng)) && o.lat !== '' && o.lng !== '' && Math.abs(Number(o.lat)) <= 90 && Math.abs(Number(o.lng)) <= 180;
 /** The Store block (same @id on home and contact). site = settings "site"; sameAs = real social links. */
-export function storeLd({ base, site = {}, sameAs = [], logo }) {
+export function storeLd({ base, site = {}, sameAs = [], logo, business = {} }) {
+  const biz = business && typeof business === 'object' ? business : {}; // the SEO settings business block (legal name, price range, geo, hours): the owner's saved values win over the older site.* ones
   const a = parseAddress(site.address);
   const digits = String(site.whatsapp || '').replace(/\D/g, '');
   const contact = [
@@ -95,16 +97,30 @@ export function storeLd({ base, site = {}, sameAs = [], logo }) {
     digits.length >= 8 ? { '@type': 'ContactPoint', telephone: '+' + digits, contactType: 'customer service', contactOption: 'https://schema.org/None', url: 'https://wa.me/' + digits, areaServed: 'BD', availableLanguage: ['en', 'bn'] } : null
   ].filter(Boolean);
   const office = site.delivery?.office;
-  const geo = validGeo(office) ? { '@type': 'GeoCoordinates', latitude: Number(office.lat), longitude: Number(office.lng) } : undefined;
+  const bizGeo = validGeo({ lat: biz.geoLat, lng: biz.geoLng }) && biz.geoLat !== null && biz.geoLng !== null ? { lat: biz.geoLat, lng: biz.geoLng } : null;
+  const geoSrc = bizGeo || office;
+  const geo = validGeo(geoSrc) ? { '@type': 'GeoCoordinates', latitude: Number(geoSrc.lat), longitude: Number(geoSrc.lng) } : undefined;
   const l = logo || base + '/api/uploads/site/artrade-logo.png';
   return strip({
     '@context': CTX, '@type': ['Store', 'ElectronicsStore'], '@id': base + '/#store', name: NAME,
-    legalName: has(site.legalName) ? String(site.legalName).trim() : undefined, url: base, logo: l, image: l,
+    legalName: has(biz.legalName) ? String(biz.legalName).trim() : has(site.legalName) ? String(site.legalName).trim() : undefined, url: base, logo: l, image: l,
     telephone: site.phone, email: site.email,
     address: { '@type': 'PostalAddress', streetAddress: site.address || '159 Santinagar', addressLocality: a.locality || 'Dhaka', postalCode: a.postalCode || '1217', addressCountry: 'BD' },
-    geo, contactPoint: contact.length ? contact : undefined, openingHoursSpecification: hoursLd(site.hours),
-    priceRange: '৳', areaServed: 'BD', sameAs: sameAs.length ? sameAs : undefined
+    geo, contactPoint: contact.length ? contact : undefined, openingHoursSpecification: hoursLd(Array.isArray(biz.hours) && biz.hours.length ? biz.hours : site.hours),
+    priceRange: has(biz.priceRange) ? String(biz.priceRange).trim() : '৳', areaServed: 'BD', sameAs: sameAs.length ? sameAs : undefined
   });
+}
+/** A VideoObject (Google needs name, thumbnailUrl and uploadDate): null when the name or the upload date is missing. Never invents a date. */
+export function videoLd({ id, name, description, uploadDate, thumbnail, embed, url } = {}) {
+  const n = plain(name), d = dateText(uploadDate), th = thumbnail || (id ? thumbnailUrl(id) : '');
+  if (!n || !d || !th) return null;
+  return strip({ '@context': CTX, '@type': 'VideoObject', name: clip(n, 120), description: clip(plain(description) || n, 300), thumbnailUrl: [th], uploadDate: d, embedUrl: embed || (id ? embedUrl(id) : undefined), url: url || undefined });
+}
+/** The VideoObject of a products row (video_url, video_date, video_title), or null. description = short description, else the name. */
+export function productVideoLd(x, base) {
+  const id = youtubeId(x?.video_url);
+  if (!id || !dateText(x.video_date)) return null;
+  return videoLd({ id, name: x.video_title || x.name, description: plain(x.short_desc) || x.name, uploadDate: x.video_date });
 }
 /** Real https social links from content.social. */
 export const sameAsOf = social => Object.values(social || {}).filter(u => /^https?:\/\//.test(u || ''));

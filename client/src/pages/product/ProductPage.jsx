@@ -7,6 +7,7 @@ import { deliveryOf } from '../../data.js';
 import Reviews from '../../components/Reviews.jsx';
 import BestSellers from '../../components/BestSellers.jsx';
 import Lightbox from '../../components/Lightbox.jsx';
+import ProductVideo from '../../components/ProductVideo.jsx';
 import { useStore } from '../../store.jsx';
 import { NotFound } from '../info/NotFound.jsx';
 import Gallery, { currentImage } from './Gallery.jsx';
@@ -87,6 +88,7 @@ export default function Product() {
       <div className="pd-lower">
         <div className="pd-left">
           <SpecTabs full={full} rows={rows} dlv={dlv} site={site} resetKey={id} />
+          <ProductVideo video={full?.video || p.video || null} />
           <Reviews pid={p.id} data={rv} user={user} onLogin={() => setLoginOpen(true)} onSubmitted={loadRv} />
           <RelatedProducts p={p} products={products} />
           <BestSellers exclude={p.id} />

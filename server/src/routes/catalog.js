@@ -5,6 +5,7 @@ import { hasPicture, published } from '../productImages.js';
 import { auth } from '../middleware/customerAuth.js';
 import { getBootCache, setBootCache } from '../middleware/cache.js';
 import { assessReview, hashIp, makeIpLimiter } from '../growth/reviewSpam.js';
+import { videoOut } from '../growth/youtube.js';
 import { LIST_COLS, loadCatalogue, productIdParam, productOut } from './shared.js';
 
 const reviewLimiter = makeIpLimiter({ max: 5, windowMs: 3600e3 }); // 5 reviews per hour per connection
@@ -26,7 +27,7 @@ export function mountCatalogRoutes(app) {
     if (!r || !hasPicture(r.img)) throw fail(404, 'Product not found');
     const [imgs] = await pool.query('SELECT path, alt FROM product_images WHERE product_id = ? ORDER BY position', [r.id]);
     const [specs] = await pool.query('SELECT name, value FROM product_specs WHERE product_id = ? ORDER BY position', [r.id]);
-    res.json({ ...productOut(r), description: r.description || '', short: r.short_desc || '', sku: r.sku || '', tags: parseJson(r.tags) || [], specs, ...seoOut(r),
+    res.json({ ...productOut(r), description: r.description || '', short: r.short_desc || '', sku: r.sku || '', tags: parseJson(r.tags) || [], specs, ...seoOut(r), video: videoOut(r),
       gallery: imgs.length ? imgs.map(x => x.path) : (parseJson(r.gallery) || []),
       galleryAlt: imgs.length ? imgs.map(x => x.alt || '') : (parseJson(r.gallery) || []).map(() => '') });
   }));
