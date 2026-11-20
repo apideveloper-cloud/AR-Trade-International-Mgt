@@ -6,7 +6,9 @@ export const SHORT = 'AR Trade';
 export const PER_PAGE = 24;
 
 export const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-export const plain = h => String(h || '').replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+const ENTITY = { '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&apos;': "'", '&#39;': "'", '&#x27;': "'" };
+/** Plain one-line text from HTML: tags removed (also a tag whose closing > was saved as &gt;), common entities decoded once, spaces collapsed. Callers escape it again for HTML. */
+export const plain = h => String(h || '').replace(/<[a-z][^<>]*?&gt;/gi, ' ').replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&(?:amp|lt|gt|quot|apos|#39|#x27);/gi, m => ENTITY[m.toLowerCase()]).replace(/\s+/g, ' ').trim();
 /** Cuts at a word boundary, never inside a word. */
 export const clip = (s, n) => (s.length <= n ? s : s.slice(0, n).replace(/\s+\S*$/, ''));
 export const taka = n => '৳' + Math.round(Number(n) || 0).toLocaleString('en-US');
@@ -66,6 +68,7 @@ export const breadcrumbLd = items => ({
 });
 /** A category page: the page itself, its position in the site and the products listed on it. */
 export function collectionLd({ name, url, description, total, offset, items }) {
+  if (!items.length) return { '@context': 'https://schema.org', '@type': 'CollectionPage', name, url, description }; // an empty ItemList is a structured data error: leave it out
   return {
     '@context': 'https://schema.org', '@type': 'CollectionPage', name, url, description,
     mainEntity: {

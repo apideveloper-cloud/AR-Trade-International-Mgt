@@ -29,7 +29,7 @@ export async function ensurePriceHistory(db = pool) {
     health = { trigger: true, error: '' };
   } catch (e) {
     health = { trigger: false, error: String(e.message || e).slice(0, 300) }; // the snapshot job (below) records history instead
-    if (!warned) { warned = true; console.warn('Price history trigger was not created (history is not recording):', health.error); }
+    if (!warned) { warned = true; console.warn('Price history: no database trigger (the database user has no SUPER privilege); changes are recorded every 10 minutes by the snapshot job instead. Reason:', health.error); }
   }
   return priceHistoryHealth();
 }
