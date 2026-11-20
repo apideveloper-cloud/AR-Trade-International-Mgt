@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { adm } from '../../adminApi.js';
 import { Modal, Switch } from '../../ui.jsx';
 import SeoItemEditor from '../../seoItem/SeoItemEditor.jsx';
+import { useT } from '../../i18n/lang.jsx';
+import '../../i18n/dict/catalog.js';
 import './categoryForm.css';
 
 import { readFileAsDataUrl as readFile } from '../../hooks/download.js';
@@ -13,6 +15,7 @@ const EYE = svg(<><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 
 
 /** Add a product category, or (with \`cat\`) change its name and description. The picture of an existing category is changed on its tile. */
 export function CategoryForm({ cat, onClose, onSaved }) {
+  const tr = useT();
   const [f, setF] = useState({ title: cat?.title || '', description: cat?.description || '', visible: false });
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState('');
@@ -35,37 +38,37 @@ export function CategoryForm({ cat, onClose, onSaved }) {
   };
   const ready = f.title.trim().length >= 2;
   return (
-    <Modal narrow cls="cf" kicker="Product category" title={cat ? 'Edit category' : 'Add a category'} onClose={onClose} onSubmit={submit}
-      footer={<><button type="button" className="a-btn ghost" onClick={onClose}>Cancel</button><button className="a-btn grad" disabled={busy || !ready}>{busy ? 'Saving…' : cat ? 'Save changes' : 'Add category'}</button></>}>
-      {err && <div className="a-msg err">{err}</div>}
+    <Modal narrow cls="cf" kicker={tr('Product category')} title={cat ? tr('Edit category') : tr('Add a category')} onClose={onClose} onSubmit={submit}
+      footer={<><button type="button" className="a-btn ghost" onClick={onClose}>{tr('Cancel')}</button><button className="a-btn grad" disabled={busy || !ready}>{busy ? tr('Saving…') : cat ? tr('Save changes') : tr('Add category')}</button></>}>
+      {err && <div className="a-msg err">{tr(err)}</div>}
       <div className={'cf-top' + (cat ? ' solo' : '')}>
         {!cat && (
           <div className="cf-pic-wrap">
-            <label className={'cf-pic' + (preview ? ' has' : '')} style={{ backgroundImage: preview ? `url('${preview}')` : 'none' }} title={preview ? 'Change the picture' : 'Add a picture'}>
-              {!preview && <span>{PLUS}<small>Photo</small></span>}
+            <label className={'cf-pic' + (preview ? ' has' : '')} style={{ backgroundImage: preview ? `url('${preview}')` : 'none' }} title={preview ? tr('Change the picture') : tr('Add a picture')}>
+              {!preview && <span>{PLUS}<small>{tr('Photo')}</small></span>}
               <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden onChange={choose} />
             </label>
-            {preview ? <button type="button" className="cf-rm" onClick={dropPicture}>Remove</button> : <small>Optional</small>}
+            {preview ? <button type="button" className="cf-rm" onClick={dropPicture}>{tr('Remove')}</button> : <small>{tr('Optional')}</small>}
           </div>
         )}
         <div className="cf-fields">
-          <label className="cf-f">Category name
-            <span className="cf-in">{TAG}<input autoFocus required maxLength={120} value={f.title} onChange={set('title')} placeholder="e.g. Paper & Stationery" /></span>
+          <label className="cf-f">{tr('Category name')}
+            <span className="cf-in">{TAG}<input autoFocus required maxLength={120} value={f.title} onChange={set('title')} placeholder={tr('e.g. Paper & Stationery')} /></span>
             <small className="cf-count">{f.title.length}/120</small>
           </label>
-          <label className="cf-f">Short description <em>shown under the name</em>
-            <span className="cf-in">{TEXT}<input maxLength={255} value={f.description} onChange={set('description')} placeholder="e.g. A4 paper, files, pens" /></span>
+          <label className="cf-f">{tr('Short description')} <em>{tr('shown under the name')}</em>
+            <span className="cf-in">{TEXT}<input maxLength={255} value={f.description} onChange={set('description')} placeholder={tr('e.g. A4 paper, files, pens')} /></span>
           </label>
         </div>
       </div>
       {!cat && (
         <div className="cf-vis">
           <span className="cf-vi">{EYE}</span>
-          <div><b>Show on the store now</b><small>A category with no products looks empty to shoppers, so it starts hidden. Switch it on later, once it has products.</small></div>
-          <Switch on={f.visible} onChange={() => setF(v => ({ ...v, visible: !v.visible }))} title="Show on the store now" />
+          <div><b>{tr('Show on the store now')}</b><small>{tr('A category with no products looks empty to shoppers, so it starts hidden. Switch it on later, once it has products.')}</small></div>
+          <Switch on={f.visible} onChange={() => setF(v => ({ ...v, visible: !v.visible }))} title={tr('Show on the store now')} />
         </div>
       )}
-      {cat && <details><summary>SEO</summary><SeoItemEditor type="category" id={cat.id} mode="full" /></details>}
+      {cat && <details><summary>{tr('SEO')}</summary><SeoItemEditor type="category" id={cat.id} mode="full" /></details>}
     </Modal>
   );
 }

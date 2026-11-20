@@ -8,7 +8,7 @@ export const hhmm = fTime;
 /** Day, month and time in Bangladesh time (same as fDateTime). */
 export const dayTime = fDateTime;
 export const hours = m => (m > 0 ? `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, '0')}m` : '—');
-export const ago = sec => (sec == null ? 'no signal yet' : sec < 90 ? 'just now' : sec < 3600 ? Math.round(sec / 60) + ' min ago' : sec < 86400 ? Math.round(sec / 3600) + ' h ago' : Math.round(sec / 86400) + ' d ago');
+export const ago = (sec, tr = s => s) => (sec == null ? tr('no signal yet') : sec < 90 ? tr('just now') : sec < 3600 ? tr('{n} min ago', { n: Math.round(sec / 60) }) : sec < 86400 ? tr('{n} h ago', { n: Math.round(sec / 3600) }) : tr('{n} d ago', { n: Math.round(sec / 86400) }));
 export const Ic = ({ d }) => <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{d}</svg>;
 export const ICON_CALL = <path d="M5 4h3.2l1.6 4-2 1.3a11 11 0 0 0 5 5l1.3-2 4 1.6V17a2 2 0 0 1-2 2A13 13 0 0 1 3 6a2 2 0 0 1 2-2z" />;
 export const ICON_MSG = <><path d="M4 5h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H9l-4.5 3.5V17H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z" /><path d="M7.5 10h9M7.5 13h5.5" /></>;

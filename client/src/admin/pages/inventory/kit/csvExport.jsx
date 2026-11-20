@@ -1,6 +1,8 @@
 import { invApi } from '../../../adminApi.js';
 import { alertBox } from '../../../ui.jsx';
 import { downloadCsv } from '../../../fieldKit.jsx';
+import { useT } from '../../../i18n/lang.jsx';
+import '../../../i18n/dict/inventory.js';
 
 /** All rows of a server-paged list that match the current filters (for CSV export): pages of 200, at most 5,000 rows. */
 export async function fetchAll(path, params) {
@@ -15,10 +17,13 @@ export async function fetchAll(path, params) {
 }
 
 /** Downloads every row matching the table's filters as a CSV file; a failed fetch shows the message. */
-export async function exportCsv(path, params, file, head, toRow) {
-  const list = await fetchAll(path, params).catch(e => { alertBox(e.message); return []; });
+export async function exportCsv(path, params, file, head, toRow, tr = s => s) {
+  const list = await fetchAll(path, params).catch(e => { alertBox(tr(e.message)); return []; });
   if (list.length) downloadCsv(file, head, list.map(toRow));
 }
 
 /** The small "CSV" button of a list card. */
-export const CsvButton = ({ onClick, disabled }) => <button type="button" className="a-mini" onClick={onClick} disabled={disabled}>⤓ CSV</button>;
+export function CsvButton({ onClick, disabled }) {
+  const tr = useT();
+  return <button type="button" className="a-mini" onClick={onClick} disabled={disabled}>⤓ {tr('CSV')}</button>;
+}

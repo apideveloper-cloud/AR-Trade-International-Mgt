@@ -1,3 +1,5 @@
+import { useT } from './i18n/lang.jsx';
+import './i18n/dict/shell.js';
 // Small square icon buttons for the Edit / Delete / View actions on cards and rows.
 // The meaning is in `title` (hover text) and `aria-label`, so screen readers still read "Edit" or "Delete".
 const svg = d => <svg viewBox="0 0 24 24" aria-hidden="true">{d}</svg>;
@@ -11,6 +13,8 @@ export const ICONS = {
 
 /** `icon` is a key of ICONS. `tone`: 'pri' (dark, the main action), 'bad' (red, destructive) or nothing. Pass `href` to make it a link. */
 export function IconBtn({ icon, title, tone = '', onClick, href, disabled }) {
+  const tr = useT();
+  if (typeof title === 'string') title = tr(title);
   const cls = 'ic-btn' + (tone ? ' ' + tone : '');
   if (href) return <a className={cls} href={href} target="_blank" rel="noreferrer" title={title} aria-label={title}>{ICONS[icon]}</a>;
   return <button type="button" className={cls} title={title} aria-label={title} onClick={onClick} disabled={disabled}>{ICONS[icon]}</button>;

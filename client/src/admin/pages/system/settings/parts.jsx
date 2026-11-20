@@ -1,4 +1,6 @@
 import { createContext, useContext } from 'react';
+import { useT } from '../../../i18n/lang.jsx';
+import '../../../i18n/dict/system.js';
 
 export const SettingsCtx = createContext(null);
 
@@ -23,12 +25,13 @@ export function SecHead({ icon, title, sub, children }) {
 
 /** Active | Inactive choice for one block of the website. */
 export function ActiveToggle({ on, onChange, label }) {
+  const tr = useT();
   return (
     <div className="act" role="group" aria-label={label}>
       <span className="act-l">{label}</span>
       <div className="vt">
-        <button type="button" className={on ? 'on ok' : ''} aria-pressed={on} onClick={() => onChange(true)}>● Active</button>
-        <button type="button" className={!on ? 'on off' : ''} aria-pressed={!on} onClick={() => onChange(false)}>○ Inactive</button>
+        <button type="button" className={on ? 'on ok' : ''} aria-pressed={on} onClick={() => onChange(true)}>● {tr('Active')}</button>
+        <button type="button" className={!on ? 'on off' : ''} aria-pressed={!on} onClick={() => onChange(false)}>○ {tr('Inactive')}</button>
       </div>
     </div>
   );

@@ -2,9 +2,12 @@ import { forwardRef, useEffect, useState } from 'react';
 import { adm } from '../../../adminApi.js';
 import { useDebounced } from '../../../hooks/useDebounced.js';
 import { DEFAULT_TARGETS } from './redirectModel.js';
+import { useT } from '../../../i18n/lang.jsx';
+import '../../../i18n/dict/seo.js';
 
 /** Text box for a target path with a live suggestion list (products, categories, pages) from GET /seo/targets. */
 export const TargetPicker = forwardRef(function TargetPicker({ value, onChange, placeholder = '/shop/all or https://…', defaults = DEFAULT_TARGETS }, ref) {
+  const tr = useT();
   const [open, setOpen] = useState(false);
   const [found, setFound] = useState([]);
   const q = useDebounced(value.trim(), 300);
@@ -25,7 +28,7 @@ export const TargetPicker = forwardRef(function TargetPicker({ value, onChange, 
         <ul className="adrd-sug" role="listbox">
           {list.map(r => (
             <li key={r.type + r.path} role="option" aria-selected="false" onMouseDown={e => { e.preventDefault(); pick(r); }}>
-              <span className="adrd-sug-t">{r.type}</span><b>{r.label}</b><small>{r.path}</small>
+              <span className="adrd-sug-t">{tr(r.type)}</span><b>{tr(r.label)}</b><small>{r.path}</small>
             </li>
           ))}
         </ul>

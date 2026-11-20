@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { adm } from '../../adminApi.js';
 import { Avatar } from './Avatar.jsx';
 import { Modal } from '../../ui.jsx';
+import { useT } from '../../i18n/lang.jsx';
+import '../../i18n/dict/sales.js';
 import './setPassword.css';
 
 const CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz';
@@ -29,50 +31,51 @@ const I = {
 
 /** Set a customer's password: live rule check and strength, a generator, show/hide and copy as icon buttons. */
 export function SetPasswordModal({ c, onClose, onDone }) {
+  const tr = useT();
   const [pw, setPw] = useState('');
   const [show, setShow] = useState(true);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [saved, setSaved] = useState(false);
   const [copied, setCopied] = useState(false);
-  const rules = [['8+ characters', pw.length >= 8], ['A letter', /[A-Za-z]/.test(pw)], ['A number', /\d/.test(pw)]];
+  const rules = [[tr('8+ characters'), pw.length >= 8], [tr('A letter'), /[A-Za-z]/.test(pw)], [tr('A number'), /\d/.test(pw)]];
   const valid = rules.every(r => r[1]);
   const s = strength(pw);
-  const copy = async () => { try { await navigator.clipboard.writeText(pw); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { setErr('Could not copy. Select the password and copy it by hand.'); } };
+  const copy = async () => { try { await navigator.clipboard.writeText(pw); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { setErr(tr('Could not copy. Select the password and copy it by hand.')); } };
   const submit = async e => {
     e.preventDefault();
     if (!valid) return;
     setBusy(true); setErr('');
-    try { await adm.put(`/customers/${c.userId}/password`, { password: pw }); setSaved(true); onDone(); } catch (er) { setErr(er.message); }
+    try { await adm.put(`/customers/${c.userId}/password`, { password: pw }); setSaved(true); onDone(); } catch (er) { setErr(tr(er.message)); }
     setBusy(false);
   };
   return (
-    <Modal narrow cls="spw" kicker="Customer account" title={saved ? 'Password updated' : 'Set a new password'} onClose={onClose} onSubmit={submit}
+    <Modal narrow cls="spw" kicker={tr('Customer account')} title={saved ? tr('Password updated') : tr('Set a new password')} onClose={onClose} onSubmit={submit}
       footer={saved
-        ? <button type="button" className="a-btn grad" onClick={onClose}>Done</button>
-        : <><button type="button" className="a-btn ghost" onClick={onClose}>Cancel</button><button className="a-btn grad" disabled={!valid || busy}>{busy ? 'Saving…' : 'Set password'}</button></>}>
+        ? <button type="button" className="a-btn grad" onClick={onClose}>{tr('Done')}</button>
+        : <><button type="button" className="a-btn ghost" onClick={onClose}>{tr('Cancel')}</button><button className="a-btn grad" disabled={!valid || busy}>{busy ? tr('Saving…') : tr('Set password')}</button></>}>
       <div className="spw-who">
         <Avatar name={c.name} cls="spw-av" />
         <div><b>{c.name}</b><small>{c.phone}{c.email ? ' · ' + c.email : ''}</small></div>
       </div>
       {saved ? (
-        <div className="spw-done"><span>{I.check}</span><b>Password saved</b><small>Tell the customer this password now. It is not shown again, and they can change it from their account.</small></div>
+        <div className="spw-done"><span>{I.check}</span><b>{tr('Password saved')}</b><small>{tr('Tell the customer this password now. It is not shown again, and they can change it from their account.')}</small></div>
       ) : (
-        <p className="spw-note">Share it with the customer. They can change it from their account.</p>
+        <p className="spw-note">{tr('Share it with the customer. They can change it from their account.')}</p>
       )}
       <div className="spw-field">
         <span className="spw-lock">{I.lock}</span>
-        <input type={show ? 'text' : 'password'} value={pw} onChange={e => { setPw(e.target.value); setCopied(false); }} placeholder="New password" autoFocus readOnly={saved} autoComplete="new-password" aria-label="New password" spellCheck={false} />
+        <input type={show ? 'text' : 'password'} value={pw} onChange={e => { setPw(e.target.value); setCopied(false); }} placeholder={tr('New password')} autoFocus readOnly={saved} autoComplete="new-password" aria-label={tr('New password')} spellCheck={false} />
         <div className="spw-tools">
-          <button type="button" onClick={() => setShow(v => !v)} title={show ? 'Hide the password' : 'Show the password'} aria-label={show ? 'Hide the password' : 'Show the password'}>{show ? I.eyeOff : I.eye}</button>
-          <button type="button" onClick={copy} disabled={!pw} title="Copy the password" aria-label="Copy the password" className={copied ? 'ok' : ''}>{copied ? I.check : I.copy}</button>
-          {!saved && <button type="button" className="gen" onClick={() => { setPw(newPassword()); setShow(true); setCopied(false); }} title="Generate a strong password" aria-label="Generate a strong password">{I.dice}</button>}
+          <button type="button" onClick={() => setShow(v => !v)} title={show ? tr('Hide the password') : tr('Show the password')} aria-label={show ? tr('Hide the password') : tr('Show the password')}>{show ? I.eyeOff : I.eye}</button>
+          <button type="button" onClick={copy} disabled={!pw} title={tr('Copy the password')} aria-label={tr('Copy the password')} className={copied ? 'ok' : ''}>{copied ? I.check : I.copy}</button>
+          {!saved && <button type="button" className="gen" onClick={() => { setPw(newPassword()); setShow(true); setCopied(false); }} title={tr('Generate a strong password')} aria-label={tr('Generate a strong password')}>{I.dice}</button>}
         </div>
       </div>
       {!saved && (
         <div className="spw-row">
           <div className="spw-rules">{rules.map(([t, ok]) => <span key={t} className={ok ? 'ok' : ''}>{ok ? I.check : <i />}{t}</span>)}</div>
-          <div className="spw-meter" data-s={s} aria-label={'Password strength: ' + (LABEL[s] || 'none')} title={pw.length + ' characters'}><i /><i /><i /><i /><b>{LABEL[s] || '—'}</b></div>
+          <div className="spw-meter" data-s={s} aria-label={tr('Password strength: {label}', { label: LABEL[s] ? tr(LABEL[s]) : tr('none') })} title={tr('{n} characters', { n: pw.length })}><i /><i /><i /><i /><b>{LABEL[s] ? tr(LABEL[s]) : '—'}</b></div>
         </div>
       )}
       {err && <div className="a-msg err">{err}</div>}

@@ -3,6 +3,8 @@ import { fetchBlobUrl, fld } from './adminApi.js';
 import { Modal, Pager, hueOf } from './ui.jsx';
 import { saveTextFile } from './hooks/download.js';
 import { useDebounced } from './hooks/useDebounced.js';
+import { useT } from './i18n/lang.jsx';
+import './i18n/dict/shell.js';
 import './field.css';
 
 // Small shared pieces for the web views of the field app (sales, accounts, reports).
@@ -23,7 +25,10 @@ export const PdfIcon = ({ size = 18 }) => (
     <text x="10" y="16.9" textAnchor="middle" fontFamily="Arial, Helvetica, sans-serif" fontWeight="800" fontSize="5.6" fill="#fff">PDF</text>
   </svg>
 );
-export const Chip = ({ tone = 'off', children }) => <span className={'fd-chip ' + tone}>{children}</span>;
+export function Chip({ tone = 'off', children }) {
+  const tr = useT();
+  return <span className={'fd-chip ' + tone}>{typeof children === 'string' ? tr(children) : children}</span>;
+}
 const ER_ICON = {
   lock: <><rect x="6" y="11" width="12" height="9" rx="2.5" fill="currentColor" /><path d="M8.5 11V8a3.5 3.5 0 0 1 7 0v3" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" /></>,
   offline: <><path d="M4 9.5a11 11 0 0 1 16 0M7.2 13a6.5 6.5 0 0 1 9.6 0" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" /><circle cx="12" cy="17" r="1.6" fill="currentColor" /><path d="M5 5l14 14" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" /></>,
@@ -31,14 +36,15 @@ const ER_ICON = {
 };
 /** A graphical error: an icon that says what kind of problem it is, a plain title, the exact message and, where it helps, a Try again button. */
 export function Notice({ err, onRetry }) {
+  const tr = useT();
   if (!err) return null;
   const kind = /role|turned off|permission|not allowed|cannot do this|access/i.test(err) ? 'lock' : /reach the server|internet|network|fetch|restarting|busy/i.test(err) ? 'offline' : 'alert';
   const title = { lock: 'Not available for your role', offline: "We couldn't reach the server", alert: 'Something went wrong' }[kind];
   return (
     <div className={'er-card ' + kind} role="alert">
       <span className="er-ic"><svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">{ER_ICON[kind]}</svg></span>
-      <div className="er-tx"><b>{title}</b>{err !== 'Something went wrong' && <p>{err}</p>}{kind === 'alert' && err === 'Something went wrong' && <p>Please try again. If it keeps happening, tell the Master Admin.</p>}</div>
-      {onRetry && kind !== 'lock' && <button type="button" className="er-retry" onClick={onRetry}>↻ Try again</button>}
+      <div className="er-tx"><b>{tr(title)}</b>{err !== 'Something went wrong' && <p>{tr(err)}</p>}{kind === 'alert' && err === 'Something went wrong' && <p>{tr('Please try again. If it keeps happening, tell the Master Admin.')}</p>}</div>
+      {onRetry && kind !== 'lock' && <button type="button" className="er-retry" onClick={onRetry}>{tr('↻ Try again')}</button>}
     </div>
   );
 }
@@ -68,9 +74,10 @@ export { useDebounced };
 
 /** Pill tabs: items = [[key, label, count?]]. */
 export function Tabs({ items, value, onChange }) {
+  const tr = useT();
   return (
     <div className="fd-filters">
-      {items.map(([k, l, c]) => <button key={k} type="button" className={value === k ? 'on' : ''} onClick={() => onChange(k)}>{l}{c != null && <small className="fd-cnt">{c}</small>}</button>)}
+      {items.map(([k, l, c]) => <button key={k} type="button" className={value === k ? 'on' : ''} onClick={() => onChange(k)}>{typeof l === 'string' ? tr(l) : l}{c != null && <small className="fd-cnt">{c}</small>}</button>)}
     </div>
   );
 }
@@ -79,18 +86,19 @@ const SIZES = [10, 25, 50, 100];
 
 /** Pager bar in the console's style: "1-10 of 177", a page-size picker and the page buttons. */
 export function PagerBar({ total, page, pages, size, setPage, setSize }) {
+  const tr = useT();
   const from = total ? (page - 1) * size + 1 : 0, to = Math.min(total, page * size);
   // every page number when there are few; otherwise first, last and the neighbours of the current page with a gap marker (so no page is silently missing)
   const nums = pages <= 7 ? Array.from({ length: pages }, (_, i) => i + 1) : [...new Set([1, page - 1, page, page + 1, pages].filter(p => p >= 1 && p <= pages))].sort((a, b) => a - b);
   const list = nums.flatMap((p, i) => (i && p - nums[i - 1] > 1 ? ['gap' + p, p] : [p]));
   return (
     <div className="a-pager fd-pager">
-      <span>{from}–{to} of {total}</span>
-      <select value={size} onChange={e => setSize(+e.target.value)} aria-label="Rows per page">{SIZES.map(s => <option key={s} value={s}>{s} / page</option>)}</select>
+      <span>{tr('{from}–{to} of {total}', { from, to, total })}</span>
+      <select value={size} onChange={e => setSize(+e.target.value)} aria-label={tr('Rows per page')}>{SIZES.map(s => <option key={s} value={s}>{tr('{n} / page', { n: s })}</option>)}</select>
       {pages > 1 && <>
-        <button type="button" disabled={page <= 1} onClick={() => setPage(page - 1)}>‹ Prev</button>
+        <button type="button" disabled={page <= 1} onClick={() => setPage(page - 1)}>‹ {tr('Prev')}</button>
         {list.map(p => (typeof p === 'string' ? <span key={p} className="pg-gap" aria-hidden="true">…</span> : <button type="button" key={p} className={p === page ? 'on' : ''} onClick={() => setPage(p)} aria-current={p === page ? 'page' : undefined}>{p}</button>))}
-        <button type="button" disabled={page >= pages} onClick={() => setPage(page + 1)}>Next ›</button>
+        <button type="button" disabled={page >= pages} onClick={() => setPage(page + 1)}>{tr('Next')} ›</button>
       </>}
     </div>
   );
@@ -113,6 +121,7 @@ const nodeText = n => (n == null || n === false ? '' : typeof n === 'string' || 
 /** Table with a header row. By default it searches and pages its own rows in the browser. Pass `server` (a useTable result) when the rows are one page from the server:
  *  the browser then does no searching or paging of its own and the table shows the server pager. */
 export function Grid({ cols, head, rows, onRow, empty = 'Nothing here yet.', search = true, server }) {
+  const tr = useT();
   const [q, setQ] = useState('');
   const groups = useMemo(() => { const g = []; for (const r of rows) { if (r.full && g.length) g[g.length - 1].push(r); else g.push([r]); } return g; }, [rows]);
   const found = useMemo(() => { const w = q.trim().toLowerCase(); return w ? groups.filter(g => nodeText(g[0].cells).toLowerCase().includes(w)) : groups; }, [groups, q]);
@@ -120,16 +129,16 @@ export function Grid({ cols, head, rows, onRow, empty = 'Nothing here yet.', sea
   const shown = server ? groups.flat() : pg.items.flat();
   return (<>
     {search && !server && rows.length > 0 && (
-      <div className="fd-gs"><input className="a-input" type="search" placeholder="Search this table…" value={q} onChange={e => setQ(e.target.value)} aria-label="Search this table" />{q.trim() && <small>{found.length} of {groups.length} match</small>}</div>
+      <div className="fd-gs"><input className="a-input" type="search" placeholder={tr('Search this table…')} value={q} onChange={e => setQ(e.target.value)} aria-label={tr('Search this table')} />{q.trim() && <small>{tr('{n} of {m} match', { n: found.length, m: groups.length })}</small>}</div>
     )}
     <div className="fd-tbl" role="table">
-      <div className="fd-th" role="row" style={{ gridTemplateColumns: cols }}>{head.map(h => <span key={h}>{h}</span>)}</div>
+      <div className="fd-th" role="row" style={{ gridTemplateColumns: cols }}>{head.map(h => <span key={h}>{typeof h === 'string' ? tr(h) : h}</span>)}</div>
       {shown.map((r, i) => (
         <div key={r.key ?? i} role="row" className={'fd-tr' + (onRow && r.item ? ' click' : '') + (r.full ? ' full' : '')} style={{ gridTemplateColumns: r.full ? '1fr' : cols }} onClick={onRow && r.item ? () => onRow(r.item) : undefined}>
           {r.cells.map((c, j) => <span key={j}>{c}</span>)}
         </div>
       ))}
-      {!found.length && <div className="a-empty">{rows.length ? 'No row matches your search.' : server && server.loading ? 'Loading…' : empty}</div>}
+      {!found.length && <div className="a-empty">{typeof empty === 'string' ? tr(rows.length ? 'No row matches your search.' : server && server.loading ? 'Loading…' : empty) : (rows.length ? tr('No row matches your search.') : server && server.loading ? tr('Loading…') : empty)}</div>}
     </div>
     {server ? <Pager t={server} /> : pg.bar}
   </>);
@@ -143,18 +152,26 @@ export function downloadCsv(name, columns, rows) {
 }
 
 /** A labelled value inside detail drawers. */
-export const Fact = ({ k, children }) => (children == null || children === '' ? null : <div className="fd-fact"><small>{k}</small><span>{children}</span></div>);
+export function Fact({ k, children }) {
+  const tr = useT();
+  return children == null || children === '' ? null : <div className="fd-fact"><small>{tr(k)}</small><span>{children}</span></div>;
+}
 
 /** Placeholder lines that shimmer while a drawer or card loads its details. */
-export const Skeleton = ({ rows = 6 }) => (
-  <div className="sk" role="status" aria-label="Loading">
+export const Skeleton = ({ rows = 6 }) => <SkeletonBox rows={rows} />;
+function SkeletonBox({ rows }) {
+  const tr = useT();
+  return (
+  <div className="sk" role="status" aria-label={tr('Loading')}>
     <span className="sk-l w40" />
     {Array.from({ length: rows }, (_, i) => <span key={i} className={'sk-l w' + [90, 75, 100, 60, 85, 70][i % 6]} />)}
   </div>
-);
+  );
+}
 
 /** PDF preview in a side panel: shows the document, with Download, Print and Open in a new tab. */
 export function PdfPreview({ url, title, filename, onClose, actions }) {
+  const tr = useT();
   const [href, setHref] = useState('');
   const [err, setErr] = useState('');
   const frame = useRef(null);
@@ -166,24 +183,26 @@ export function PdfPreview({ url, title, filename, onClose, actions }) {
   }, [url]);
   const print = () => { try { frame.current?.contentWindow?.focus(); frame.current?.contentWindow?.print(); } catch { window.open(href, '_blank'); } };
   return (
-    <Modal side cls="pdf" kicker="PDF preview" title={title} onClose={onClose}
-      footer={<><button type="button" className="a-btn ghost" onClick={onClose}>Close</button>
-        <a className={'a-btn ghost' + (href ? '' : ' off')} href={href || undefined} target="_blank" rel="noreferrer">Open in a new tab</a>
-        <button type="button" className="a-btn ghost" disabled={!href} onClick={print}>Print</button>
+    <Modal side cls="pdf" kicker={tr('PDF preview')} title={title} onClose={onClose}
+      footer={<><button type="button" className="a-btn ghost" onClick={onClose}>{tr('Close')}</button>
+        <a className={'a-btn ghost' + (href ? '' : ' off')} href={href || undefined} target="_blank" rel="noreferrer">{tr('Open in a new tab')}</a>
+        <button type="button" className="a-btn ghost" disabled={!href} onClick={print}>{tr('Print')}</button>
         {actions}
-        <a className={'a-btn' + (href ? '' : ' off')} href={href || undefined} download={filename}>Download PDF</a></>}>
-      {err && <div className="a-msg err">{err}</div>}
+        <a className={'a-btn' + (href ? '' : ' off')} href={href || undefined} download={filename}>{tr('Download PDF')}</a></>}>
+      {err && <div className="a-msg err">{tr(err)}</div>}
       {!href && !err && <Skeleton rows={10} />}
       {href && <iframe ref={frame} title={title} src={href + '#zoom=page-width&navpanes=0'} className="fd-pdf" />}
     </Modal>
   );
 }
 /** The table / panel button for a document: the file icon and "PDF", in the red-tinted style. */
-export const PdfButton = ({ onClick, title = 'Preview as PDF', label = 'PDF' }) => (
-  <button type="button" className={'a-mini fd-pdfbtn' + (label ? '' : ' icon')} title={title} aria-label={title} onClick={e => { e.stopPropagation(); onClick(); }}><PdfIcon />{label && <span>{label}</span>}</button>
-);
+export function PdfButton({ onClick, title = 'Preview as PDF', label = 'PDF' }) {
+  const tr = useT();
+  return <button type="button" className={'a-mini fd-pdfbtn' + (label ? '' : ' icon')} title={tr(title)} aria-label={tr(title)} onClick={e => { e.stopPropagation(); onClick(); }}><PdfIcon />{label && <span>{label}</span>}</button>;
+}
 
 /** A grid of small label / value boxes, as shown in the details popups. items = [[label, value, wide?]]; cols 'ap-facts' (2 per line) or 'att-facts' (4 per line). */
 export function Facts({ items, cols = 'ap-facts' }) {
-  return <div className={cols}>{items.filter(Boolean).map(([label, value, wide]) => <span key={label} className={wide ? 'wide' : ''}><small>{label}</small><b>{value}</b></span>)}</div>;
+  const tr = useT();
+  return <div className={cols}>{items.filter(Boolean).map(([label, value, wide]) => <span key={label} className={wide ? 'wide' : ''}><small>{typeof label === 'string' ? tr(label) : label}</small><b>{value}</b></span>)}</div>;
 }

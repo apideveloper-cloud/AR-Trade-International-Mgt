@@ -1,4 +1,6 @@
 import { lazy, Suspense } from 'react';
+import { useT } from '../../../i18n/lang.jsx';
+import '../../../i18n/dict/system.js';
 import { getDelivery, isNum } from './deliveryModel.js';
 import '../../../styles/admin-delivery-rules.css';
 
@@ -14,17 +16,18 @@ const FeeField = ({ label, value, onChange }) => (
 );
 
 /** One-line summary of the fee steps, e.g. "Free up to 2 km · 2-5 km ৳100 ...". */
-function feePreview(d) {
+function feePreview(d, tr = s => s) {
   const f = n => (isNum(n) ? +n : '?');
-  const parts = [`Free up to ${f(d.freeKm)} km`];
+  const parts = [tr('Free up to {n} km', { n: f(d.freeKm) })];
   let from = d.freeKm;
   d.tiers.forEach(t => { parts.push(`${f(from)}-${f(t.upToKm)} km ৳${f(t.fee)}`); from = t.upToKm; });
-  parts.push(`over ${f(from)} km ৳${f(d.maxFee)}`);
+  parts.push(tr('over {n} km', { n: f(from) }) + ` ৳${f(d.maxFee)}`);
   return parts.join(' · ');
 }
 
 /** Delivery-by-distance steps and outside-Dhaka shipping partners (edits s.delivery). */
 export function DeliveryRules({ s, setS, errors }) {
+  const tr = useT();
   const d = getDelivery(s.delivery);
   const upd = fn => setS(x => ({ ...x, delivery: fn(getDelivery(x.delivery)) }));
   const setTop = (k, v) => upd(c => ({ ...c, [k]: v }));
@@ -41,51 +44,51 @@ export function DeliveryRules({ s, setS, errors }) {
   return (
     <>
       <div className="dr-box">
-        <b>Delivery by distance (inside Dhaka)</b>
-        <p className="dr-hint">Distances are measured from here. Open the map and confirm the pin is on your office door.</p>
+        <b>{tr('Delivery by distance (inside Dhaka)')}</b>
+        <p className="dr-hint">{tr('Distances are measured from here. Open the map and confirm the pin is on your office door.')}</p>
         <div className="a-fields">
-          <label className="a-lbl">Office location label<input className="a-input" type="text" maxLength={120} value={d.office.label ?? ''} onChange={e => setOffice('label', e.target.value)} /></label>
-          <NumField label="Latitude" value={d.office.lat} onChange={v => setOffice('lat', v)} />
-          <NumField label="Longitude" value={d.office.lng} onChange={v => setOffice('lng', v)} />
+          <label className="a-lbl">{tr('Office location label')}<input className="a-input" type="text" maxLength={120} value={d.office.label ?? ''} onChange={e => setOffice('label', e.target.value)} /></label>
+          <NumField label={tr('Latitude')} value={d.office.lat} onChange={v => setOffice('lat', v)} />
+          <NumField label={tr('Longitude')} value={d.office.lng} onChange={v => setOffice('lng', v)} />
         </div>
-        {mapOk && <a className="dr-map" href={mapUrl} target="_blank" rel="noopener noreferrer">Check on map</a>}
-        <Suspense fallback={<div className="dr-hint">Loading map…</div>}>
+        {mapOk && <a className="dr-map" href={mapUrl} target="_blank" rel="noopener noreferrer">{tr('Check on map')}</a>}
+        <Suspense fallback={<div className="dr-hint">{tr('Loading map…')}</div>}>
           <OfficeMap lat={d.office.lat} lng={d.office.lng} onPick={p => { setOffice('lat', p.lat); setOffice('lng', p.lng); }} />
         </Suspense>
         <div className="a-fields">
-          <NumField label="Free distance (km)" value={d.freeKm} onChange={v => setTop('freeKm', v)} min={0} />
-          <NumField label="Road factor" value={d.roadFactor} onChange={v => setTop('roadFactor', v)} min={1} max={3} />
+          <NumField label={tr('Free distance (km)')} value={d.freeKm} onChange={v => setTop('freeKm', v)} min={0} />
+          <NumField label={tr('Road factor')} value={d.roadFactor} onChange={v => setTop('roadFactor', v)} min={1} max={3} />
         </div>
-        <p className="dr-hint">Straight-line distance x this number approximates the road distance</p>
-        <div className="dr-steps" role="group" aria-label="Distance steps">
+        <p className="dr-hint">{tr('Straight-line distance x this number approximates the road distance')}</p>
+        <div className="dr-steps" role="group" aria-label={tr('Distance steps')}>
           {d.tiers.map((t, i) => (
             <div className="dr-row" key={i}>
-              <NumField label={`Step ${i + 1}: up to (km)`} value={t.upToKm} onChange={v => setTier(i, 'upToKm', v)} min={0} />
+              <NumField label={tr('Step {n}: up to (km)', { n: i + 1 })} value={t.upToKm} onChange={v => setTier(i, 'upToKm', v)} min={0} />
               <span aria-hidden="true">→</span>
-              <FeeField label="Fee" value={t.fee} onChange={v => setTier(i, 'fee', v)} />
-              <button type="button" className="a-btn" aria-label={`Remove step ${i + 1}`} onClick={() => upd(c => ({ ...c, tiers: c.tiers.filter((_, j) => j !== i) }))}>Remove</button>
+              <FeeField label={tr('Fee')} value={t.fee} onChange={v => setTier(i, 'fee', v)} />
+              <button type="button" className="a-btn" aria-label={tr('Remove step {n}', { n: i + 1 })} onClick={() => upd(c => ({ ...c, tiers: c.tiers.filter((_, j) => j !== i) }))}>{tr('Remove')}</button>
             </div>
           ))}
           <div>
-            <button type="button" className="a-btn" disabled={d.tiers.length >= 8} onClick={addTier}>+ Add step</button>
-            {d.tiers.length >= 8 && <span className="dr-hint"> Maximum 8 steps.</span>}
+            <button type="button" className="a-btn" disabled={d.tiers.length >= 8} onClick={addTier}>{tr('+ Add step')}</button>
+            {d.tiers.length >= 8 && <span className="dr-hint"> {tr('Maximum 8 steps.')}</span>}
           </div>
         </div>
-        <div className="dr-last"><FeeField label="Beyond the last step" value={d.maxFee} onChange={v => setTop('maxFee', v)} /></div>
-        <div className="dr-prev" aria-live="polite"><b>Preview: </b>{feePreview(d)}</div>
+        <div className="dr-last"><FeeField label={tr('Beyond the last step')} value={d.maxFee} onChange={v => setTop('maxFee', v)} /></div>
+        <div className="dr-prev" aria-live="polite"><b>{tr('Preview:')} </b>{feePreview(d, tr)}</div>
       </div>
       <div className="dr-box">
-        <b>Shipping partners (outside Dhaka)</b>
+        <b>{tr('Shipping partners (outside Dhaka)')}</b>
         <div className="dr-steps">
           {d.partners.map((p, i) => (
             <div className="dr-row" key={i}>
-              <label className="a-lbl">Partner {i + 1}<input className="a-input" type="text" maxLength={60} value={p.name ?? ''} onChange={e => setPartner(i, e.target.value)} /></label>
-              <button type="button" className="a-btn" aria-label={`Remove partner ${i + 1}`} onClick={() => upd(c => ({ ...c, partners: c.partners.filter((_, j) => j !== i) }))}>Remove</button>
+              <label className="a-lbl">{tr('Partner {n}', { n: i + 1 })}<input className="a-input" type="text" maxLength={60} value={p.name ?? ''} onChange={e => setPartner(i, e.target.value)} /></label>
+              <button type="button" className="a-btn" aria-label={tr('Remove partner {n}', { n: i + 1 })} onClick={() => upd(c => ({ ...c, partners: c.partners.filter((_, j) => j !== i) }))}>{tr('Remove')}</button>
             </div>
           ))}
           <div>
-            <button type="button" className="a-btn" disabled={d.partners.length >= 12} onClick={() => upd(c => ({ ...c, partners: [...c.partners, { name: '' }] }))}>+ Add partner</button>
-            {d.partners.length >= 12 && <span className="dr-hint"> Maximum 12 partners.</span>}
+            <button type="button" className="a-btn" disabled={d.partners.length >= 12} onClick={() => upd(c => ({ ...c, partners: [...c.partners, { name: '' }] }))}>{tr('+ Add partner')}</button>
+            {d.partners.length >= 12 && <span className="dr-hint"> {tr('Maximum 12 partners.')}</span>}
           </div>
         </div>
       </div>

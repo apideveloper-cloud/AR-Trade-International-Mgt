@@ -6,10 +6,13 @@ import { OrderDrawer } from './OrderDrawer.jsx';
 import { OrderCreate } from './OrderCreate.jsx';
 import { SOURCE_TONE } from './sources.js';
 import { OrderSearch, monthRange } from './OrderSearch.jsx';
+import { useT } from '../../i18n/lang.jsx';
+import '../../i18n/dict/sales.js';
 import './salesInline.css';
 
 /** Orders page: summary cards, search, status tabs with counts, the order grid, and the create/detail drawers. */
 export function Orders({ staff }) {
+  const tr = useT();
   const t = useTable('/orders', { status: '', source: '', pay: '', customer: '', product: '', ...monthRange(), min: '', max: '', summary: 1 });
   const [open, setOpen] = useState(null); const [create, setCreate] = useState(false);
   const counts = t.data.counts || {};
@@ -18,22 +21,22 @@ export function Orders({ staff }) {
   return (
     <>
       <div className="a-chips oc-bar">
-        {can(staff, 'orders.create') && <button type="button" className="a-btn sm grad oc-new" onClick={() => setCreate(true)}>＋ New order</button>}
+        {can(staff, 'orders.create') && <button type="button" className="a-btn sm grad oc-new" onClick={() => setCreate(true)}>＋ {tr('New order')}</button>}
       </div>
       {t.data.summary && (() => {
         const m = t.data.summary;
         return <Summary items={[
-          ['Orders', m.total, m.cancelled + ' cancelled', 'blue', 'cart'],
-          ['Revenue', fmtMoney(m.revenue), 'Avg ' + fmtMoney(m.avg) + ' per order', 'green', 'money'],
-          ['Today', m.today, fmtMoney(m.todayRevenue) + ' today', 'violet', 'clock'],
-          ['Open orders', m.open, fmtMoney(m.openValue) + ' to deliver', 'amber', 'truck'],
-          ['To collect', fmtMoney(m.unpaid), 'Unpaid, not cancelled', 'red', 'alert']
+          [tr('Orders'), m.total, tr('{n} cancelled', { n: m.cancelled }), 'blue', 'cart'],
+          [tr('Revenue'), fmtMoney(m.revenue), tr('Avg {n} per order', { n: fmtMoney(m.avg) }), 'green', 'money'],
+          [tr('Today'), m.today, tr('{n} today', { n: fmtMoney(m.todayRevenue) }), 'violet', 'clock'],
+          [tr('Open orders'), m.open, tr('{n} to deliver', { n: fmtMoney(m.openValue) }), 'amber', 'truck'],
+          [tr('To collect'), fmtMoney(m.unpaid), tr('Unpaid, not cancelled'), 'red', 'alert']
         ]} />;
       })()}
       <OrderSearch t={t} />
       <Toolbar t={t} />
       <div className="oc-gridwrap">
-      <div className="oc-tabs" role="tablist" aria-label="Order status"
+      <div className="oc-tabs" role="tablist" aria-label={tr('Order status')}
         onKeyDown={e => { // left / right arrows move between the tabs
           if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
           const tabs = [...e.currentTarget.querySelectorAll('[role=tab]')], i = tabs.indexOf(document.activeElement);
@@ -47,20 +50,20 @@ export function Orders({ staff }) {
           return (
             <button key={v || 'all'} type="button" role="tab" aria-selected={on} tabIndex={on ? 0 : -1} className={'oc-tab' + (on ? ' on' : '')}
               style={{ '--c': v ? STATUS_COLORS[v][1] : '#16181d' }} onClick={() => t.set({ status: v })}>
-              {v && <i className="oc-dot" aria-hidden="true" />}{label}<b>{n}</b>
+              {v && <i className="oc-dot" aria-hidden="true" />}{tr(label)}<b>{n}</b>
             </button>
           );
         })}
       </div>
       <div className="a-table ord" role="tabpanel" style={{ opacity: t.loading ? .6 : 1 }}>
         <div className="sinl-min804">
-          <div className="head sinl-ordcols"><span>SL</span><span>Order</span><span>Customer</span><span>Date</span><span>Payment</span><span>Status</span><span className="sinl-right">Total</span></div>
+          <div className="head sinl-ordcols"><span>{tr('SL')}</span><span>{tr('Order')}</span><span>{tr('Customer')}</span><span>{tr('Date')}</span><span>{tr('Payment')}</span><span>{tr('Status')}</span><span className="sinl-right">{tr('Total')}</span></div>
           {t.data.rows.map((o, i) => (
             <button key={o.id} className="row sinl-ordcols" onClick={() => setOpen(o.id)}>
               <span className="sl">{slNo(t, i)}</span>
               <b>{o.id}</b>
-              <span className="sinl-stack"><b className="sinl-name">{o.customer.name}</b><span className="sinl-sub">{o.customer.phone} · {AREA[o.area]}{o.source && o.source !== 'Customer' && <i className={'oc-tag ' + (SOURCE_TONE[o.source] || '')}>{o.source}</i>}</span></span>
-              <span className="sinl-muted">{dateF(o.date)}</span><span>{o.payment}{o.payStatus === 'Paid' ? ' ✓' : ''}</span><Pill s={o.status} />
+              <span className="sinl-stack"><b className="sinl-name">{o.customer.name}</b><span className="sinl-sub">{o.customer.phone} · {tr(AREA[o.area])}{o.source && o.source !== 'Customer' && <i className={'oc-tag ' + (SOURCE_TONE[o.source] || '')}>{tr(o.source)}</i>}</span></span>
+              <span className="sinl-muted">{dateF(o.date)}</span><span>{tr(o.payment)}{o.payStatus === 'Paid' ? ' ✓' : ''}</span><Pill s={o.status} />
               <b className="sinl-right">{fmtMoney(o.total)}</b>
             </button>
           ))}

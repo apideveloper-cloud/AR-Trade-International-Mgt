@@ -25,4 +25,4 @@ export async function recalcAll() {
 }
 
 export const n0 = v => Number(v || 0).toLocaleString('en-US');
-export const whenOf = t => (t ? new Date(t).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'never');
+export const whenOf = (t, tr = s => s) => (t ? new Date(t).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : tr('never'));

@@ -1,11 +1,14 @@
 import { useState } from 'react';
 import { liveUrl } from './useSeoItem.js';
+import { useT } from '../i18n/lang.jsx';
+import '../i18n/dict/catalog.js';
 import './indexing.css';
 
 const CONSOLE = 'https://search.google.com/search-console';
 
 /** "Request indexing" helper: copy the live URL, open Search Console. No network calls. */
 export function IndexingHelper({ url }) {
+  const tr = useT();
   const abs = liveUrl(url);
   const [done, setDone] = useState(false);
   const copy = async () => {
@@ -13,13 +16,13 @@ export function IndexingHelper({ url }) {
   };
   return (
     <div className="adsi-sec adix">
-      <b>Request indexing</b>
+      <b>{tr('Request indexing')}</b>
       <code className="adix-url">{abs}</code>
       <div className="adix-acts">
-        <button type="button" className="a-btn ghost sm" onClick={copy}>{done ? 'Copied' : 'Copy URL'}</button>
-        <a className="a-btn ghost sm" href={CONSOLE} target="_blank" rel="noreferrer">Open Search Console</a>
+        <button type="button" className="a-btn ghost sm" onClick={copy}>{done ? tr('Copied') : tr('Copy URL')}</button>
+        <a className="a-btn ghost sm" href={CONSOLE} target="_blank" rel="noreferrer">{tr('Open Search Console')}</a>
       </div>
-      <span className="adix-note">In Search Console, paste the URL into the top search box and choose Request indexing.</span>
+      <span className="adix-note">{tr('In Search Console, paste the URL into the top search box and choose Request indexing.')}</span>
     </div>
   );
 }

@@ -7,10 +7,13 @@ import { CategoryForm } from './CategoryForm.jsx';
 import { CategoryCard } from './CategoryCard.jsx';
 import { DeleteRedirectModal } from '../seo/redirects/DeleteRedirectModal.jsx';
 import '../seo/redirects/redirects.css';
+import { useT } from '../../i18n/lang.jsx';
+import '../../i18n/dict/catalog.js';
 import './catalogPage.css';
 
 /** Categories page: summary, tiles (grid or list) and the add / edit form. */
 export function Categories({ onChanged }) {
+  const tr = useT();
   const list = useApiData(() => adm.get('/categories'), [], []);
   const rows = list.data, load = list.reload;
   const [view, setView] = useView('categories', 'grid');
@@ -34,32 +37,32 @@ export function Categories({ onChanged }) {
     setBusy('');
   };
   const clear = async c => {
-    if (!(await confirmBox('Remove the picture of “' + c.title + '”? The store goes back to the automatic picture.', { danger: true, confirmLabel: 'Remove picture' }))) return;
+    if (!(await confirmBox(tr('Remove the picture of “{name}”? The store goes back to the automatic picture.', { name: c.title }), { danger: true, confirmLabel: tr('Remove picture') }))) return;
     setErr(''); setBusy(c.id);
     try { await adm.put('/categories/' + c.id, { image: '' }); await refresh(); } catch (e) { setErr(e.message); }
     setBusy('');
   };
   const remove = async c => {
-    if (!(await confirmBox('Delete the category “' + c.title + '”? It has no products. This cannot be undone.', { danger: true, confirmLabel: 'Delete category' }))) return;
+    if (!(await confirmBox(tr('Delete the category “{name}”? It has no products. This cannot be undone.', { name: c.title }), { danger: true, confirmLabel: tr('Delete category') }))) return;
     setErr('');
     try { await adm.del('/categories/' + c.id); await refresh(); setGone(c); } catch (e) { setErr(e.message); }
   };
   return (
     <>
       <Summary items={[
-        ['Categories', rows.length, 'product groups', 'blue', 'tag'],
-        ['Visible', rows.filter(c => !c.hidden).length, 'shown on the store', 'green', 'check'],
-        ['Hidden', rows.filter(c => c.hidden).length, 'not on the store', 'amber', 'alert'],
-        ['Products', rows.reduce((t, c) => t + (c.total || 0), 0), 'in all categories', 'violet', 'box']
+        [tr('Categories'), rows.length, tr('product groups'), 'blue', 'tag'],
+        [tr('Visible'), rows.filter(c => !c.hidden).length, tr('shown on the store'), 'green', 'check'],
+        [tr('Hidden'), rows.filter(c => c.hidden).length, tr('not on the store'), 'amber', 'alert'],
+        [tr('Products'), rows.reduce((t, c) => t + (c.total || 0), 0), tr('in all categories'), 'violet', 'box']
       ]} />
-      {err && <div className="a-msg err">{err}</div>}
-      <div className="a-bar"><b>{rows.length} categories</b><span className="info">Click a picture to change it</span><button type="button" className="a-btn sm grad" onClick={() => setForm('new')}>＋ Add category</button><ViewToggle view={view} setView={setView} /></div>
+      {err && <div className="a-msg err">{tr(err)}</div>}
+      <div className="a-bar"><b>{tr('{n} categories', { n: rows.length })}</b><span className="info">{tr('Click a picture to change it')}</span><button type="button" className="a-btn sm grad" onClick={() => setForm('new')}>{tr('＋ Add category')}</button><ViewToggle view={view} setView={setView} /></div>
       <div className={'vw cats acat-grid ' + view}>
         {rows.map(c => (
           <CategoryCard key={c.id} c={c} busy={busy === c.id} onPick={file => pick(c, file)} onEdit={() => setForm(c)} onRemove={() => remove(c)} onClearPicture={() => clear(c)} onToggle={() => toggle(c)} />
         ))}
       </div>
-      {gone && <DeleteRedirectModal source={'/shop/' + gone.id} what={'Category “' + gone.title + '” deleted'} onClose={() => setGone(null)} />}
+      {gone && <DeleteRedirectModal source={'/shop/' + gone.id} what={tr('Category “{name}” deleted', { name: gone.title })} onClose={() => setGone(null)} />}
       {form && <CategoryForm cat={form === 'new' ? null : form} onClose={() => setForm(null)} onSaved={refresh} />}
     </>
   );

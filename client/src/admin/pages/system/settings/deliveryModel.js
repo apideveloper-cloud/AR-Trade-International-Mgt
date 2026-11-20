@@ -26,33 +26,33 @@ const slug = n => String(n || '').toLowerCase().normalize('NFKD').replace(/[^a-z
 const withIds = ps => ps.map(p => ({ id: p.id || slug(p.name), name: String(p.name || '').trim() }));
 
 /** List of human-readable problems with the delivery settings (empty = valid). */
-export function validateDelivery(raw) {
+export function validateDelivery(raw, tr = s => s) {
   const d = getDelivery(raw), e = [];
   const lat = d.office.lat, lng = d.office.lng;
-  if (!isNum(lat) || +lat < -90 || +lat > 90) e.push('Latitude must be a number between -90 and 90.');
-  if (!isNum(lng) || +lng < -180 || +lng > 180) e.push('Longitude must be a number between -180 and 180.');
-  if (String(d.office.label || '').length > 120) e.push('Office label is too long (max 120 characters).');
-  if (!isNum(d.freeKm) || +d.freeKm < 0) e.push('Free distance must be 0 or more.');
-  if (!isNum(d.roadFactor) || +d.roadFactor < 1 || +d.roadFactor > 3) e.push('Road factor must be a number between 1 and 3.');
+  if (!isNum(lat) || +lat < -90 || +lat > 90) e.push(tr('Latitude must be a number between -90 and 90.'));
+  if (!isNum(lng) || +lng < -180 || +lng > 180) e.push(tr('Longitude must be a number between -180 and 180.'));
+  if (String(d.office.label || '').length > 120) e.push(tr('Office label is too long (max 120 characters).'));
+  if (!isNum(d.freeKm) || +d.freeKm < 0) e.push(tr('Free distance must be 0 or more.'));
+  if (!isNum(d.roadFactor) || +d.roadFactor < 1 || +d.roadFactor > 3) e.push(tr('Road factor must be a number between 1 and 3.'));
   d.tiers.forEach((t, i) => {
     const n = i + 1;
-    if (!isNum(t.upToKm) || +t.upToKm <= 0) e.push(`Step ${n}: enter the distance in km (more than 0).`);
-    else if (i > 0 && isNum(d.tiers[i - 1].upToKm) && +t.upToKm <= +d.tiers[i - 1].upToKm) e.push(`Step ${n}: km must be more than the step above.`);
-    else if (+t.upToKm <= +d.freeKm && isNum(d.freeKm)) e.push(`Step ${n}: km must be more than the free distance.`);
-    if (!isNum(t.fee) || +t.fee < 0) e.push(`Step ${n}: enter the fee (0 or more).`);
-    else if (i > 0 && isNum(d.tiers[i - 1].fee) && +t.fee < +d.tiers[i - 1].fee) e.push(`Step ${n}: fee cannot be lower than the step above.`);
+    if (!isNum(t.upToKm) || +t.upToKm <= 0) e.push(tr('Step {n}: enter the distance in km (more than 0).', { n }));
+    else if (i > 0 && isNum(d.tiers[i - 1].upToKm) && +t.upToKm <= +d.tiers[i - 1].upToKm) e.push(tr('Step {n}: km must be more than the step above.', { n }));
+    else if (+t.upToKm <= +d.freeKm && isNum(d.freeKm)) e.push(tr('Step {n}: km must be more than the free distance.', { n }));
+    if (!isNum(t.fee) || +t.fee < 0) e.push(tr('Step {n}: enter the fee (0 or more).', { n }));
+    else if (i > 0 && isNum(d.tiers[i - 1].fee) && +t.fee < +d.tiers[i - 1].fee) e.push(tr('Step {n}: fee cannot be lower than the step above.', { n }));
   });
-  if (!isNum(d.maxFee) || +d.maxFee < 0) e.push('Fee beyond the last step must be 0 or more.');
-  else if (d.tiers.length && isNum(d.tiers[d.tiers.length - 1].fee) && +d.maxFee < +d.tiers[d.tiers.length - 1].fee) e.push('Fee beyond the last step cannot be lower than the last step.');
-  if (!d.partners.length) e.push('Keep at least one shipping partner, otherwise orders outside Dhaka cannot be placed.');
+  if (!isNum(d.maxFee) || +d.maxFee < 0) e.push(tr('Fee beyond the last step must be 0 or more.'));
+  else if (d.tiers.length && isNum(d.tiers[d.tiers.length - 1].fee) && +d.maxFee < +d.tiers[d.tiers.length - 1].fee) e.push(tr('Fee beyond the last step cannot be lower than the last step.'));
+  if (!d.partners.length) e.push(tr('Keep at least one shipping partner, otherwise orders outside Dhaka cannot be placed.'));
   const seen = new Set();
   d.partners.forEach((p, i) => {
     const name = String(p.name || '').trim();
-    if (!name) { e.push(`Partner ${i + 1}: name is empty.`); return; }
-    if (name.length > 60) e.push(`Partner ${i + 1}: name is too long (max 60).`);
+    if (!name) { e.push(tr('Partner {n}: name is empty.', { n: i + 1 })); return; }
+    if (name.length > 60) e.push(tr('Partner {n}: name is too long (max 60).', { n: i + 1 }));
     const id = p.id || slug(name);
-    if (!id) { e.push(`Partner "${name}": use English letters or numbers in the name.`); return; }
-    if (seen.has(id)) e.push(`Partner "${name}" is listed twice.`);
+    if (!id) { e.push(tr('Partner "{name}": use English letters or numbers in the name.', { name })); return; }
+    if (seen.has(id)) e.push(tr('Partner "{name}" is listed twice.', { name }));
     seen.add(id);
   });
   return e;

@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { adm } from '../../adminApi.js';
+import { useT } from '../../i18n/lang.jsx';
+import '../../i18n/dict/seo.js';
 import { Tabs } from '../../fieldKit.jsx';
 import { useApiData } from '../../hooks/useApiData.js';
 import { Brands } from './Brands.jsx';
@@ -14,6 +16,7 @@ import './seo.css';
 
 /** Admin > SEO. Settings are loaded here so the Overview checklist and the Settings tab (and its unsaved edits) share them. */
 export function SeoPage() {
+  const tr = useT();
   const q = useApiData(() => adm.get('/seo/settings'));
   const [tab, setTab] = useState('overview');
   const [jump, setJump] = useState({ filter: 'all', n: 0 }); // Dashboard asks for Products with a filter already chosen
@@ -29,8 +32,8 @@ export function SeoPage() {
   };
   return (
     <div className="adseo">
-      <Tabs value={tab} onChange={setTab} items={SEO_TABS} />
-      {q.error && <div className="a-msg err">{q.error}</div>}
+      <Tabs value={tab} onChange={setTab} items={SEO_TABS.map(([k, l]) => [k, tr(l)])} />
+      {q.error && <div className="a-msg err">{tr(q.error)}</div>}
       {tab === 'overview' ? <Dashboard onGoto={onGoto} /> : tab === 'products' ? <ProductsTab key={jump.n} initialFilter={jump.filter} /> : tab === 'brands' ? <Brands /> : tab === 'redirects' ? <Redirects /> : tab === '404' ? <NotFound404 /> : tab === 'activity' ? <Activity /> : !draft ? (!q.error && <span className="spin" />) : tab === 'settings' ? <SeoSettings st={st} />: null}
     </div>
   );

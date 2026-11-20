@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { adm } from '../../adminApi.js';
+import { useT } from '../../i18n/lang.jsx';
+import '../../i18n/dict/system.js';
 import { confirmBox } from '../../ui.jsx';
 import { MASTER_ONLY } from './rolesMeta.js';
 
@@ -7,6 +9,7 @@ const draftOf = d => Object.fromEntries(d.roles.map(r => [r.name, new Set(r.perm
 
 /** Loads the role matrix and owns the editable draft plus save / reset / discard. */
 export function useRoleMatrix() {
+  const tr = useT();
   const [data, setData] = useState(null);
   const [draft, setDraft] = useState({}); // role -> Set of permission keys (editable copy)
   const [showLegacy, setShowLegacy] = useState(false);
@@ -15,7 +18,7 @@ export function useRoleMatrix() {
   const [err, setErr] = useState('');
 
   // `keep`: roles whose unsaved ticks stay as they are (resetting one role must not throw away the edits of the others)
-  const load = (keep = []) => adm.get('/roles').then(d => { setData(d); setDraft(prev => ({ ...draftOf(d), ...Object.fromEntries(keep.filter(k => prev[k]).map(k => [k, prev[k]])) })); }).catch(e => setErr(e.message));
+  const load = (keep = []) => adm.get('/roles').then(d => { setData(d); setDraft(prev => ({ ...draftOf(d), ...Object.fromEntries(keep.filter(k => prev[k]).map(k => [k, prev[k]])) })); }).catch(e => setErr(tr(e.message)));
   useEffect(() => { load(); }, []);
 
   const roles = useMemo(() => (data ? data.roles.filter(r => showLegacy || !r.legacy) : []), [data, showLegacy]);
@@ -34,14 +37,14 @@ export function useRoleMatrix() {
     try {
       for (const name of changed) await adm.put('/roles/' + encodeURIComponent(name), { perms: [...draft[name]] });
       await load();
-      setMsg(`Saved. The new access applies to ${changed.join(', ')} straight away.`);
-    } catch (e) { setErr(e.message); }
+      setMsg(tr('Saved. The new access applies to {names} straight away.', { names: changed.map(n => tr(n)).join(', ') }));
+    } catch (e) { setErr(tr(e.message)); }
     setBusy(false);
   };
   const reset = async name => {
-    if (!(await confirmBox(`Reset "${name}" to its default access?`, { confirmLabel: 'Reset access' }))) return;
+    if (!(await confirmBox(tr('Reset "{name}" to its default access?', { name: tr(name) }), { confirmLabel: tr('Reset access') }))) return;
     setErr(''); setMsg('');
-    try { await adm.post(`/roles/${encodeURIComponent(name)}/reset`); await load(changed.filter(n => n !== name)); setMsg(`"${name}" is back to its default access.`); } catch (e) { setErr(e.message); }
+    try { await adm.post(`/roles/${encodeURIComponent(name)}/reset`); await load(changed.filter(n => n !== name)); setMsg(tr('"{name}" is back to its default access.', { name: tr(name) })); } catch (e) { setErr(tr(e.message)); }
   };
   return { data, draft, roles, groups, changed, busy, msg, err, showLegacy, setShowLegacy, toggle, setAll, discard, save, reset };
 }

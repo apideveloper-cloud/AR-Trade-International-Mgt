@@ -13,6 +13,8 @@ import { ContactCard } from './ContactCard.jsx';
 import { ItemsCard } from './ItemsCard.jsx';
 import { OrderTimeline } from './OrderTimeline.jsx';
 import { EmailInvoiceModal } from './EmailInvoiceModal.jsx';
+import { useT } from '../../i18n/lang.jsx';
+import '../../i18n/dict/sales.js';
 import './salesInline.css';
 
 /** Order details panel: summary, progress tracker with required remarks, invoice actions, contact, items and the timeline with comments.
@@ -22,6 +24,7 @@ export function OrderDrawer({ id, ...rest }) {
 }
 
 function OrderDrawerBody({ id, onClose, onChanged, canDelete, riderOnly, canEdit }) {
+  const tr = useT();
   const staff = useStaff();
   const editable = canEdit ?? (staff ? can(staff, 'orders.status') : true);
   const { o, err, setO, setErr, reload } = useOrder(id);
@@ -32,14 +35,14 @@ function OrderDrawerBody({ id, onClose, onChanged, canDelete, riderOnly, canEdit
   const docNo = (docOrder ? 'SO-' : 'INV-') + id.replace(/^\D+/, '');
   const setStatus = status => { if (editable && o && o.status !== status) setChg(status); };
   const del = async () => {
-    if (!(await confirmBox('Delete order ' + id + '? This cannot be undone.', { danger: true, confirmLabel: 'Delete order' }))) return;
-    try { await adm.del('/orders/' + id); onChanged(); onClose(); } catch (x) { setErr(x.message); }
+    if (!(await confirmBox(tr('Delete order {id}? This cannot be undone.', { id }), { danger: true, confirmLabel: tr('Delete order') }))) return;
+    try { await adm.del('/orders/' + id); onChanged(); onClose(); } catch (x) { setErr(tr(x.message)); }
   };
   return (
     <>
     {showPdf && <PdfPreview url={`/api/admin/orders/${id}/invoice.pdf`} title={docNo} filename={docNo + '.pdf'} onClose={() => setShowPdf(false)} />}
     <Drawer title={id} sub={o ? dateTimeF(o.date) : ''} onClose={onClose}>
-      {err && <div className="a-msg err">{err}</div>}
+      {err && <div className="a-msg err">{tr(err)}</div>}
       {!o ? (err ? null : <span className="spin" />) : (
         <>
           <OrderHero o={o} />
@@ -50,7 +53,7 @@ function OrderDrawerBody({ id, onClose, onChanged, canDelete, riderOnly, canEdit
           <ContactCard o={o} />
           <ItemsCard o={o} />
           <OrderTimeline id={id} o={o} setO={setO} />
-          {canDelete && o.status === 'Cancelled' && <button onClick={del} className="sinl-del">Delete order</button>}
+          {canDelete && o.status === 'Cancelled' && <button onClick={del} className="sinl-del">{tr('Delete order')}</button>}
         </>
       )}
       {chg && o && <StatusDialog id={id} from={o.status} to={chg} onClose={() => setChg(null)} onSaved={x => { setO(x); onChanged(); setChg(null); }} />}

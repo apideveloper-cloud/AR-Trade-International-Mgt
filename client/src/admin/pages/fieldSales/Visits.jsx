@@ -2,11 +2,14 @@ import { useEffect, useState } from 'react';
 import { fld, useTable } from '../../adminApi.js';
 import { periodOf } from '../../ListFilter.jsx';
 import { Notice, Tabs, useFld } from '../../fieldKit.jsx';
+import { useT } from '../../i18n/lang.jsx';
+import '../../i18n/dict/field.js';
 import { VisitsTab } from './VisitsTab.jsx';
 import { FollowupsTab } from './FollowupsTab.jsx';
 
 /** Visits and follow-ups of one salesperson (a manager picks whose). */
 export function FieldVisits() {
+  const tr = useT();
   const team = useFld('/team');
   const people = (team.data?.members || []).filter(m => ['rm', 'manager'].includes(m.role));
   const [sid, setSid] = useState('');
@@ -31,13 +34,13 @@ export function FieldVisits() {
   const fc = f.data.counts || {};
   return (
     <>
-      <Notice err={v.error || f.error || msg} />
+      <Notice err={(v.error || f.error || msg) && tr(v.error || f.error || msg)} />
       <section className="a-card">
         <div className="fd-bar">
-          <label className="fd-sel">Salesperson
-            <select className="a-input" value={staff} onChange={e => setSid(e.target.value)}>{people.map(p => <option key={p.id} value={p.id}>{p.name} · {p.roleLabel}</option>)}{!people.length && <option value="">Me</option>}</select>
+          <label className="fd-sel">{tr('Salesperson')}
+            <select className="a-input" value={staff} onChange={e => setSid(e.target.value)}>{people.map(p => <option key={p.id} value={p.id}>{p.name} · {tr(p.roleLabel)}</option>)}{!people.length && <option value="">{tr('Me')}</option>}</select>
           </label>
-          <Tabs value={tab} onChange={setTab} items={[['visits', 'Visits'], ['follow', 'Follow-ups', fc.open]]} />
+          <Tabs value={tab} onChange={setTab} items={[['visits', tr('Visits')], ['follow', tr('Follow-ups'), fc.open]]} />
         </div>
       </section>
       {tab === 'visits' && <VisitsTab v={v} vt={vt} />}

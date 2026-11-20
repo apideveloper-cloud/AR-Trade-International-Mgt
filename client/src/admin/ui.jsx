@@ -3,6 +3,7 @@ import { STATUS_COLORS } from './adminApi.js';
 import { useDebouncedCallback } from './hooks/useDebouncedCallback.js';
 import { useT } from './i18n/lang.jsx';
 import './i18n/dict/common.js';
+import './i18n/dict/shell.js';
 
 export function Pill({ s, label }) {
   const tr = useT();
@@ -56,15 +57,17 @@ export function Empty({ t }) {
 }
 
 export function Switch({ on, onChange, title }) {
-  return <button type="button" className={'a-sw' + (on ? ' on' : '')} title={title} onClick={() => onChange(!on)} />;
+  const tr = useT();
+  return <button type="button" className={'a-sw' + (on ? ' on' : '')} title={title ? tr(title) : title} onClick={() => onChange(!on)} />;
 }
 
 export function Drawer({ title, sub, onClose, children }) {
+  const tr = useT();
   return (
     <>
       <div className="a-scrim" onClick={onClose} />
       <aside className="a-drawer">
-        <div className="hd"><div style={{ display: 'flex', flexDirection: 'column' }}><span style={{ fontFamily: 'var(--disp)', fontWeight: 800, fontSize: 22 }}>{title}</span><span style={{ fontSize: 12, color: '#5d6270' }}>{sub}</span></div><button className="a-x" onClick={onClose}>✕</button></div>
+        <div className="hd"><div style={{ display: 'flex', flexDirection: 'column' }}><span style={{ fontFamily: 'var(--disp)', fontWeight: 800, fontSize: 22 }}>{title}</span><span style={{ fontSize: 12, color: '#5d6270' }}>{sub}</span></div><button className="a-x" aria-label={tr('Close')} onClick={onClose}>✕</button></div>
         <div className="bd">{children}</div>
       </aside>
     </>
@@ -73,11 +76,12 @@ export function Drawer({ title, sub, onClose, children }) {
 
 /** Dialog. With `side` it slides in from the right as a full-height panel (used for the bigger forms). */
 export function Modal({ kicker, title, onClose, onSubmit, children, footer, side, narrow, cls = '' }) {
+  const tr = useT();
   return (
     <>
       <div className={'a-scrim' + (cls ? ' ' + cls : '')} style={{ background: 'rgba(11,22,49,.55)' }} onClick={onClose} />
       <form className={'a-modal' + (side ? ' slide' : '') + (narrow ? ' narrow' : '') + (cls ? ' ' + cls : '')} onSubmit={onSubmit}>
-        <div className="hd"><div><small>{kicker}</small><b>{title}</b></div><button type="button" className="a-x" onClick={onClose}>✕</button></div>
+        <div className="hd"><div><small>{kicker}</small><b>{title}</b></div><button type="button" className="a-x" aria-label={tr('Close')} onClick={onClose}>✕</button></div>
         <div className="bd">{children}</div>
         {footer && <div className="ft">{footer}</div>}
       </form>
@@ -103,14 +107,16 @@ const SUM_ICONS = {
 
 /** A row of summary cards at the top of a page. items: [title, value, sub, tone, icon] where tone is blue | amber | violet | green | red. */
 export function Summary({ items }) {
+  const tr = useT();
+  const w = v => (typeof v === 'string' ? tr(v) : v);
   return (
     <div className="kpis sum">
       {items.map(([title, value, sub, tone, icon]) => (
         <div className={'kpi tone-' + tone} key={title}>
           <span className="kic"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{SUM_ICONS[icon]}</svg></span>
-          <small>{title}</small>
+          <small>{w(title)}</small>
           <b className={typeof value === 'string' && value.length > 14 ? 'txt' : ''} title={String(value)}>{value}</b>
-          <span>{sub}</span>
+          <span>{w(sub)}</span>
         </div>
       ))}
     </div>
@@ -131,10 +137,11 @@ export function useView(key, fallback = 'list') {
   return [view, set];
 }
 export function ViewToggle({ view, setView }) {
+  const tr = useT();
   return (
-    <div className="vt" role="group" aria-label="Layout">
-      <button type="button" className={view === 'list' ? 'on' : ''} aria-pressed={view === 'list'} onClick={() => setView('list')} title="List view"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg>List</button>
-      <button type="button" className={view === 'grid' ? 'on' : ''} aria-pressed={view === 'grid'} onClick={() => setView('grid')} title="Grid view"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinejoin="round" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5" rx="1.5" /><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5" /><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5" /><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5" /></svg>Grid</button>
+    <div className="vt" role="group" aria-label={tr('Layout')}>
+      <button type="button" className={view === 'list' ? 'on' : ''} aria-pressed={view === 'list'} onClick={() => setView('list')} title={tr('List view')}><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg>{tr('List')}</button>
+      <button type="button" className={view === 'grid' ? 'on' : ''} aria-pressed={view === 'grid'} onClick={() => setView('grid')} title={tr('Grid view')}><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinejoin="round" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5" rx="1.5" /><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5" /><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5" /><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5" /></svg>{tr('Grid')}</button>
     </div>
   );
 }
@@ -152,6 +159,7 @@ export const alertBox = (message, opts = {}) => ask({ kind: 'alert', message, ..
 
 /** Mounted once in the admin frame: shows whichever dialog confirmBox / alertBox asked for. */
 export function DialogHost() {
+  const tr = useT();
   const [d, setD] = useState(null);
   useEffect(() => { showDialog = setD; return () => { showDialog = null; }; }, []);
   useEffect(() => {
@@ -165,13 +173,13 @@ export function DialogHost() {
   const tone = d.danger || d.kind === 'alert' ? 'bad' : 'info';
   return (
     <div className="a-dlg-bg" onMouseDown={e => { if (e.target === e.currentTarget) done(d.kind === 'confirm' ? false : true); }}>
-      <div className="a-dlg" role={d.kind === 'alert' ? 'alertdialog' : 'dialog'} aria-modal="true" aria-label={d.title || (d.kind === 'alert' ? 'Notice' : 'Please confirm')}>
+      <div className="a-dlg" role={d.kind === 'alert' ? 'alertdialog' : 'dialog'} aria-modal="true" aria-label={tr(d.title || (d.kind === 'alert' ? 'Notice' : 'Please confirm'))}>
         <span className={'ic ' + tone}>{tone === 'bad' ? '!' : '?'}</span>
-        <h3>{d.title || (d.kind === 'alert' ? 'Something needs your attention' : 'Please confirm')}</h3>
-        <p>{d.message}</p>
+        <h3>{tr(d.title || (d.kind === 'alert' ? 'Something needs your attention' : 'Please confirm'))}</h3>
+        <p>{typeof d.message === 'string' ? tr(d.message) : d.message}</p>
         <div className="acts">
-          {d.kind === 'confirm' && <button type="button" className="a-btn ghost" onClick={() => done(false)}>{d.cancelLabel || 'Cancel'}</button>}
-          <button type="button" autoFocus className={'a-btn' + (d.danger ? ' danger' : '')} onClick={() => done(true)}>{d.confirmLabel || (d.kind === 'alert' ? 'OK' : 'Yes, continue')}</button>
+          {d.kind === 'confirm' && <button type="button" className="a-btn ghost" onClick={() => done(false)}>{tr(d.cancelLabel || 'Cancel')}</button>}
+          <button type="button" autoFocus className={'a-btn' + (d.danger ? ' danger' : '')} onClick={() => done(true)}>{tr(d.confirmLabel || (d.kind === 'alert' ? 'OK' : 'Yes, continue'))}</button>
         </div>
       </div>
     </div>

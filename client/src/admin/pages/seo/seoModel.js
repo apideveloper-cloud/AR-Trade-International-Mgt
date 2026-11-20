@@ -52,3 +52,30 @@ export async function exportSeoCsv({ filter, q, cat }) {
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 10000);
 }
+
+// Sentences from the server that carry numbers or names: [pattern, (match, tr) => Bangla]. Anything else goes through tr() as a fixed sentence.
+const v = (key, ...names) => (m, tr) => tr(key, Object.fromEntries(names.map((n, i) => [n, m[i + 1]])));
+const SRV = [
+  [/^Showing the first (\d+) of (\d+) changed rows; all of them will be applied\.$/, v('Showing the first {a} of {b} changed rows; all of them will be applied.', 'a', 'b')],
+  [/^The row has (\d+) cells but the header has (\d+)$/, v('The row has {a} cells but the header has {b}', 'a', 'b')],
+  [/^Same product as line (\d+)$/, v('Same product as line {n}', 'n')],
+  [/^Column "(.+)" appears twice: only the first one is used$/, v('Column "{c}" appears twice: only the first one is used', 'c')],
+  [/^Unknown columns ignored: (.+)$/, v('Unknown columns ignored: {c}', 'c')],
+  [/^(\S+) must be 1, 0, true, false, yes or no$/, v('{c} must be 1, 0, true, false, yes or no', 'c')],
+  [/^FAQ (\d+) needs both a question and an answer$/, v('FAQ {n} needs both a question and an answer', 'n')],
+  [/^The new address is itself redirected, so the final address (.+) was saved instead$/, v('The new address is itself redirected, so the final address {a} was saved instead', 'a')],
+  [/^line (\d+): unknown directive$/, v('line {n}: unknown directive', 'n')],
+  [/^line (\d+): "Disallow: \/" would block the whole site$/, v('line {n}: "Disallow: /" would block the whole site', 'n')],
+  [/^(1) empty image alt text will be filled$/, v('1 empty image alt text will be filled')],
+  [/^(\d+) empty image alt texts will be filled$/, v('{n} empty image alt texts will be filled', 'n')],
+  [/^Cached; rebuilt after every save or every 10 minutes \(last built (.+)\)$/, v('Cached; rebuilt after every save or every 10 minutes (last built {t})', 't')],
+  [/^Hand-written (.+) cleared; the template will be used$/, (m, tr) => tr('Hand-written {parts} cleared; the template will be used', { parts: m[1].split(', ').map(p => tr(p)).join(', ') })],
+  [/^Reverted: (.+)$/, (m, tr) => tr('Reverted: {names}', { names: m[1].split(', ').map(p => tr(p)).join(', ') })],
+  [/^(.+) changed$/, (m, tr) => tr('{names} changed', { names: m[1].split(', ').map(p => tr(p)).join(', ') })]
+];
+/** Translates a sentence that came from the server (fixed sentences by key, sentences with numbers by pattern). */
+export function trServer(tr, s) {
+  const str = String(s ?? '');
+  for (const [re, fn] of SRV) { const m = re.exec(str); if (m) return fn(m, tr); }
+  return tr(str);
+}

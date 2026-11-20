@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
+import { useT } from '../../i18n/lang.jsx';
+import '../../i18n/dict/seo.js';
 import { adm, useTable } from '../../adminApi.js';
 import { Summary, Modal, Toolbar, Pager, alertBox } from '../../ui.jsx';
 import { ListFilter } from '../../ListFilter.jsx';
@@ -25,6 +27,7 @@ const TILES = [
 
 /** The Products tab of Admin > SEO: list with SEO columns, filters, bulk actions and CSV export / import. */
 export function ProductsTab({ initialFilter = 'all' }) {
+  const tr = useT();
   const t = useTable('/seo/products', { cat: '', filter: initialFilter, sort: 'id', dir: 'desc' });
   const [cats, setCats] = useState([]);
   const [sel, setSel] = useState(() => new Set());
@@ -46,14 +49,14 @@ export function ProductsTab({ initialFilter = 'all' }) {
   const scope = { filter: params.filter || 'all', q: params.q || '', cat: params.cat || '' };
   const count = all ? data.total : sel.size;
   const act = (action, label) => bulk.start(action, label, all ? { scope } : { ids: [...sel] });
-  const doExport = () => run(async () => { try { await exportSeoCsv(scope); } catch (e) { alertBox(e.message); } });
+  const doExport = () => run(async () => { try { await exportSeoCsv(scope); } catch (e) { alertBox(tr(e.message)); } });
   const pick = e => {
     const f = e.target.files?.[0]; e.target.value = '';
     if (!f) return;
     run(async () => {
       const csv = await f.text();
       const r = await postJson('/seo/import/preview', { csv });
-      if (r.ok) setPre({ csv, data: r.data }); else alertBox(r.error);
+      if (r.ok) setPre({ csv, data: r.data }); else alertBox(tr(r.error));
     });
   };
   const tileClick = e => {
@@ -63,7 +66,7 @@ export function ProductsTab({ initialFilter = 'all' }) {
 
   return (
     <div className="adpt">
-      {data.summary && <div className="adpt-sum" onClick={tileClick}><Summary items={TILES.map(([a, k, c, d, e]) => [a, data.summary[k] ?? 0, c, d, e])} /></div>}
+      {data.summary && <div className="adpt-sum" onClick={tileClick}><Summary items={TILES.map(([a, k, c, d, e]) => [tr(a), data.summary[k] ?? 0, tr(c), d, e])} /></div>}
       <ListFilter t={t} noun="product" title="Search products" search={{ placeholder: 'Name, SKU or brand', span: 'c4' }} resetSpan="c1"
         selects={[
           { key: 'cat', label: 'Category', all: 'All categories', icon: 'grid', span: 'c3', options: cats },
@@ -72,17 +75,17 @@ export function ProductsTab({ initialFilter = 'all' }) {
           { key: 'dir', label: 'Direction', all: 'Descending', icon: 'tag', span: 'c2', options: [{ v: 'asc', t: 'Ascending' }] }
         ]} />
       <Toolbar t={t} search={false}>
-        <button type="button" className="a-btn ghost sm" disabled={busy} onClick={doExport}>Export CSV</button>
-        <button type="button" className="a-btn ghost sm" disabled={busy} onClick={() => file.current?.click()}>Import CSV</button>
+        <button type="button" className="a-btn ghost sm" disabled={busy} onClick={doExport}>{tr('Export CSV')}</button>
+        <button type="button" className="a-btn ghost sm" disabled={busy} onClick={() => file.current?.click()}>{tr('Import CSV')}</button>
         <input ref={file} type="file" accept=".csv,text/csv" hidden onChange={pick} />
       </Toolbar>
       <BulkBar count={count} bulk={bulk} onAction={act} onAll={() => bulk.start('recalculate', 'Recalculate ALL scores', { scope: { filter: 'all', q: '', cat: '' } })} />
       <SelectBanner pageCount={rows.length} total={data.total} all={all} pageSelected={pageOn} onAll={() => setAll(true)} onClear={clear} />
-      {t.error && <div className="a-empty">{t.error}</div>}
+      {t.error && <div className="a-empty">{tr(t.error)}</div>}
       <ProductsTable rows={rows} loading={t.loading} sel={all ? new Set(rows.map(r => r.id)) : sel} onToggle={toggle} onPage={togglePage} onEdit={setEdit} />
       <Pager t={t} />
       {edit && (
-        <Modal kicker="Product SEO" title={edit.name} onClose={() => { setEdit(null); t.reload(); }} onSubmit={e => e.preventDefault()}>
+        <Modal kicker={tr('Product SEO')} title={edit.name} onClose={() => { setEdit(null); t.reload(); }} onSubmit={e => e.preventDefault()}>
           <div className="adpt-body"><SeoItemEditor type="product" id={edit.id} mode="full" onChanged={() => t.reload()} /></div>
         </Modal>
       )}

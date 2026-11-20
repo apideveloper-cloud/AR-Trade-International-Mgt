@@ -21,13 +21,13 @@ export function translate(lang, en, vars) {
 }
 
 const read = () => { try { return localStorage.getItem(KEY) === 'bn' ? 'bn' : 'en'; } catch { return 'en'; } };
-const Ctx = createContext({ lang: 'en', setLang: () => {}, t: (s, v) => fill(s, v) });
+const Ctx = createContext({ lang: 'en', setLang: () => {}, t: (s, v) => fill(s, v), inProvider: false });
 
 export function LangProvider({ children }) {
   const [lang, setLangState] = useState(read);
   const setLang = useCallback(l => { setLangState(l === 'bn' ? 'bn' : 'en'); try { localStorage.setItem(KEY, l === 'bn' ? 'bn' : 'en'); } catch { /* the choice is just not remembered */ } }, []);
   const t = useCallback((en, vars) => translate(lang, en, vars), [lang]);
-  const value = useMemo(() => ({ lang, setLang, t }), [lang, setLang, t]);
+  const value = useMemo(() => ({ lang, setLang, t, inProvider: true }), [lang, setLang, t]);
   useEffect(() => { /* keep a second tab in step */
     const on = e => { if (e.key === KEY) setLangState(e.newValue === 'bn' ? 'bn' : 'en'); };
     window.addEventListener('storage', on); return () => window.removeEventListener('storage', on);
@@ -36,6 +36,8 @@ export function LangProvider({ children }) {
 }
 
 export const useLang = () => useContext(Ctx);
+/** true only inside LangProvider (the sign-in screen is also used by the Email Center and Delivery Hub, which have no language switch). */
+export const useInProvider = () => useContext(Ctx).inProvider === true;
 /** const tr = useT();  then  tr('Save')  or  tr('{n} products', { n }) */
 export const useT = () => useContext(Ctx).t;
 

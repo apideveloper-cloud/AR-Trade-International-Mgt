@@ -2,9 +2,12 @@ import { adm, dateF, dateTimeF, useTable } from '../../adminApi.js';
 import { Empty, Pager, Toolbar, ViewToggle, useView } from '../../ui.jsx';
 import { ListFilter } from '../../ListFilter.jsx';
 import { withAlert } from '../../hooks/withAlert.js';
+import { useT } from '../../i18n/lang.jsx';
+import '../../i18n/dict/shell.js';
 import './engage.css';
 
 export function Services() {
+  const tr = useT();
   const t = useTable('/services', { status: '', from: '', to: '' });
   const [view, setView] = useView('services');
   const set = withAlert(async (id, status) => { await adm.put('/services/' + id, { status }); t.reload(); });
@@ -19,9 +22,9 @@ export function Services() {
               <b className="eg-title">{v.id} · {v.type}</b>
               <span>{v.name} · <a href={'tel:' + v.phone} className="eg-svc-tel">{v.phone}</a></span>
               <span>{v.model} — {v.issue}</span>
-              <span className="eg-svc-meta">Preferred {dateF(v.date)} · received {dateTimeF(v.created)}</span>
+              <span className="eg-svc-meta">{tr('Preferred {date} · received {time}', { date: dateF(v.date), time: dateTimeF(v.created) })}</span>
             </div>
-            <select className="a-input eg-stage-select" value={v.status} onChange={e => set(v.id, e.target.value)}>{['New', 'Scheduled', 'In progress', 'Completed'].map(s => <option key={s}>{s}</option>)}</select>
+            <select className="a-input eg-stage-select" value={v.status} onChange={e => set(v.id, e.target.value)}>{['New', 'Scheduled', 'In progress', 'Completed'].map(s => <option key={s} value={s}>{tr(s)}</option>)}</select>
           </div>
         ))}
       </div>

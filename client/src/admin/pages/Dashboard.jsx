@@ -1,5 +1,9 @@
 import { useState } from 'react';
 import { fmtMoney } from '../adminApi.js';
+import { useT } from '../i18n/lang.jsx';
+import '../i18n/dict/toplevel.js';
+import '../i18n/dict/catalog.js';
+import { locFor } from './dashboard/dashText.jsx';
 import { ProductReport } from './ProductReport.jsx';
 import { useOverview } from './dashboard/useOverview.js';
 import { buildKpis, periodText } from './dashboard/buildKpis.jsx';
@@ -13,10 +17,11 @@ import './dashboard/dashboard.css';
 
 /** Dashboard that fits the signed-in person: only the figures, charts and advice their role may see. */
 export function Dashboard({ go, staff }) {
+  const tr = useT();
   const asOf = new URLSearchParams(window.location.search).get('asOf');
   const { o, err, range, busy, pick } = useOverview(asOf);
   const [report, setReport] = useState(null);
-  if (err && !o) return <div className="a-msg err">{err}</div>;
+  if (err && !o) return <div className="a-msg err">{tr(err)}</div>;
   if (!o) return <span className="spin" />;
 
   const s = o.sales, k = s?.kpis;
@@ -25,8 +30,8 @@ export function Dashboard({ go, staff }) {
   const bestWd = bestWeekday(s);
   const first = (staff?.name || '').split(' ')[0];
   const summary = s
-    ? (noSales ? 'There were no orders in the last 60 days.' : `${k.ord30} order${k.ord30 === 1 ? '' : 's'} and ${fmtMoney(k.rev30)} ${p.perTxt}. Next 7 days look like about ${fmtMoney(s.fcTotal)}.`)
-    : 'Here is what needs your attention.';
+    ? (noSales ? tr('There were no orders in the last 60 days.') : tr(k.ord30 === 1 ? '{n} order and {money} {period}. Next 7 days look like about {next}.' : '{n} orders and {money} {period}. Next 7 days look like about {next}.', { n: k.ord30, money: fmtMoney(k.rev30), period: locFor(tr).period(p.perTxt), next: fmtMoney(s.fcTotal) }))
+    : tr('Here is what needs your attention.');
 
   // left column: the card this role cares about most, then charts; the Smart guide is the right-hand block and stays in view while scrolling
   const stockCard = o.stock && <StockCard stock={o.stock} />;
@@ -38,9 +43,9 @@ export function Dashboard({ go, staff }) {
 
   return (
     <>
-      {err && <div className="a-msg err">{err}</div>}
+      {err && <div className="a-msg err">{tr(err)}</div>}
       {report && <ProductReport id={report} range={range} asOf={asOf} onClose={() => setReport(null)} go={go} />}
-      {asOf && <div className="a-msg dash-asof">Showing the picture as of {o.asOf}. <a href="/admin/dashboard">Back to today</a></div>}
+      {asOf && <div className="a-msg dash-asof">{tr('Showing the picture as of {date}.', { date: o.asOf })} <a href="/admin/dashboard">{tr('Back to today')}</a></div>}
       <DashHero o={o} first={first} summary={summary} go={go} />
       {s && <PeriodBar range={range} busy={busy} onPick={pick} />}
       <KpiGrid kpis={buildKpis(o, p)} />

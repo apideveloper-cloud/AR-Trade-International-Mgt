@@ -1,6 +1,8 @@
 import { useCallback, useRef, useState } from 'react';
 import { adm, getAdminToken } from '../adminApi.js';
 import { confirmBox, alertBox } from '../ui.jsx';
+import { useT } from '../i18n/lang.jsx';
+import '../i18n/dict/catalog.js';
 
 const SIZE = 10;
 
@@ -13,27 +15,28 @@ async function postRevert(id, force) {
   return { status: res.status, ok: res.ok, ...data };
 }
 
-const shortVal = v => { const s = v == null || v === '' ? '(empty)' : String(v); return s.length > 60 ? s.slice(0, 60) + '…' : s; };
+const shortVal = (v, tr = s => s) => { const s = v == null || v === '' ? tr('(empty)') : String(v); return s.length > 60 ? s.slice(0, 60) + '…' : s; };
 
 /** revert(entry) asks, restores, and handles a 409 ("changed since") with a second "Revert anyway" question. Calls onDone() after a success. */
 export function useRevert(onDone) {
+  const tr = useT();
   const [busyId, setBusyId] = useState(null);
   const lock = useRef(false);
   const revert = useCallback(async e => {
     if (lock.current) return;
     const names = (e.fields || []).map(f => f.field).join(', ');
-    if (!(await confirmBox(`Restore the previous values of: ${names}?`, { confirmLabel: 'Revert' }))) return;
+    if (!(await confirmBox(tr('Restore the previous values of: {names}?', { names }), { confirmLabel: tr('Revert') }))) return;
     lock.current = true; setBusyId(e.id);
     try {
       let r = await postRevert(e.id, false);
       if (r.status === 409 && Array.isArray(r.conflicts)) {
-        const lines = r.conflicts.map(c => `${c.field}, now ${shortVal(c.current)}`).join('; ');
-        if (!(await confirmBox('Changed since: ' + lines + '. Revert anyway?', { danger: true, confirmLabel: 'Revert anyway' }))) return;
+        const lines = r.conflicts.map(c => tr('{field}, now {value}', { field: c.field, value: shortVal(c.current, tr) })).join('; ');
+        if (!(await confirmBox(tr('Changed since: {lines}. Revert anyway?', { lines }), { danger: true, confirmLabel: tr('Revert anyway') }))) return;
         r = await postRevert(e.id, true);
       }
-      if (r.ok) onDone?.(); else await alertBox(r.error || 'Could not revert this change.');
+      if (r.ok) onDone?.(); else await alertBox(tr(r.error || 'Could not revert this change.'));
     } finally { lock.current = false; setBusyId(null); }
-  }, [onDone]);
+  }, [onDone, tr]);
   return { revert, busyId };
 }
 

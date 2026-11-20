@@ -2,9 +2,12 @@ import { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { initials, ago, STATE, DOT } from '../shared.jsx';
+import { useT } from '../../../i18n/lang.jsx';
+import '../../../i18n/dict/field.js';
 
 /** The real street map (OpenStreetMap tiles through Leaflet): head office, the 10 km work zone, every person on the map and the picked person's route. */
 export function LiveMap({ office, members, route, sel, onPick }) {
+  const tr = useT();
   const box = useRef(null), map = useRef(null), layer = useRef(null), fitted = useRef(false), lastSel = useRef(null), pick = useRef(onPick);
   pick.current = onPick;
   useEffect(() => {
@@ -22,13 +25,13 @@ export function LiveMap({ office, members, route, sel, onPick }) {
     if (!m || !g) return;
     g.clearLayers();
     L.circle([office.lat, office.lng], { radius: 10000, color: '#e0483c', weight: 2, dashArray: '8 6', fillColor: '#e0483c', fillOpacity: 0.035 }).addTo(g);
-    L.marker([office.lat, office.lng], { icon: L.divIcon({ className: 'fd-lw', html: '<div class="fd-lpin office">HQ</div>', iconSize: [38, 38], iconAnchor: [19, 19] }), zIndexOffset: 500 }).bindTooltip('Head office', { direction: 'top', offset: [0, -18] }).addTo(g);
+    L.marker([office.lat, office.lng], { icon: L.divIcon({ className: 'fd-lw', html: '<div class="fd-lpin office">HQ</div>', iconSize: [38, 38], iconAnchor: [19, 19] }), zIndexOffset: 500 }).bindTooltip(tr('Head office'), { direction: 'top', offset: [0, -18] }).addTo(g);
     const pts = [[office.lat, office.lng]];
     for (const p of members.filter(x => x.lat != null)) {
       const tone = STATE[p.status] || 'off';
       const card = document.createElement('div');
       const nm = document.createElement('b'); nm.textContent = p.name; card.appendChild(nm);
-      for (const line of [p.roleLabel + ' · ' + p.status, p.place || '', (p.km || 0) + ' km today' + (p.visits ? ' · ' + p.visits.done + '/' + p.visits.total + ' visits' : ''), 'Seen ' + ago(p.ageSec)]) { if (!line) continue; const d = document.createElement('div'); d.textContent = line; card.appendChild(d); }
+      for (const line of [tr(p.roleLabel) + ' · ' + tr(p.status), p.place || '', (p.km || 0) + ' ' + tr('km today') + (p.visits ? ' · ' + tr('{done}/{total} visits', { done: p.visits.done, total: p.visits.total }) : ''), tr('Seen {when}', { when: ago(p.ageSec, tr) })]) { if (!line) continue; const d = document.createElement('div'); d.textContent = line; card.appendChild(d); }
       const mk = L.marker([p.lat, p.lng], { icon: L.divIcon({ className: 'fd-lw', html: '<div class="fd-lpin' + (p.online ? ' live' : '') + (sel === p.id ? ' sel' : '') + '" style="--c:' + DOT[tone] + '">' + initials(p.name).replace(/[^A-Za-z0-9ঀ-৿]/g, '') + '</div>', iconSize: [34, 34], iconAnchor: [17, 17] }), zIndexOffset: sel === p.id ? 900 : 100 })
         .bindPopup(card, { offset: [0, -14] }).on('click', () => pick.current(sel === p.id ? null : p.id)).addTo(g);
       if (sel === p.id) mk.openPopup();
@@ -37,7 +40,7 @@ export function LiveMap({ office, members, route, sel, onPick }) {
     if (route.length > 1) {
       const line = route.map(r => [r.lat, r.lng]);
       L.polyline(line, { color: '#2f7de1', weight: 5, opacity: 0.85 }).addTo(g);
-      L.circleMarker(line[0], { radius: 6, color: '#2f7de1', weight: 3, fillColor: '#fff', fillOpacity: 1 }).bindTooltip('Start of the day').addTo(g);
+      L.circleMarker(line[0], { radius: 6, color: '#2f7de1', weight: 3, fillColor: '#fff', fillOpacity: 1 }).bindTooltip(tr('Start of the day')).addTo(g);
     }
     if (!fitted.current) { m.fitBounds(pts, { padding: [40, 40], maxZoom: 15 }); fitted.current = true; }
     const fitKey = sel + '|' + (route.length > 1); // zoom again once the picked person's route has arrived
@@ -47,6 +50,6 @@ export function LiveMap({ office, members, route, sel, onPick }) {
       if (sel && route.length > 1) m.fitBounds(route.map(r => [r.lat, r.lng]), { padding: [50, 50], maxZoom: 16 });
       else if (me && me.lat != null) m.setView([me.lat, me.lng], Math.max(m.getZoom(), 14));
     }
-  }, [office, members, route, sel]);
-  return <div ref={box} className="fd-lmap" role="application" aria-label="Street map of the team" />;
+  }, [office, members, route, sel, tr]);
+  return <div ref={box} className="fd-lmap" role="application" aria-label={tr('Street map of the team')} />;
 }

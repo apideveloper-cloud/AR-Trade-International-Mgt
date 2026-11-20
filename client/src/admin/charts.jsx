@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { useT } from './i18n/lang.jsx';
+import './i18n/dict/shell.js';
 
 // Small dependency-free SVG charts for the admin dashboard.
 export const short = v => { const n = Number(v) || 0; return (n >= 1e6 ? (n / 1e6).toFixed(n >= 1e7 ? 0 : 1) + 'M' : n >= 1e3 ? Math.round(n / 1e3) + 'k' : String(Math.round(n))); };
@@ -8,6 +10,7 @@ const niceMax = v => { if (v <= 0) return 1; const p = 10 ** Math.floor(Math.log
 
 /** Revenue of the last days (solid area) and the forecast for the next days (dashed line with a rough range). */
 export function ForecastChart({ series, forecast }) {
+  const tr = useT();
   const [hover, setHover] = useState(null);
   const W = 760, H = 270, L = 46, R = 14, T = 16, B = 30;
   const all = [...series.map(x => ({ ...x, f: false })), ...forecast.map(x => ({ ...x, f: true }))];
@@ -29,7 +32,7 @@ export function ForecastChart({ series, forecast }) {
   };
   return (
     <div className="ch-wrap">
-      <svg viewBox={`0 0 ${W} ${H}`} className="ch" role="img" aria-label="Revenue of the last 60 days and the 7 day forecast" onMouseMove={move} onMouseLeave={() => setHover(null)}>
+      <svg viewBox={`0 0 ${W} ${H}`} className="ch" role="img" aria-label={tr('Revenue of the last 60 days and the 7 day forecast')} onMouseMove={move} onMouseLeave={() => setHover(null)}>
         <defs>
           <linearGradient id="rvA" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="oklch(0.62 0.16 250)" stopOpacity=".38" /><stop offset="1" stopColor="oklch(0.62 0.16 250)" stopOpacity=".02" /></linearGradient>
         </defs>
@@ -41,31 +44,33 @@ export function ForecastChart({ series, forecast }) {
         <path d={fLine} className="ch-fline" />
         {forecast.map((p, i) => <circle key={p.d} cx={x(series.length + i)} cy={y(p.v)} r="3.4" className="ch-fdot" />)}
         <line x1={x(series.length - 1)} x2={x(series.length - 1)} y1={T} y2={T + ih} className="ch-today" />
-        <text x={x(series.length - 1) - 6} y={T + 11} textAnchor="end" className="ch-tag">Today</text>
-        <text x={W - R - 4} y={T + 11} textAnchor="end" className="ch-tag f">Forecast</text>
+        <text x={x(series.length - 1) - 6} y={T + 11} textAnchor="end" className="ch-tag">{tr('Today')}</text>
+        <text x={W - R - 4} y={T + 11} textAnchor="end" className="ch-tag f">{tr('Forecast')}</text>
         {xt.map(([p, i]) => <text key={p.d} x={x(i)} y={H - 9} textAnchor={i === 0 ? 'start' : i === N - 1 ? 'end' : 'middle'} className="ch-ax">{dlabel(p.d)}</text>)}
         {h && <g><line x1={x(hover)} x2={x(hover)} y1={T} y2={T + ih} className="ch-cross" /><circle cx={x(hover)} cy={y(h.v)} r="5" className={'ch-pt' + (h.f ? ' f' : '')} /></g>}
       </svg>
       {h && (
         <div className="ch-tip" style={{ left: `${(x(hover) / W) * 100}%` }}>
-          <b>{dlabel(h.d)}{h.f ? ' · forecast' : ''}</b>
-          <span>{money(h.v)}{h.f ? <small> ({money(h.lo)} to {money(h.hi)})</small> : ''}</span>
-          <small>{h.f ? '~' + h.n + ' orders' : h.n + ' order' + (h.n === 1 ? '' : 's')}</small>
+          <b>{dlabel(h.d)}{h.f ? ' · ' + tr('forecast') : ''}</b>
+          <span>{money(h.v)}{h.f ? <small> ({tr('{lo} to {hi}', { lo: money(h.lo), hi: money(h.hi) })})</small> : ''}</span>
+          <small>{h.f ? tr('~{n} orders', { n: h.n }) : tr(h.n === 1 ? '{n} order' : '{n} orders', { n: h.n })}</small>
         </div>
       )}
-      <div className="ch-legend"><span><i className="a" />Revenue (actual)</span><span><i className="f" />Forecast, next {forecast.length} days</span><span><i className="b" />Likely range</span></div>
+      <div className="ch-legend"><span><i className="a" />{tr('Revenue (actual)')}</span><span><i className="f" />{tr('Forecast, next {n} days', { n: forecast.length })}</span><span><i className="b" />{tr('Likely range')}</span></div>
     </div>
   );
 }
 
 /** Ring chart with a number in the middle. parts: [{ label, value, color }] */
 export function Donut({ parts, center, sub }) {
+  const tr = useT();
+  const w = v => (typeof v === 'string' ? tr(v) : v);
   const total = parts.reduce((t, p) => t + p.value, 0);
   const R = 52, C = 2 * Math.PI * R;
   let off = 0;
   return (
     <div className="dn">
-      <svg viewBox="0 0 140 140" role="img" aria-label={center + ' ' + sub}>
+      <svg viewBox="0 0 140 140" role="img" aria-label={center + ' ' + w(sub)}>
         <circle cx="70" cy="70" r={R} className="dn-bg" />
         {total > 0 && parts.filter(p => p.value > 0).map(p => {
           const len = (p.value / total) * C;
@@ -74,22 +79,23 @@ export function Donut({ parts, center, sub }) {
           return el;
         })}
         <text x="70" y="68" textAnchor="middle" className="dn-n">{center}</text>
-        <text x="70" y="86" textAnchor="middle" className="dn-s">{sub}</text>
+        <text x="70" y="86" textAnchor="middle" className="dn-s">{w(sub)}</text>
       </svg>
-      <ul className="dn-l">{parts.map(p => <li key={p.label}><i style={{ background: p.color }} />{p.label}<b>{p.value}</b><em>{total ? Math.round((p.value / total) * 100) : 0}%</em></li>)}</ul>
+      <ul className="dn-l">{parts.map(p => <li key={p.label}><i style={{ background: p.color }} />{w(p.label)}<b>{p.value}</b><em>{total ? Math.round((p.value / total) * 100) : 0}%</em></li>)}</ul>
     </div>
   );
 }
 
 /** Horizontal bars. rows: [{ label, value, text, sub }] */
 export function HBars({ rows, hue = 250, inline = false }) {
+  const tr = useT();
   const max = Math.max(...rows.map(r => r.value), 1);
   return (
     <div className="hb">
       {rows.map((r, i) => {
         const Tag = r.onClick ? 'button' : 'div';
         return (
-          <Tag key={r.label + i} type={r.onClick ? 'button' : undefined} onClick={r.onClick} title={r.onClick ? 'Open the sales report' : undefined} className={'hb-r' + (r.onClick ? ' hb-btn' : '') + (r.img !== undefined ? ' hb-img' : '')}>
+          <Tag key={r.label + i} type={r.onClick ? 'button' : undefined} onClick={r.onClick} title={r.onClick ? tr('Open the sales report') : undefined} className={'hb-r' + (r.onClick ? ' hb-btn' : '') + (r.img !== undefined ? ' hb-img' : '')}>
             {r.img !== undefined && <span className="hb-pic" style={{ backgroundImage: r.img ? `url('${r.img}')` : 'none' }}>{!r.img && '▣'}</span>}
             <div className="hb-c">
               <div className="hb-t"><span title={r.label}>{r.label}</span><b>{r.text}{inline && r.sub && <small className="hb-in"> · {r.sub}</small>}</b></div>

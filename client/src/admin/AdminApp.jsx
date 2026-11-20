@@ -14,7 +14,7 @@ import { NoAccess } from './app/NoAccess.jsx';
 import { useAdminMenu } from './app/useAdminMenu.js';
 import { useAdminSession } from './app/useAdminSession.js';
 import { LangProvider, useT, useLang } from './i18n/lang.jsx';
-import './i18n/dict/nav.js';
+import './i18n/dict/index.js';
 import './i18n/lang.css';
 
 // the sign-in screen is shared with the Email Center and the Delivery Hub, which import it from here

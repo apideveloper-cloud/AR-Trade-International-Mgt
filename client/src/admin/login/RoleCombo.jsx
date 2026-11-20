@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
+import { useT } from '../i18n/lang.jsx';
+import '../i18n/dict/shell.js';
 
 // [role, icon, what the role does, accent hue]
 export const LOGIN_ROLES = [
@@ -9,6 +11,7 @@ export const LOGIN_ROLES = [
 
 /** A graphical combo box: the chosen role is shown as an icon + name + what it does, and the list opens as coloured rows. Arrow keys, Enter, Esc and Home/End work. */
 export function RoleCombo({ value, onChange }) {
+  const tr = useT();
   const [open, setOpen] = useState(false);
   const [hi, setHi] = useState(0);
   const box = useRef(null);
@@ -34,17 +37,17 @@ export function RoleCombo({ value, onChange }) {
   };
   return (
     <div className={'rc' + (open ? ' open' : '')} ref={box} onKeyDown={key}>
-      <button type="button" className="rc-btn" role="combobox" aria-haspopup="listbox" aria-expanded={open} aria-controls="rc-list" aria-label="Your role" onClick={toggle} style={cur ? { '--h': cur[3] } : undefined}>
+      <button type="button" className="rc-btn" role="combobox" aria-haspopup="listbox" aria-expanded={open} aria-controls="rc-list" aria-label={tr('Your role')} onClick={toggle} style={cur ? { '--h': cur[3] } : undefined}>
         {cur
-          ? <><i className="rc-ic">{cur[1]}</i><span className="rc-tx"><b>{cur[0]}</b><small>{cur[2]}</small></span></>
-          : <><i className="rc-ic none">?</i><span className="rc-tx"><b className="muted">Select your role</b><small>Tap to choose how you sign in</small></span></>}
+          ? <><i className="rc-ic">{cur[1]}</i><span className="rc-tx"><b>{tr(cur[0])}</b><small>{tr(cur[2])}</small></span></>
+          : <><i className="rc-ic none">?</i><span className="rc-tx"><b className="muted">{tr('Select your role')}</b><small>{tr('Tap to choose how you sign in')}</small></span></>}
         <svg className="rc-car" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
       </button>
       {open && (
-        <ul className="rc-list" id="rc-list" role="listbox" aria-label="Roles">
+        <ul className="rc-list" id="rc-list" role="listbox" aria-label={tr('Roles')}>
           {LOGIN_ROLES.map(([r, ic, ds, h], i) => (
             <li key={r} role="option" aria-selected={value === r} className={'rc-row' + (hi === i ? ' hi' : '') + (value === r ? ' on' : '')} style={{ '--h': h }} onMouseEnter={() => setHi(i)} onMouseDown={e => { e.preventDefault(); pick(i); }}>
-              <i className="rc-ic">{ic}</i><span className="rc-tx"><b>{r}</b><small>{ds}</small></span>{value === r && <em aria-hidden="true">✓</em>}
+              <i className="rc-ic">{ic}</i><span className="rc-tx"><b>{tr(r)}</b><small>{tr(ds)}</small></span>{value === r && <em aria-hidden="true">✓</em>}
             </li>
           ))}
         </ul>
