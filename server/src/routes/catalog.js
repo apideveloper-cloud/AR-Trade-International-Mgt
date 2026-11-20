@@ -4,8 +4,10 @@ import { fail, parseJson, wrap } from '../util.js';
 import { hasPicture, published } from '../productImages.js';
 import { auth } from '../middleware/customerAuth.js';
 import { getBootCache, setBootCache } from '../middleware/cache.js';
+import { assessReview, hashIp, makeIpLimiter } from '../growth/reviewSpam.js';
 import { LIST_COLS, loadCatalogue, productIdParam, productOut } from './shared.js';
 
+const reviewLimiter = makeIpLimiter({ max: 5, windowMs: 3600e3 }); // 5 reviews per hour per connection
 const seoOut = r => ({ metaTitle: r.meta_title || '', metaDesc: r.meta_desc || '', metaKeywords: r.meta_keywords || '' });
 
 export function mountCatalogRoutes(app) {
@@ -46,16 +48,16 @@ export function mountCatalogRoutes(app) {
   app.get('/api/products/:id/reviews', auth(false), wrap(async (req, res) => {
     const pid = await productIdParam(req.params.id);
     if (!pid) return res.json({ count: 0, avg: 0, dist: [0, 0, 0, 0, 0], mine: null, reviews: [] });
-    const [rows] = await pool.query('SELECT id, name, rating, title, body, verified, created_at FROM reviews WHERE product_id = ? AND status = "Approved" ORDER BY created_at DESC LIMIT 100', [pid]);
+    const [rows] = await pool.query('SELECT id, name, rating, title, body, verified, created_at, admin_reply, replied_at FROM reviews WHERE product_id = ? AND status = "Approved" ORDER BY created_at DESC LIMIT 100', [pid]);
     const dist = [0, 0, 0, 0, 0];
     rows.forEach(r => { dist[r.rating - 1]++; });
     const avg = rows.length ? rows.reduce((a, r) => a + r.rating, 0) / rows.length : 0;
     let mine = null;
     if (req.user) {
       const [[m]] = await pool.query('SELECT status FROM reviews WHERE product_id = ? AND user_id = ? ORDER BY id DESC LIMIT 1', [pid, req.user.id]);
-      mine = m ? m.status : null;
+      mine = m ? (m.status === 'Spam' ? 'Pending' : m.status) : null; // a spam verdict is never shown to the writer
     }
-    res.json({ count: rows.length, avg: Math.round(avg * 10) / 10, dist, mine, reviews: rows.map(r => ({ id: r.id, name: r.name, rating: r.rating, title: r.title, body: r.body, verified: !!r.verified, at: r.created_at })) });
+    res.json({ count: rows.length, avg: Math.round(avg * 10) / 10, dist, mine, reviews: rows.map(r => ({ id: r.id, name: r.name, rating: r.rating, title: r.title, body: r.body, verified: !!r.verified, at: r.created_at, reply: r.admin_reply && String(r.admin_reply).trim() ? { text: r.admin_reply, at: r.replied_at } : null })) });
   }));
 
   app.post('/api/products/:id/reviews', auth(true), wrap(async (req, res) => {
@@ -68,11 +70,14 @@ export function mountCatalogRoutes(app) {
     if (!(rating >= 1 && rating <= 5)) throw fail(400, 'Please choose a star rating');
     if (body.length < 10) throw fail(400, 'Please write at least 10 characters');
     if (body.length > 1500) throw fail(400, 'Review is too long (1500 characters max)');
-    const [[dup]] = await pool.query('SELECT id FROM reviews WHERE product_id = ? AND user_id = ? AND status <> "Rejected"', [pid, req.user.id]);
+    if (reviewLimiter.over(req.ip || '')) throw fail(429, 'Too many reviews from this connection. Please try again later.');
+    const verdict = assessReview({ title, body, honeypot: req.body.website, renderedAt: req.body.renderedAt, now: Date.now() });
+    if (verdict.reject) throw fail(400, verdict.reject);
+    const [[dup]] = await pool.query('SELECT id FROM reviews WHERE product_id = ? AND user_id = ? AND status NOT IN ("Rejected", "Spam")', [pid, req.user.id]);
     if (dup) throw fail(409, 'You have already reviewed this product');
     const [[u]] = await pool.query('SELECT name FROM users WHERE id = ?', [req.user.id]);
     const [[bought]] = await pool.query('SELECT COUNT(*) n FROM orders o JOIN order_items i ON i.order_id = o.id WHERE o.user_id = ? AND i.product_id = ? AND o.status = "Delivered"', [req.user.id, pid]);
-    await pool.query('INSERT INTO reviews (product_id, user_id, name, rating, title, body, verified) VALUES (?,?,?,?,?,?,?)', [pid, req.user.id, (u && u.name) || 'Customer', rating, title, body, bought.n > 0 ? 1 : 0]);
+    await pool.query('INSERT INTO reviews (product_id, user_id, name, rating, title, body, verified, status, spam_reason, ip_hash, source) VALUES (?,?,?,?,?,?,?,?,?,?,?)', [pid, req.user.id, (u && u.name) || 'Customer', rating, title, body, bought.n > 0 ? 1 : 0, verdict.status, verdict.status === 'Spam' ? verdict.reason : '', hashIp(req.ip), 'site']);
     res.json({ ok: true, status: 'Pending' });
   }));
 }

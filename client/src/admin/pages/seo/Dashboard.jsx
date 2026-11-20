@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { adm } from '../../adminApi.js';
 import { useApiData } from '../../hooks/useApiData.js';
 import { Summary } from '../../ui.jsx';
+import VisibilityCard from './dashboard/VisibilityCard.jsx';
 import { BrandsCard, DuplicatesCard, IssuesCard, RedirectsCard, SitemapCard } from './dashboard/Cards.jsx';
 import { n0, recalcAll, scoreTone, whenOf } from './dashboard/dashModel.js';
 import './dashboard/dashboard.css';
@@ -33,6 +34,7 @@ export default function Dashboard({ onGoto }) {
           {err && <span className="a-msg err">{err}</span>}
         </div>
       </div>
+      <VisibilityCard onGoto={onGoto} />
       <Summary items={[
         ['Average score', avg == null ? '–' : avg + ' / 100', 'Across scored products', avg == null ? 'blue' : avg >= 80 ? 'green' : avg >= 50 ? 'amber' : 'red', 'tag'],
         ['Products scored', n0(p.scored) + ' of ' + n0(p.total), n0(p.live) + ' live', 'blue', 'box'],

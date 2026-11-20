@@ -126,7 +126,7 @@ export function policyMeta(policy) {
 
 // ---------- robots / sitemap ----------
 export const robotsTxt = base => ['User-agent: *', 'Allow: /', 'Disallow: /admin', 'Disallow: /hub', 'Disallow: /email', 'Disallow: /field', 'Disallow: /api/', 'Disallow: /cart', 'Disallow: /checkout', 'Disallow: /account', 'Disallow: /track', 'Disallow: /success/',
-  'Disallow: /wishlist', 'Disallow: /compare', 'Disallow: /login', 'Disallow: /*?sort=', 'Disallow: /*?q=', 'Disallow: /*?new=', '',
+  'Disallow: /wishlist', 'Disallow: /compare', 'Disallow: /login', 'Disallow: /review/', 'Disallow: /*?sort=', 'Disallow: /*?q=', 'Disallow: /*?new=', '',
   'Allow: /api/uploads/', '', `Sitemap: ${base}/sitemap.xml`, ''].join('\n');
 export const CHILD_SITEMAPS = ['/sitemap-products.xml', '/sitemap-categories.xml', '/sitemap-blog.xml', '/sitemap-pages.xml', '/sitemap-brands.xml'];
 const isoDay = d => (typeof d === 'string' && /^\d{4}-\d{2}-\d{2}/.test(d) ? d.slice(0, 10) : '');
@@ -180,7 +180,7 @@ export const imageEntry = (loc, alt) => { const a = String(alt || '').trim(); re
 /** The IndexNow key (32 lower-case hex characters) from the SEO settings; '' when missing or malformed. */
 export const indexNowKeyOf = settings => { const k = String(settings?.indexNow?.key ?? '').trim(); return /^[a-f0-9]{32}$/.test(k) ? k : ''; };
 /** Pages that never get analytics (the same list as seo.js PRIVATE, plus search-engine-only paths). */
-export const NO_ANALYTICS = /^\/(admin|hub|email|field|account|cart|checkout|track|success|wishlist|compare|login|reset|prefs)(\/|$)/;
+export const NO_ANALYTICS = /^\/(admin|hub|email|field|account|cart|checkout|track|success|wishlist|compare|login|reset|prefs|review)(\/|$)/;
 /**
  * One inline <script> that loads gtag.js and/or the GTM container 2 seconds after window load (so it never competes with LCP).
  * verification = settings.verification; only well-formed ids are used. '' when there is nothing valid to load.

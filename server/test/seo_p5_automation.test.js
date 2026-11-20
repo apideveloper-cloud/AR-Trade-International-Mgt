@@ -167,7 +167,7 @@ test('analyticsFor / inject: public indexable pages only', () => {
   const v = { ga4: 'G-ABC1234567' };
   assert.ok(analyticsFor({ path: '/shop', verification: v }).includes('G-ABC1234567'));
   assert.equal(analyticsFor({ path: '/shop', noindex: true, verification: v }), '');
-  for (const p of ['/admin', '/admin/x', '/hub', '/email', '/field', '/account', '/cart', '/checkout', '/track', '/success/1', '/wishlist', '/compare', '/login'])
+  for (const p of ['/admin', '/admin/x', '/hub', '/email', '/field', '/account', '/cart', '/checkout', '/track', '/success/1', '/wishlist', '/compare', '/login', '/review/abc'])
     assert.equal(analyticsFor({ path: p, verification: v }), '', p);
   assert.equal(analyticsFor({ path: '/nope', verification: v }, 404), '');
   const html = '<html><head><title>x</title></head><body><div id="root"></div></body></html>';

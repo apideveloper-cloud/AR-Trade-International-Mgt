@@ -10,7 +10,8 @@ export const AUDIT_VIEW = 'audit.view'; // the audit log
 export const PRODUCTS_WRITE = 'products.manage'; // create, edit, hide and delete products; change price and stock levels in the product list
 export const PURCHASE_APPROVE = 'inventory.approve'; // approve or reject a purchase before it goes into stock
 export const SEO_MANAGE = 'seo.manage'; // SEO templates, redirects, bulk tools: in the role matrix, default for Admin (Master Admin has everything)
-export const ADMIN_ONLY = [AUDIT_VIEW, PRODUCTS_WRITE, PURCHASE_APPROVE];
+export const GROWTH_INTEGRATIONS = 'growth.integrations'; // connect / disconnect Google and Bing, store their keys (Search & Growth)
+export const ADMIN_ONLY = [AUDIT_VIEW, PRODUCTS_WRITE, PURCHASE_APPROVE, GROWTH_INTEGRATIONS];
 
 /** [key, group, label] */
 export const PERMS = [

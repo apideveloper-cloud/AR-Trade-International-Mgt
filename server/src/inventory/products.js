@@ -9,6 +9,7 @@ import { fail, localImg, text, tx, wrap } from '../util.js';
 import { addSearch, pageOf, whereOf, wantsPage } from '../listing.js';
 import { VIEW, MANAGE, LOW } from './constants.js';
 import { move } from './helpers.js';
+import { noteCatalogChange } from '../growth/changeHooks.js';
 
 const router = Router();
 const LAST_COST = "(SELECT unit_cost FROM stock_moves m WHERE m.product_id = products.id AND m.kind = 'Purchase' ORDER BY m.id DESC LIMIT 1)";
@@ -82,6 +83,7 @@ router.post('/stock/adjust', guard(MANAGE), wrap(async (req, res) => {
     if (!p) throw fail(404, 'Product not found');
     if (counted !== p.stock) await move(conn, { productId, delta: counted - p.stock, kind: 'Adjust', note, by: req.staff.name });
   });
+  noteCatalogChange({ productIds: [productId], reason: 'inventory' });
   res.json({ ok: true });
 }));
 

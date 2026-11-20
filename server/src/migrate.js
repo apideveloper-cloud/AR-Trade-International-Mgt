@@ -9,10 +9,19 @@ import { ensureProductSlugs } from './productSlugs.js';
 import { ensureChatLeads } from './chatLeads.js';
 import { backfillMemberCodes } from './memberCode.js';
 import { ensureBrands } from './brands.js';
+import { ensureVault } from './growth/vault.js';
+import { ensureIntegrationTables } from './growth/http.js';
+import { ensureJobs } from './growth/jobs.js';
+import { ensureReviewColumns } from './growth/reviewSchema.js';
+import { ensureReviewRequests } from './growth/reviewRequests.js';
+import { ensurePriceHistory } from './growth/priceHistory.js';
 
 const STAFF_COLS = [['nid', 'VARCHAR(20)'], ['present_address', 'VARCHAR(300)'], ['contact_address', 'VARCHAR(300)'], ['ref_name', 'VARCHAR(120)'], ['ref_phone', 'VARCHAR(20)']];
 
 export async function ensureSchema() {
+  await ensureVault(); await ensureIntegrationTables(); await ensureJobs(); // Search & Growth console: secrets, integration status/logs, job queue
+  try { await ensureReviewColumns(); await ensureReviewRequests(); } catch (e) { console.error('Review upgrades failed:', e.message); } // reviews: reply, Spam status, review requests
+  try { await (await import("./growth/priceCheck.js")).ensurePriceChecks(); } catch (e) { console.error("Price check tables were not created:", e.message); }
   await ensureBackupTable();
   await ensureInventory();
   await ensureQuotes();
@@ -144,6 +153,7 @@ export async function ensureSchema() {
       if (!have.has(c)) { await pool.query(`ALTER TABLE messages ADD COLUMN ${c} ${def}`); console.log('Added messages.' + c); }
     }
   }
+  try { await ensurePriceHistory(pool); } catch (e) { console.warn('Price history was not set up:', e.message); } // price history table + trigger (never blocks startup)
   // indexes for the tables above (idempotent: only what is missing is created, and only the changed tables are re-analysed)
   await ensureIndexes(pool, m => console.log(m.trim()));
 }

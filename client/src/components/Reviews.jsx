@@ -22,6 +22,7 @@ export default function Reviews({ pid, data, user, onLogin, onSubmitted }) {
   const [body, setBody] = useState('');
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(null);
+  const [openedAt, setOpenedAt] = useState('');
 
   if (!data) return null;
   const max = Math.max(1, ...data.dist);
@@ -32,7 +33,7 @@ export default function Reviews({ pid, data, user, onLogin, onSubmitted }) {
     if (!rating) return setMsg({ err: true, t: 'Please choose a star rating.' });
     setBusy(true);
     try {
-      await api.post(`/products/${pid}/reviews`, { rating, title, body });
+      await api.post(`/products/${pid}/reviews`, { rating, title, body, website: '', renderedAt: openedAt });
       setMsg({ t: 'Thank you! Your review was received and will appear here once our team approves it.' });
       setOpen(false); setRating(0); setTitle(''); setBody('');
       onSubmitted();
@@ -57,7 +58,7 @@ export default function Reviews({ pid, data, user, onLogin, onSubmitted }) {
             ))}
           </div>
           {!user && <button className="rv-cta" onClick={onLogin}>Sign in to write a review</button>}
-          {user && !mine && !open && <button className="rv-cta" onClick={() => { setOpen(true); setMsg(null); }}>✎ Write a review</button>}
+          {user && !mine && !open && <button className="rv-cta" onClick={() => { setOpen(true); setMsg(null); setOpenedAt(new Date().toISOString()); }}>✎ Write a review</button>}
           {user && mine === 'Pending' && <div className="rv-note">⏳ Your review is awaiting approval.</div>}
           {user && mine === 'Approved' && <div className="rv-note ok">✓ You have reviewed this product.</div>}
         </aside>
@@ -94,6 +95,13 @@ export default function Reviews({ pid, data, user, onLogin, onSubmitted }) {
                   <Stars value={r.rating} size={14} />
                   {r.title && <h4>{r.title}</h4>}
                   <p>{r.body}</p>
+                  {r.reply?.text && (
+                    <div className="rv-reply" style={{ marginTop: 10, padding: '10px 12px', borderLeft: '3px solid #0b1631', background: '#f4f6fa', borderRadius: 8 }}>
+                      <b style={{ fontSize: 13 }}>Reply from AR Trade International</b>
+                      {r.reply.at && <time style={{ marginLeft: 8, fontSize: 12, color: '#7a8090' }}>{fmtDate(r.reply.at)}</time>}
+                      <p style={{ margin: '4px 0 0', whiteSpace: 'pre-line' }}>{r.reply.text}</p>
+                    </div>
+                  )}
                 </div>
               </article>
             ))}

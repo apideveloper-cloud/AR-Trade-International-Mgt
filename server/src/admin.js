@@ -19,6 +19,10 @@ import { mountSeoHistoryRoutes } from './admin/seoHistory.js';
 import { mountCustomerRoutes } from './admin/customers.js';
 import { mountTeamRoutes } from './admin/team.js';
 import { mountSeoAutomationRoutes } from './admin/seoAutomation.js';
+import { mountGrowthRoutes } from './admin/growth.js';
+import { mountGrowthPriceRoutes } from './admin/growthPrice.js';
+import { mountGrowthCheckRoutes } from './admin/growthChecks.js';
+import { mountGrowthReviewRoutes } from './admin/growthReviews.js';
 import { afterAdminWrite } from './seoAutomation.js';
 
 export { guard }; // other route files (field, hub, inventory, audit, ...) import the guard from here
@@ -36,6 +40,10 @@ mountSeoCsvRoutes(router, guard); // SEO CSV export / import (seo.manage)
 mountSeoRedirectsRoutes(router, guard); // redirects, 404 monitor (seo.manage)
 mountSeoHistoryRoutes(router, guard); // SEO change history and revert (seo.manage)
 mountSeoAutomationRoutes(router, guard); // IndexNow, sitemap rebuild, feed preview (seo.manage)
+mountGrowthRoutes(router, guard); // Google / Bing connections, verification files, sitemap submit, logs, jobs
+mountGrowthPriceRoutes(router, guard); // price and stock grid, CSV, history (Search & Growth)
+mountGrowthCheckRoutes(router, guard); // price consistency checker (Search & Growth)
+mountGrowthReviewRoutes(router, guard); // review requests: stats, list, settings, templates (Search & Growth)
 mountCustomerRoutes(router, guard); // customers, password resets, service requests
 router.use(contentRouter(guard));
 mountEngageRoutes(router, guard);

@@ -5,6 +5,7 @@ import { guard } from '../admin.js';
 import { D, fail, int, iso, nextSeq, text, today, tx, wrap } from '../util.js';
 import { addRange, addSearch, whereOf } from '../listing.js';
 import { VIEW, MANAGE } from './constants.js';
+import { noteCatalogChange } from '../growth/changeHooks.js';
 import { addVendorFilter, move, pagingFor, vendorOf } from './helpers.js';
 
 const router = Router();
@@ -40,6 +41,7 @@ router.post('/damages', guard(MANAGE), wrap(async (req, res) => {
     await conn.query('INSERT INTO stock_damages (id, product_id, name, qty, unit_cost, reason, vendor_id, damaged_on, staff_name) VALUES (?,?,?,?,?,?,?,?,?)', [id, productId, p.name, qty, cost, reason, vendor, iso(b.date, today()), by]);
     return id;
   });
+  noteCatalogChange({ productIds: [productId], reason: 'inventory' });
   res.json({ id });
 }));
 

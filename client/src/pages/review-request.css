@@ -1,0 +1,42 @@
+/* Public review page (rrq- prefix) */
+.rrq.rrq { min-height: 100vh; display: grid; place-items: start center; padding: 20px 12px; background: radial-gradient(90% 60% at 50% 0%,#dbe6f7 0%,#eef1f6 70%); box-sizing: border-box; }
+.rrq .rrq-card { width: 100%; max-width: 560px; background: #fff; border-radius: 20px; box-shadow: 0 30px 70px -40px rgba(11,22,49,.5); overflow: hidden; }
+.rrq .rrq-hd { background: #0b1631; color: #fff; padding: 14px 16px; display: flex; align-items: center; gap: 10px; }
+.rrq .rrq-logo { width: 36px; height: 36px; border-radius: 50%; }
+.rrq .rrq-brand { flex: 1; min-width: 0; font-family: var(--disp); font-size: 16px; }
+.rrq .rrq-lang { display: flex; border: 1px solid #3a4a72; border-radius: 999px; overflow: hidden; }
+.rrq .rrq-lang button { border: 0; background: transparent; color: #cdd6ec; padding: 6px 12px; font-size: 13px; font-weight: 700; cursor: pointer; }
+.rrq .rrq-lang button.on { background: #fff; color: #0b1631; }
+.rrq .rrq-body { padding: 20px 16px; display: flex; flex-direction: column; gap: 14px; overflow-wrap: anywhere; }
+.rrq form { display: flex; flex-direction: column; gap: 14px; }
+.rrq .rrq-h1 { margin: 0; font-size: 22px; line-height: 1.3; color: #0b1631; }
+.rrq .rrq-order { font-size: 13px; font-weight: 700; color: #56607a; }
+.rrq .rrq-lead { margin: 0; font-size: 14px; color: #56607a; line-height: 1.55; }
+.rrq .rrq-hp { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.rrq .rrq-item { border: 1.5px solid #e3e8f2; border-radius: 16px; padding: 12px; margin: 0; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+.rrq .rrq-prod { display: flex; align-items: center; gap: 10px; padding: 0 6px; font-weight: 700; font-size: 14.5px; color: #0b1631; max-width: 100%; }
+.rrq .rrq-prod img { width: 52px; height: 52px; object-fit: contain; border-radius: 8px; background: #f4f6fa; flex-shrink: 0; }
+.rrq .rrq-done { color: oklch(0.42 0.12 150); font-weight: 700; font-size: 14px; }
+.rrq .rrq-stars { display: flex; align-items: center; gap: 2px; flex-wrap: wrap; }
+.rrq .rrq-star { position: relative; cursor: pointer; font-size: 34px; line-height: 1; padding: 4px 3px; color: #cfd5e1; }
+.rrq .rrq-star.on { color: #f5a623; }
+.rrq .rrq-star input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
+.rrq .rrq-star:has(input:focus-visible) { outline: 3px solid oklch(0.52 0.16 252); outline-offset: 1px; border-radius: 8px; }
+.rrq .rrq-star-lbl { font-size: 13px; font-weight: 700; color: #56607a; margin-left: 6px; }
+.rrq .rrq-in { width: 100%; box-sizing: border-box; border: 1.5px solid #d5dbe8; border-radius: 12px; padding: 11px 12px; font: inherit; font-size: 15px; resize: vertical; }
+.rrq .rrq-in:focus-visible { outline: 3px solid oklch(0.75 0.1 250); border-color: oklch(0.52 0.16 252); }
+.rrq .rrq-in[aria-invalid="true"] { border-color: #b3261e; }
+.rrq .rrq-meta { display: flex; justify-content: space-between; gap: 8px; font-size: 12.5px; }
+.rrq .rrq-err { color: #b3261e; font-weight: 600; }
+.rrq .rrq-count { color: #7a8090; margin-left: auto; white-space: nowrap; }
+.rrq .rrq-alert { background: #fdeceb; color: #b3261e; padding: 12px; border-radius: 10px; font-weight: 600; font-size: 14px; }
+.rrq .rrq-btn { display: inline-block; text-align: center; border: 0; background: #0b1631; color: #fff; border-radius: 999px; padding: 13px 22px; font-size: 15px; font-weight: 800; cursor: pointer; text-decoration: none; }
+.rrq .rrq-btn:focus-visible, .rrq .rrq-link:focus-visible, .rrq .rrq-lang button:focus-visible { outline: 3px solid oklch(0.75 0.1 250); outline-offset: 2px; }
+.rrq .rrq-btn[disabled] { opacity: .6; cursor: default; }
+.rrq .rrq-link { border: 0; background: none; color: #6b7080; font-size: 12.5px; text-decoration: underline; cursor: pointer; padding: 8px; align-self: center; }
+.rrq .rrq-msg { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
+.rrq .rrq-msg h1 { margin: 0; font-size: 24px; color: #0b1631; }
+.rrq .rrq-msg p { margin: 0; color: #56607a; line-height: 1.55; }
+.rrq .rrq-load { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 30px; color: #56607a; }
+.rrq .rrq-note { padding: 12px 16px; background: #f7f8fb; font-size: 11.5px; color: #7a8090; }
+@media (min-width: 600px) { .rrq.rrq { padding: 40px 18px; } .rrq .rrq-body { padding: 24px 26px; } }

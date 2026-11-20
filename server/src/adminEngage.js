@@ -7,6 +7,7 @@ import { pool } from './db.js';
 import { fail, parseJson, wrap } from './util.js';
 import { addRange, whereOf } from './listing.js';
 import { like, page } from './adminHelpers.js';
+import { REVIEW_STATUSES, buildReviewStats, parseReviewUpdate } from './growth/reviewSchema.js';
 
 const CV_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../uploads/cv');
 
@@ -16,18 +17,28 @@ export function mountEngageRoutes(router, guard) {
     const { size, offset } = page(req);
     const cond = [], params = [];
     if (req.query.q) { cond.push('(r.name LIKE ? OR r.body LIKE ? OR p.name LIKE ?)'); params.push(like(req.query.q), like(req.query.q), like(req.query.q)); }
-    if (req.query.status) { cond.push('r.status = ?'); params.push(req.query.status); }
+    if (REVIEW_STATUSES.includes(req.query.status)) { cond.push('r.status = ?'); params.push(req.query.status); }
     addRange(cond, params, 'r.created_at', req);
     const where = whereOf(cond);
     const from = 'FROM reviews r LEFT JOIN products p ON p.id = r.product_id';
     const [[{ n }]] = await pool.query(`SELECT COUNT(*) n ${from} ${where}`, params);
     const [rows] = await pool.query(`SELECT r.*, p.name AS product ${from} ${where} ORDER BY (r.status = 'Pending') DESC, r.created_at DESC LIMIT ${size} OFFSET ${offset}`, params);
-    const [[{ pending }]] = await pool.query('SELECT COUNT(*) pending FROM reviews WHERE status = "Pending"');
-    res.json({ total: n, pending, rows: rows.map(r => ({ id: r.id, productId: r.product_id, product: r.product || ('#' + r.product_id), name: r.name, rating: r.rating, title: r.title, body: r.body, verified: !!r.verified, status: r.status, created: r.created_at, reviewed: r.reviewed_at })) });
+    const [cs] = await pool.query('SELECT status, COUNT(*) n FROM reviews GROUP BY status');
+    const cnt = s => Number((cs.find(x => x.status === s) || {}).n) || 0;
+    const counts = { pending: cnt('Pending'), approved: cnt('Approved'), rejected: cnt('Rejected'), spam: cnt('Spam') };
+    res.json({ total: n, pending: counts.pending, counts, rows: rows.map(r => ({ id: r.id, productId: r.product_id, product: r.product || ('#' + r.product_id), name: r.name, rating: r.rating, title: r.title, body: r.body, verified: !!r.verified, status: r.status, created: r.created_at, reviewed: r.reviewed_at,
+      reply: r.admin_reply || '', repliedAt: r.replied_at || null, repliedBy: r.replied_by || '', source: r.source || 'site', orderId: r.order_id || null, spamReason: r.spam_reason || '' })) });
+  }));
+  router.get('/reviews/stats', guard('reviews.moderate'), wrap(async (req, res) => {
+    const [byStatus] = await pool.query('SELECT status, COUNT(*) n FROM reviews GROUP BY status');
+    const [approvedRows] = await pool.query('SELECT rating, COUNT(*) n, SUM(verified = 1) verified FROM reviews WHERE status = "Approved" GROUP BY rating');
+    const [[l30]] = await pool.query('SELECT COUNT(*) received, SUM(status = "Approved") approved FROM reviews WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)');
+    const [[rp]] = await pool.query('SELECT COUNT(*) n FROM reviews WHERE status = "Approved" AND admin_reply IS NOT NULL AND admin_reply <> ""');
+    res.json(buildReviewStats({ byStatus, approvedRows, last30: l30, replied: rp.n }));
   }));
   router.put('/reviews/:id', guard('reviews.moderate'), wrap(async (req, res) => {
-    if (!['Pending', 'Approved', 'Rejected'].includes(req.body.status)) throw fail(400, 'Unknown status');
-    const [r] = await pool.query('UPDATE reviews SET status = ?, reviewed_at = NOW() WHERE id = ?', [req.body.status, req.params.id]);
+    const u = parseReviewUpdate(req.body, req.staff && req.staff.name, fail);
+    const [r] = await pool.query(`UPDATE reviews SET ${u.sets.join(', ')} WHERE id = ?`, [...u.vals, req.params.id]);
     if (!r.affectedRows) throw fail(404, 'Review not found');
     res.json({ ok: true });
   }));

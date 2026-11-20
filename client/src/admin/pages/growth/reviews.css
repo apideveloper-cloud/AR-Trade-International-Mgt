@@ -1,0 +1,42 @@
+/* Review requests + review moderation extras. Every class starts with adrv- (the storefront shares this bundle). */
+.adrv { display: flex; flex-direction: column; gap: 14px; min-width: 0; max-width: 100%; }
+.adm .a-card.adrv-sec, .adm .a-card.adrv-kpi { min-width: 0; }
+.adrv-strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.adm .a-card.adrv-kpi { gap: 4px; }
+.adrv-kpi b { font-size: 24px; }
+.adrv-kpi span { font-size: 12.5px; color: #6b7380; }
+.adrv-banner { background: #fff7e0; color: #7a5300; border: 1px solid #f1d98a; border-radius: 12px; padding: 10px 14px; font-size: 13px; font-weight: 600; }
+.adrv-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; align-items: start; }
+.adrv-field { display: flex; flex-direction: column; gap: 4px; font-size: 13px; min-width: 0; }
+.adrv-field small { color: #6b7380; font-size: 12px; }
+.adrv-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.adrv-warn { color: #7a5300; font-size: 12.5px; }
+.adrv-tabs { display: flex; gap: 6px; }
+.adrv-tab { border: 1px solid #d5dbe6; background: #fff; border-radius: 99px; padding: 5px 14px; font-size: 13px; cursor: pointer; }
+.adrv-tab.adrv-on { background: #1a56c7; color: #fff; border-color: #1a56c7; }
+.adrv-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.adrv-chip { border: 1px dashed #8a93a3; background: #f6f8fb; border-radius: 8px; padding: 3px 9px; font-family: monospace; font-size: 12.5px; cursor: pointer; }
+.adrv-area { width: 100%; min-height: 150px; font: inherit; }
+.adrv-prev { border: 1px solid #e1e5ec; border-radius: 10px; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+.adrv-frame { width: 100%; height: 320px; border: 1px solid #e1e5ec; border-radius: 8px; background: #fff; }
+.adrv-pre { white-space: pre-wrap; margin: 0; font: inherit; font-size: 13px; }
+.adrv-msg-ok { color: #1c6b3a; font-size: 13px; font-weight: 600; }
+.adrv-msg-bad { color: #b3261e; font-size: 13px; font-weight: 600; }
+.adrv-tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+.adrv-tbl th, .adrv-tbl td { text-align: left; padding: 7px 8px; border-bottom: 1px solid #edf0f5; vertical-align: top; }
+.adrv-wrap { overflow-wrap: anywhere; }
+.adrv-scroll { overflow-x: auto; }
+.adrv-badge { display: inline-block; border: 1px solid #c9d0dc; border-radius: 99px; padding: 2px 9px; font-size: 12px; font-weight: 700; background: #f6f8fb; white-space: nowrap; }
+.adrv-acts { display: flex; gap: 6px; flex-wrap: wrap; }
+.adrv-dim { color: #6b7380; font-size: 12.5px; }
+.adrv-small { font-size: 12px; color: #7a5300; }
+.adrv-mstats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+.adm .a-card.adrv-ms { gap: 4px; min-width: 0; }
+.adrv-bars { display: flex; flex-direction: column; gap: 3px; font-size: 12px; }
+.adrv-bar { display: grid; grid-template-columns: 22px 1fr 34px; gap: 6px; align-items: center; }
+.adrv-bar i { display: block; height: 8px; border-radius: 4px; background: oklch(0.72 0.17 70); }
+.adrv-bar u { display: block; background: #edf0f5; border-radius: 4px; text-decoration: none; }
+.adrv-reply { background: #f6f8fb; border-left: 3px solid #1a56c7; border-radius: 8px; padding: 8px 10px; font-size: 13px; display: flex; flex-direction: column; gap: 6px; }
+.adrv-rbox { display: flex; flex-direction: column; gap: 6px; }
+.adrv-rbox textarea { width: 100%; min-height: 80px; font: inherit; }
+@media (max-width: 760px) { .adrv-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

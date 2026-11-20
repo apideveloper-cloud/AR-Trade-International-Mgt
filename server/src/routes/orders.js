@@ -7,6 +7,7 @@ import { limit } from '../middleware/security.js';
 import { auth } from '../middleware/customerAuth.js';
 import { AREAS } from './auth.js';
 import { getSettings } from './shared.js';
+import { noteCatalogChange } from '../growth/changeHooks.js';
 import { mergeDelivery, quote, deliveryCharge, resolveDelivery } from '../delivery.js';
 
 const PARTIAL = ['split', 'together', 'drop'];
@@ -122,6 +123,7 @@ async function placeOrder(body, { userId = null, source = 'Customer', placedBy =
     }
     await conn.query('INSERT INTO order_history (order_id,status) VALUES (?,?)', [id, 'Pending']);
     await conn.commit();
+    noteCatalogChange({ productIds: live.filter(l => l.avail).map(l => l.p.id), reason: 'order' });
     const [rows] = await pool.query('SELECT * FROM orders WHERE id = ?', [id]);
     return (await hydrateOrders(rows))[0];
   } catch (e) {

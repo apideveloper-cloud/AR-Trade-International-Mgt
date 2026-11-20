@@ -7,6 +7,7 @@ import { addAmount, addRange, addSearch, whereOf } from '../listing.js';
 import { VIEW, MANAGE } from './constants.js';
 import { addVendorFilter, cleanLines, move, pagingFor, vendorOf } from './helpers.js';
 import { sum } from './pure.js';
+import { noteCatalogChange } from '../growth/changeHooks.js';
 
 const router = Router();
 
@@ -50,9 +51,10 @@ router.post('/returns', guard(MANAGE), wrap(async (req, res) => {
       await conn.query('INSERT INTO vendor_return_items (return_id, product_id, name, qty, unit_cost) VALUES (?,?,?,?,?)', [id, l.productId, l.name, l.qty, l.unitCost]);
       await move(conn, { productId: l.productId, delta: -l.qty, kind: 'Return', ref: id, cost: l.unitCost, note: `${v.name}: ${reason}`, by });
     }
-    return { id, total };
+    return { id, total, productIds: lines.map(l => l.productId) };
   });
-  res.json(out);
+  noteCatalogChange({ productIds: out.productIds, reason: 'inventory' });
+  res.json({ id: out.id, total: out.total });
 }));
 
 export default router;

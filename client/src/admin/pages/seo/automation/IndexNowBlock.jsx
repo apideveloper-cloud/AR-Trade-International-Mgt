@@ -15,6 +15,8 @@ function reason(i) {
 export function IndexNowBlock({ i, reload }) {
   const [genBusy, runGen] = useBusy();
   const [testBusy, runTest] = useBusy();
+  const [allBusy, runAll] = useBusy();
+  const [all, setAll] = useState(null);
   const [msg, setMsg] = useState(null);
   const [test, setTest] = useState(null);
   const st = i.state || {};
@@ -35,6 +37,16 @@ export function IndexNowBlock({ i, reload }) {
     else setTest({ ok: !!r.data.ok, text: r.data.ok ? 'Ping accepted (HTTP ' + r.data.status + ').' : 'Ping failed' + (r.data.status ? ' (HTTP ' + r.data.status + ')' : '') + (r.data.error ? ': ' + r.data.error : '.') });
     reload();
   });
+  const submitAll = async () => {
+    if (!(await confirmBox('Send every page address of the site (products, categories, brands, blog, pages) to IndexNow now? Bing and the other IndexNow search engines will then crawl them. It can be done once every 10 minutes.', { confirmLabel: 'Send all pages' }))) return;
+    runAll(async () => {
+      setAll(null);
+      const r = await postJson('/seo/automation/indexnow/submit-all', {});
+      if (!r.ok) setAll({ ok: false, text: r.error });
+      else setAll({ ok: !!r.data.ok, text: r.data.ok ? r.data.submitted + ' page addresses accepted (HTTP ' + r.data.status + ').' : r.data.failed + ' of ' + r.data.total + ' failed' + (r.data.status ? ' (HTTP ' + r.data.status + ')' : '') + (r.data.error ? ': ' + r.data.error : '.') });
+      reload();
+    });
+  };
   return (
     <AuBlock title="IndexNow" pill={i.ready ? <AuPill tone="ok">Ready</AuPill> : <AuPill tone="warn">Not ready</AuPill>}>
       {!i.ready && <div className="adau-why">{why}</div>}
@@ -46,8 +58,9 @@ export function IndexNowBlock({ i, reload }) {
       <div className="adau-acts">
         <button type="button" className="a-btn sm" disabled={genBusy} onClick={gen}>{genBusy ? 'Working…' : 'Generate key'}</button>
         <button type="button" className="a-btn ghost sm" disabled={testBusy} onClick={ping}>{testBusy ? 'Sending…' : 'Send test ping'}</button>
+        <button type="button" className="a-btn sm" disabled={allBusy || !i.ready} title={i.ready ? 'Send every page address to IndexNow' : why} onClick={submitAll}>{allBusy ? 'Sending…' : 'Submit all pages'}</button>
       </div>
-      <AuMsg m={msg} /><AuMsg m={test} />
+      <AuMsg m={msg} /><AuMsg m={test} /><AuMsg m={all} />
     </AuBlock>
   );
 }

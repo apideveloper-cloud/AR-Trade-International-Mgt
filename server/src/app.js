@@ -21,6 +21,9 @@ import { mountOrderRoutes } from './routes/orders.js';
 import { mountFormRoutes } from './routes/forms.js';
 import { mountChatRoutes } from './routes/chat.js';
 import { mountCareersRoutes } from './routes/careers.js';
+import { mountGrowthPublic } from './growth/siteFiles.js';
+import { mountReviewRequestRoutes } from './routes/reviewRequest.js';
+import { mountGrowthCallback } from './admin/growth.js';
 
 const app = express();
 app.set('trust proxy', 1); // behind Nginx: req.ip is the real client
@@ -41,6 +44,7 @@ mountUploads(app);
 
 // storefront API
 mountCatalogRoutes(app);
+mountReviewRequestRoutes(app); // /api/review-request/:token (signed link from the review e-mail / WhatsApp message)
 mountContentRoutes(app);
 mountAuthRoutes(app);
 mountOrderRoutes(app);
@@ -50,6 +54,7 @@ mountCareersRoutes(app);
 
 // staff, field-app and back-office APIs
 mountSignInLimits(app);
+mountGrowthCallback(app); // Google sends the browser here after sign-in: no bearer token, so it sits before the admin router
 app.use('/api/admin/audit', auditRouter); // before adminRouter so /audit is never taken for an admin id
 app.use('/api/admin', adminRouter);
 app.use('/api/inv', invRouter);
@@ -61,6 +66,7 @@ app.use('/api/live', liveRouter);
 app.use('/api/mkt', mktRouter);
 app.use('/api/prefs', prefsRouter);
 
+mountGrowthPublic(app); // search engine verification files (google<token>.html, BingSiteAuth.xml)
 mountClient(app); // production: the built client, robots.txt, sitemap.xml and the SEO HTML shell (must stay last)
 app.use(jsonErrorHandler);
 

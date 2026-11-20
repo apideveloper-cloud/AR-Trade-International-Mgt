@@ -2,7 +2,9 @@
 import { pool } from '../db.js';
 import { fail, parseJson, wrap } from '../util.js';
 import { mergeSeoSettings } from '../seoSettings.js';
-import { generateIndexNowKey, getIndexNowState, getQueue, hostOf, pingIndexNow } from '../seoAutomation.js';
+import { generateIndexNowKey, getIndexNowState, getQueue, hostOf, pingIndexNow, submitAllBatches } from '../seoAutomation.js';
+
+let lastSubmitAll = 0; // "submit all" may run once every 10 minutes (it sends the whole site)
 
 const KEY = 'seo';
 const seoLib = async () => { try { return await import('../seo.js'); } catch { return {}; } };
@@ -30,8 +32,40 @@ export function mountSeoAutomationRoutes(router, guard) {
       indexNow: { enabled, keySet, keyLocation: host && keySet ? `https://${host}/${key}.txt` : '', host, state: st, ready: enabled && keySet && !!host },
       feed: { enabled: fd?.enabled ?? !!s.flags?.merchantFeed, url: origin + '/feeds/google-merchant.xml', items: fd?.items ?? null, skipped: fd?.skipped ?? null, generatedAt: fd?.generatedAt ?? null },
       sitemap: { generatedAt: sm?.generatedAt ?? null, dirty: sm?.dirty ?? null, ttlMs: sm?.ttlMs ?? null, counts: sm?.counts ?? null, url: '/sitemap.xml' },
-      analytics: { ga4: s.verification?.ga4 || '', gtm: s.verification?.gtm || '' }
+      analytics: { ga4: s.verification?.ga4 || '', gtm: s.verification?.gtm || '' },
+      // what is still missing before search engines can find the site (the Overview checklist)
+      visibility: {
+        preferredDomain: s.general?.preferredDomain || '',
+        bingVerified: !!s.verification?.bing,
+        googleVerified: !!s.verification?.google,
+        indexNowReady: enabled && keySet && !!host,
+        submittedAt: st.lastPing || null,
+        sitemapUrl: (origin || '') + '/sitemap.xml'
+      }
     });
+  }));
+
+  // Sends every sitemap URL to IndexNow in one go (Bing and the other IndexNow engines then crawl them): the fast way to get a new site seen.
+  router.post('/seo/automation/indexnow/submit-all', G, wrap(async (req, res) => {
+    const s = mergeSeoSettings(await readStored());
+    const host = hostOf(s), key = s.indexNow?.key || '';
+    if (!s.flags?.indexNow) throw fail(400, 'IndexNow is switched off');
+    if (!key) throw fail(400, 'Generate an IndexNow key first');
+    if (!host) throw fail(400, 'No preferred domain set');
+    const wait = lastSubmitAll + 10 * 60 * 1000 - Date.now();
+    if (wait > 0) throw fail(429, `The whole site was sent a moment ago. Try again in ${Math.ceil(wait / 60000)} minute(s).`);
+    const urls = await call('sitemapUrls');
+    if (!Array.isArray(urls) || !urls.length) throw fail(503, 'The sitemap has no addresses to send');
+    const { total, batches } = submitAllBatches(urls, host);
+    lastSubmitAll = Date.now();
+    let ok = 0, failed = 0, last = null;
+    for (const b of batches) {
+      const r = await pingIndexNow({ host, key, urls: b });
+      getQueue().record(b.length, r);
+      last = r;
+      if (r.ok) ok += b.length; else failed += b.length;
+    }
+    res.json({ ok: failed === 0, submitted: ok, failed, total, batches: batches.length, status: last?.status ?? null, error: last?.error || '' });
   }));
 
   router.post('/seo/automation/indexnow/generate-key', G, wrap(async (req, res) => {

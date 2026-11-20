@@ -16,6 +16,7 @@ import { pool, fail, wrap, guardRole, nextSeq, notify, staffIdsByRole, UTC, digi
 import { secret } from '../../util.js';
 import { PROOFS, mailCustomer, removeFile, saveImage, seesAll } from '../sales_util.js';
 import { buildDeliveryNotePdf } from '../../salesorder.js';
+import { noteCatalogChange } from '../../growth/changeHooks.js';
 import { pageOf, addRange, addSearch, wantsPage } from '../../listing.js';
 
 const router = Router();
@@ -170,6 +171,7 @@ router.put('/:id/confirm', guardSales, wrap(async (req, res) => {
     throw e;
   } finally { conn.release(); }
 
+  noteCatalogChange({ productIds: items.map(i => i.product_id), reason: 'field' });
   const managers = await staffIdsByRole('manager', 'accountant', 'admin');
   notify([...new Set([d.order_staff, ...managers])].filter(i => i !== req.staff.id), {
     icon: 'local_shipping', cat: 'Updates', title: 'Delivery confirmed', sub: `${d.id} · ${d.customer} received`,

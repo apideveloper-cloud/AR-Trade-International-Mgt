@@ -26,7 +26,7 @@ const abs = (base, u) => (!u ? '' : /^https?:\/\//.test(u) ? u : base + u);
 const PUBLIC_PAGE = /^\/(shop|brand|product|blog|services|about|contact|faq|offers|careers|policy)(\/|$)/i;
 const dec = s => { try { return decodeURIComponent(s); } catch { return s; } }; // a malformed %-escape in the address must be a 404, not a 500
 const search = req => { const q = req.originalUrl.indexOf('?'); return q < 0 ? '' : req.originalUrl.slice(q); };
-const PRIVATE = /^\/(cart|checkout|success|account|login|track|wishlist|compare|reset|prefs|admin|hub|email|field)(\/|$)/;
+const PRIVATE = /^\/(cart|checkout|success|account|login|track|wishlist|compare|reset|prefs|review|admin|hub|email|field)(\/|$)/;
 const STATIC = {
   '/': ['AR Trade International | Printers, Toner & Copiers in Dhaka', 'Buy genuine printer toner, ink, copiers, printers and computer accessories online in Bangladesh. Printer servicing and fast delivery in Dhaka.'],
   '/shop': ['Toner, Ink, Printers & Copiers in Bangladesh | AR Trade', 'Browse genuine toner cartridges, ink, printers, photocopiers and parts with best prices in Bangladesh. Fast delivery in Dhaka.'],
@@ -130,6 +130,14 @@ export async function rebuildSitemaps() {
   const base = defaultBase();
   await Promise.all(SITEMAP_PATHS.map(p => sitemapDoc(base, p, true)));
   return sitemapStatus();
+}
+/** Every public page address listed in the child sitemaps (absolute, unique, no image entries): what IndexNow "submit all" sends. */
+export async function sitemapUrls() {
+  const base = defaultBase();
+  const docs = await Promise.all(CHILD_SITEMAPS.map(p => sitemapDoc(base, p)));
+  const out = new Set();
+  for (const d of docs) for (const m of String(d.body || '').matchAll(/<loc>([^<]+)<\/loc>/g)) out.add(m[1].replace(/&amp;/g, '&'));
+  return [...out];
 }
 /** { generatedAt (ISO | null), dirty, ttlMs, counts }. Builds once when nothing was built yet so the counts are real. */
 export async function sitemapStatus() {

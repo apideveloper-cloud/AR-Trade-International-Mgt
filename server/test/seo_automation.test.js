@@ -229,3 +229,18 @@ test('hostOf accepts only an https origin', () => {
   assert.equal(hostOf({ general: { preferredDomain: 'http://a.com' } }), '');
   assert.equal(hostOf(null), '');
 });
+
+test('submitAllBatches moves every sitemap URL onto the public host, drops duplicates and bad values, and cuts batches', async () => {
+  const { submitAllBatches } = await import('../src/seoAutomation.js');
+  const r = submitAllBatches([
+    'http://localhost:4000/product/a', 'https://other.example/product/a', 'https://x.test/shop/toner?page=2', 'https://x.test/shop/toner?page=2',
+    'ftp://x.test/nope', 'not a url', '', null, 'https://x.test/'
+  ], 'artradeinternational.com');
+  assert.equal(r.total, 3);
+  assert.deepEqual(r.batches[0], ['https://artradeinternational.com/product/a', 'https://artradeinternational.com/shop/toner?page=2', 'https://artradeinternational.com/']);
+  const many = Array.from({ length: 12001 }, (_, i) => `https://x.test/p/${i}`);
+  const b = submitAllBatches(many, 'a.com', 5000);
+  assert.equal(b.total, 12001);
+  assert.deepEqual(b.batches.map(x => x.length), [5000, 5000, 2001]);
+  assert.deepEqual(submitAllBatches([], 'a.com'), { total: 0, batches: [] });
+});

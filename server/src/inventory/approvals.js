@@ -5,6 +5,7 @@ import { guard } from '../admin.js';
 import { fail, int, text, tx, wrap } from '../util.js';
 import { MANAGE, APPROVE } from './constants.js';
 import { move } from './helpers.js';
+import { noteCatalogChange } from '../growth/changeHooks.js';
 import { linesByProduct } from './pure.js';
 
 const router = Router();
@@ -41,6 +42,7 @@ router.post('/receipts/:id/reject', guard(APPROVE), wrap(async (req, res) => {
 /** Step 3: after approval, put the goods into stock. Every product gets its selling price (and optional remarks) now. */
 router.post('/receipts/:id/stock-in', guard(MANAGE), wrap(async (req, res) => {
   const by = req.staff.name;
+  const changed = []; let firstSale = false;
   const out = await tx(async conn => {
     const [[r]] = await conn.query('SELECT id, status, vendor_id FROM stock_receipts WHERE id = ? FOR UPDATE', [req.params.id]);
     if (!r) throw fail(404, 'Purchase not found');
@@ -58,10 +60,12 @@ router.post('/receipts/:id/stock-in', guard(MANAGE), wrap(async (req, res) => {
       await move(conn, { productId: it.product_id, delta: it.qty, kind: 'Purchase', ref: r.id, cost: Math.round((it.qty * it.unit_cost - it.discount) / it.qty), note: [v?.name, remarks].filter(Boolean).join(' · '), by });
       // the first purchase of a product made here (see POST /products) puts it on the shop
       await conn.query('UPDATE products SET price = ?, active = IF(?, 1, active) WHERE id = ?', [sale, seen ? 0 : 1, it.product_id]);
+      changed.push(it.product_id); if (!seen) firstSale = true;
     }
     await conn.query("UPDATE stock_receipts SET status = 'Stocked', stocked_by = ?, stocked_at = NOW() WHERE id = ?", [by, r.id]);
     return { id: r.id, status: 'Stocked' };
   });
+  noteCatalogChange({ productIds: changed, reason: firstSale ? 'product_added' : 'inventory' });
   res.json(out);
 }));
 

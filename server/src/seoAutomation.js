@@ -162,6 +162,22 @@ export function hostOf(settings) {
   const d = String(settings?.general?.preferredDomain || '');
   return /^https:\/\/[^/]+$/i.test(d) ? d.replace(/^https:\/\//i, '') : '';
 }
+/**
+ * The addresses to send for "submit all": every sitemap URL moved onto the public host (the sitemap may have been built from another
+ * origin, e.g. a dev address), only http(s) addresses, no duplicates, cut into batches (IndexNow takes up to 10,000 per request).
+ */
+export function submitAllBatches(urls, host, size = 5000) {
+  const seen = new Set(), out = [];
+  for (const u of urls || []) {
+    let p; try { p = new URL(String(u)); } catch { continue; }
+    if (!/^https?:$/.test(p.protocol)) continue;
+    const abs = `https://${host}${p.pathname}${p.search}`;
+    if (!seen.has(abs)) { seen.add(abs); out.push(abs); }
+  }
+  const batches = [];
+  for (let i = 0; i < out.length; i += size) batches.push(out.slice(i, i + size));
+  return { total: out.length, batches };
+}
 /** Test hook. */
 export function _resetIndexNowState() { queue = null; skipNote = ''; cfg.host = ''; cfg.key = ''; }
 

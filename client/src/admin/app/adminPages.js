@@ -19,3 +19,6 @@ export const { Settings, Team } = pick(() => import('../pages/System.jsx'), 'Set
 export const { Roles } = pick(() => import('../pages/Roles.jsx'), 'Roles');
 export const { Audit } = pick(() => import('../pages/Audit.jsx'), 'Audit');
 export const { Seo } = pick(() => import('../pages/Seo.jsx'), 'Seo');
+export const { Growth } = pick(() => import('../pages/growth/GrowthPage.jsx'), 'Growth');
+export const { GrowthPrices } = pick(() => import('../pages/growth/GrowthPrices.jsx'), 'GrowthPrices');
+export const { GrowthReviews } = pick(() => import('../pages/growth/GrowthReviews.jsx'), 'GrowthReviews');

@@ -40,6 +40,7 @@ const AdminApp = lazyPage(() => import('./admin/AdminApp.jsx'));
 const HubApp = lazyPage(() => import('./hub/HubApp.jsx'));
 const EmailApp = lazyPage(() => import('./email/EmailApp.jsx'));
 const Prefs = lazyPage(() => import('./pages/Prefs.jsx'));
+const ReviewRequest = lazyPage(() => import('./pages/ReviewRequest.jsx'));
 
 export default function App() {
   const { data, error } = useStore();
@@ -50,6 +51,7 @@ export default function App() {
   const errorScreens = { '/server-error': <ServerErrorPage />, '/forbidden': <ForbiddenPage />, '/maintenance': <MaintenancePage />, '/offline': <OfflinePage /> };
   if (errorScreens[pathname]) return errorScreens[pathname];
   if (pathname.startsWith('/prefs/')) return <Suspense fallback={spin}><Routes><Route path="/prefs/:token" element={<Prefs />} /></Routes></Suspense>;
+  if (pathname.startsWith('/review/')) return <Suspense fallback={spin}><Routes><Route path="/review/:token" element={<ReviewRequest />} /></Routes></Suspense>;
   if (pathname.startsWith('/email')) return <Suspense fallback={spin}><Routes><Route path="/email/*" element={<EmailApp />} /></Routes></Suspense>;
   if (pathname.startsWith('/hub')) return <Suspense fallback={<PageLoader label="Opening the Delivery Hub…" />}><Routes><Route path="/hub/*" element={<HubApp />} /></Routes></Suspense>;
   if (pathname.startsWith('/admin')) return <Suspense fallback={<PageLoader label="Opening the admin console…" />}><Routes><Route path="/admin/*" element={<AdminApp />} /></Routes></Suspense>;

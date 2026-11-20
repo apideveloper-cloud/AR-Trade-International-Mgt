@@ -9,6 +9,7 @@ import { SAN } from '../adminContent.js';
 import { normalizeGtin, gtinValid } from '../gtin.js';
 import { like, page } from '../adminHelpers.js';
 import { productSeoFields } from './seoValidate.js';
+import { onlyChanged, validatePriceChange } from '../growth/priceRules.js';
 import { SEO_JOIN, seoCondition, seoScoreOf } from './catalogSeoList.js';
 
 const prodOut = r => ({
@@ -38,6 +39,18 @@ function productPatch(body) {
   if ('gallery' in body) { sets.push('gallery = ?'); vals.push(JSON.stringify((Array.isArray(body.gallery) ? body.gallery : []).map(u => String(u).trim()).filter(isLocalImg).slice(0, 12))); }
   if (sets.length) sets.push('edited = 1');
   return { sets, vals };
+}
+
+/** Price rules for PUT /products/:id (only when price, old or stock is sent): 400 with the first problem; returns the jump (the route answers 409 unless confirmJump is true). */
+async function checkPriceChange(body, id) {
+  if (!body || !['price', 'old', 'stock'].some(k => k in body)) return;
+  const [[cur]] = await pool.query("SELECT price, old_price, stock, active, stock_status, DATE_FORMAT(sale_ends, '%Y-%m-%d') AS sale_ends FROM products WHERE id = ?", [id]);
+  if (!cur) return; // the route answers 404
+  const change = {};
+  for (const k of ['price', 'old', 'stock', 'saleEnds', 'stockStatus']) if (k in body) change[k] = body[k];
+  const { errors, jump } = validatePriceChange({ ...cur, active: 'active' in body ? !!body.active : cur.active }, onlyChanged(cur, change));
+  if (errors.length) throw fail(400, errors[0].message);
+  return jump;
 }
 
 /** The five SEO product fields (condition, sale end, stock status, warranty text, noindex): { sets, vals } for what was sent; 400 when invalid. */
@@ -89,6 +102,8 @@ export function mountCatalogRoutes(router, guard) {
   }));
 
   router.put('/products/:id', guard('products.manage'), wrap(async (req, res) => {
+    const jump = await checkPriceChange(req.body, req.params.id);
+    if (jump && req.body.confirmJump !== true) return res.status(409).json({ error: 'The price changes by ' + jump.pct + '%. Confirm to continue.', needsConfirm: true, jump });
     const { sets, vals } = productPatch(req.body);
     const gtin = gtinOf(req.body);
     if (gtin !== undefined) { sets.push('gtin = ?'); vals.push(gtin); if (sets.length === 1) sets.push('edited = 1'); }

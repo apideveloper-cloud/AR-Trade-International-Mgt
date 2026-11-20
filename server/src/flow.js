@@ -1,6 +1,8 @@
 // Order flow shared by the admin console, the Delivery Hub and the customer tracking page
 import { pool } from './db.js';
 import { fail } from './util.js';
+import { noteCatalogChange } from './growth/changeHooks.js';
+import { noteOrderDelivered } from './growth/reviewRequests.js';
 
 export const FLOW = ['Placed', 'Verification', 'Confirmed', 'Packed', 'Out for delivery', 'Delivered'];
 /** `orders.status` keeps the simple six-state value the admin console and account pages use. */
@@ -51,6 +53,7 @@ export async function applyFlow(orderId, flow, note = '', extra = {}, by = '') {
   for (const [k, v] of Object.entries(extra)) { sets.push(`${k} = ?`); vals.push(v); }
   await pool.query(`UPDATE orders SET ${sets.join(', ')} WHERE id = ?`, [...vals, orderId]);
   await pool.query('INSERT INTO order_history (order_id,status,flow,note,by_name) VALUES (?,?,?,?,?)', [orderId, LEGACY[flow], flow, String(note).slice(0, 255), String(by).slice(0, 120)]);
+  if (flow === 'Delivered') noteOrderDelivered(orderId); // queues a review request (not awaited, never throws)
 }
 
 /** Cancels an open order and puts its stock back, once: a second call (or a closed order) fails instead of double-restocking. */
@@ -59,6 +62,7 @@ export async function cancelOrder(orderId, note = '', by = '') {
   if (!r.affectedRows) throw fail(400, 'This order is already closed');
   const [items] = await pool.query('SELECT product_id, qty, backorder FROM order_items WHERE order_id = ?', [orderId]);
   for (const i of items) await pool.query('UPDATE products SET stock = stock + ? WHERE id = ?', [Math.max(0, i.qty - i.backorder), i.product_id]);
+  noteCatalogChange({ productIds: items.map(i => i.product_id), reason: 'order' });
   await pool.query('INSERT INTO order_history (order_id,status,flow,note,by_name) VALUES (?,?,?,?,?)', [orderId, 'Cancelled', 'Cancelled', String(note).slice(0, 255), String(by).slice(0, 120)]);
 }
 
