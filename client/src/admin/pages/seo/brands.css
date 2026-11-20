@@ -1,0 +1,14 @@
+.adbr-intro{margin:0 0 12px;font-size:13px;color:var(--muted,#5b6785);line-height:1.5}
+.adbr-wrap{overflow-x:auto}
+.adbr-wrap .fd-tbl{min-width:640px}
+.adbr-name{display:flex;flex-direction:column;gap:2px;min-width:0}
+.adbr-name small{color:var(--muted,#5b6785)}
+.adbr-score{display:inline-block;min-width:34px;padding:2px 8px;border-radius:999px;text-align:center;font-weight:600;font-size:12px;background:oklch(0.95 0.01 250);color:oklch(0.4 0.03 250)}
+.adbr-score.adbr-good{background:oklch(0.95 0.05 150);color:oklch(0.4 0.12 150)}
+.adbr-score.adbr-mid{background:oklch(0.95 0.05 85);color:oklch(0.45 0.12 70)}
+.adbr-score.adbr-low{background:oklch(0.96 0.03 25);color:oklch(0.48 0.17 25)}
+.adbr-acts{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.adbr-body{min-width:0}
+@media (max-width:600px){.adbr-wrap .fd-tbl{min-width:560px}}
+.adbr-adv>summary{cursor:pointer}
+.adbr-adv[open]>summary{margin-bottom:10px}

@@ -1,0 +1,37 @@
+.adpt-sum .kpi{cursor:pointer}
+.adpt-bulk{display:flex;flex-direction:column;gap:8px;margin:0 0 10px}
+.adpt-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.adpt-res{font-size:13px;color:oklch(0.4 0.12 150)}
+.adpt-banner{margin:0 0 10px;padding:8px 12px;border-radius:8px;background:oklch(0.95 0.03 250);font-size:13px}
+.adpt-banner button{border:0;background:none;color:oklch(0.45 0.15 252);font-weight:600;cursor:pointer;padding:0 0 0 4px}
+.adpt-wrap{overflow-x:auto}
+.adpt-tbl .adpt-r{display:grid;grid-template-columns:32px 48px minmax(180px,2fr) minmax(100px,1fr) 60px 84px 96px 90px 60px 80px 64px;align-items:center;gap:8px}
+.adpt-tbl{min-width:980px}
+.adpt-name{display:flex;flex-direction:column;gap:2px;min-width:0}
+.adpt-name small{color:var(--muted,#5b6785)}
+.adpt-thumb{display:block;width:40px;height:40px;border-radius:6px;object-fit:cover;background:oklch(0.95 0.01 250)}
+.adpt-score{display:inline-block;min-width:34px;padding:2px 8px;border-radius:999px;text-align:center;font-weight:600;font-size:12px;background:oklch(0.95 0.01 250);color:oklch(0.4 0.03 250)}
+.adpt-score.adpt-good{background:oklch(0.95 0.05 150);color:oklch(0.4 0.12 150)}
+.adpt-score.adpt-mid{background:oklch(0.95 0.05 85);color:oklch(0.45 0.12 70)}
+.adpt-score.adpt-low{background:oklch(0.96 0.03 25);color:oklch(0.48 0.17 25)}
+.adpt-on{background:oklch(0.97 0.02 250)}
+.adpt-body{min-width:0}
+.adpt-dlg{display:flex;flex-direction:column;gap:4px;text-align:left}
+.adpt-dlg small{color:var(--muted,#5b6785)}
+.adpt-warn{color:oklch(0.48 0.17 25);font-weight:600;font-size:13px;margin:4px 0}
+.adpt-imp{display:flex;flex-direction:column;gap:10px;min-width:0}
+.adpt-imp p{margin:0}
+.adpt-ok{color:oklch(0.4 0.12 150)}
+.adpt-ok small{display:block;color:oklch(0.48 0.17 25)}
+.adpt-hint{font-size:13px;color:var(--muted,#5b6785)}
+.adpt-scroll{max-height:240px;overflow:auto;border:1px solid oklch(0.92 0.01 250);border-radius:8px}
+.adpt-t{width:100%;border-collapse:collapse;font-size:12px}
+.adpt-t th,.adpt-t td{padding:5px 8px;text-align:left;border-bottom:1px solid oklch(0.94 0.01 250);vertical-align:top}
+@media (max-width:700px){
+  .adpt-tbl{min-width:0}
+  .adpt-tbl .adpt-h{display:none}
+  .adpt-tbl .adpt-r{grid-template-columns:28px 48px 1fr;row-gap:6px;padding:10px 12px}
+  .adpt-tbl .adpt-r>span:nth-child(n+4){grid-column:1/-1;display:flex;justify-content:space-between;align-items:center}
+  .adpt-tbl .adpt-r>span[data-l]::before{content:attr(data-l);font-size:11px;text-transform:uppercase;color:var(--muted,#5b6785)}
+  .adpt-tbl .adpt-r>.adpt-c-act{justify-content:flex-end}
+}

@@ -1,0 +1,20 @@
+.adac-row { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border: 1px solid #e8ebf2; border-radius: 12px; background: #fff; min-width: 0; }
+.adac-row.reverted { opacity: .65; }
+.adac-top { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: 12px; color: #5b6478; }
+.adac-time { font-family: ui-monospace, monospace; }
+.adac-who { font-weight: 600; color: #2b3550; }
+.adac-name { margin-left: auto; font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+.adac-link { background: none; border: 0; padding: 0; color: oklch(0.5 0.15 252); cursor: pointer; font: inherit; text-align: left; text-decoration: underline; }
+.adac-sum { font-size: 13px; color: #2b3550; overflow-wrap: anywhere; }
+.adac-acts { display: flex; flex-wrap: wrap; gap: 6px; }
+.adac-fields { list-style: none; margin: 0; padding: 8px 10px; background: #f6f8fc; border-radius: 8px; display: flex; flex-direction: column; gap: 6px; font-size: 12px; }
+.adac-fields li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; min-width: 0; }
+.adac-fields b { min-width: 110px; }
+.adac-val { overflow-wrap: anywhere; min-width: 0; max-width: 100%; }
+.adac-val.none { color: #8a8f9b; font-style: italic; }
+.adac-arrow { color: #8a8f9b; }
+.adac-list { display: flex; flex-direction: column; gap: 8px; margin: 10px 0; }
+.adac-filter { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 12px; border: 1px solid #e8ebf2; border-radius: 12px; background: #fff; margin: 10px 0; }
+.adac-filter .a-input { flex: 1 1 200px; min-width: 0; }
+.adac-body { padding: 4px 0; }
+@media (max-width: 600px) { .adac-name { margin-left: 0; flex-basis: 100%; } .adac-fields b { min-width: 100%; } }

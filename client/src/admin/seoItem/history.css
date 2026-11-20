@@ -1,0 +1,4 @@
+.adsh { margin-top: 12px; }
+.adsh-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 8px 0; }
+.adsh-list { display: flex; flex-direction: column; gap: 8px; }
+.adsh-more { align-self: flex-start; margin-top: 8px; }

@@ -1,0 +1,30 @@
+/* Admin > SEO dashboard. Every class starts with adds- */
+.adds { display: flex; flex-direction: column; gap: 16px; }
+.adm .a-card.adds-head { display: flex; flex-direction: row; align-items: center; gap: 18px; flex-wrap: wrap; }
+.adds-headtxt { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-width: 0; flex: 1 1 220px; }
+.adds-ring { width: 92px; height: 92px; border-radius: 50%; display: grid; place-content: center; text-align: center; border: 9px solid #e4e2dc; flex: none; }
+.adds-ring b { font-size: 26px; line-height: 1; }
+.adds-ring small { font-size: 10px; color: #6b7080; }
+.adds-ring.tone-good { border-color: oklch(0.72 0.15 150); }
+.adds-ring.tone-fair { border-color: oklch(0.80 0.15 80); }
+.adds-ring.tone-poor { border-color: oklch(0.66 0.19 25); }
+.adds-warn { color: #8a5a00; font-weight: 600; }
+.adds-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+.adds-card { display: flex; flex-direction: column; gap: 10px; min-width: 0; align-items: flex-start; }
+.adds-wide { grid-column: 1 / -1; align-items: stretch; }
+.adds-issues, .adds-dups, .adds-stats { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; width: 100%; }
+.adds-issue { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: center; }
+.adds-issue-t { grid-column: 1; display: flex; justify-content: space-between; gap: 8px; font-size: 13px; }
+.adds-issue .a-mini { grid-column: 2; grid-row: 1 / span 2; }
+.adds-bar { grid-column: 1; height: 8px; border-radius: 99px; background: #eef1f6; overflow: hidden; }
+.adds-fill { display: block; height: 100%; border-radius: 99px; }
+.adds-fill.is-warn { background: oklch(0.78 0.15 75); }
+.adds-fill.is-bad { background: oklch(0.64 0.19 25); }
+.adds-dups li { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; min-width: 0; }
+.adds-kind { font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; color: #6b7080; font-weight: 700; }
+.adds-clip { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.adds-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.adds-chip { font-style: normal; font-size: 11px; background: #eef1f6; border-radius: 6px; padding: 1px 6px; }
+.adds-stats li { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; border-bottom: 1px solid #f0eee8; padding-bottom: 6px; }
+.adds-link { font-weight: 700; font-size: 13px; }
+@media (max-width: 480px) { .adds-grid { grid-template-columns: minmax(0, 1fr); } }

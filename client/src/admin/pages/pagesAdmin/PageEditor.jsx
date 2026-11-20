@@ -1,6 +1,8 @@
 import { adm } from '../../adminApi.js';
 import { SeoPanel } from '../../SeoPanel.jsx';
 import { StackField as Field } from '../../components/StackField.jsx';
+import SeoItemEditor from '../../seoItem/SeoItemEditor.jsx';
+import '../seo/brands.css';
 import { RichToolbar } from '../blogAdmin/RichToolbar.jsx';
 import { PAGE_TOOLS } from '../blogAdmin/richTools.js';
 import { useRichEditor } from '../blogAdmin/useRichEditor.js';
@@ -60,6 +62,10 @@ export function PageEditor({ id, group, onDone }) {
       <div className="pgx-seo">
         <SeoPanel value={f} onChange={patch} path={group === 'servicing' ? 'services/' + (f.slug || '…') : 'about'} title={f.title} summary={f.excerpt} />
         {group !== 'servicing' && <small className="pgx-note">This page is shown on the About page. Its title and description are used for /about when this is the Company profile; keywords of all three About pages are merged.</small>}
+        <details className="a-card adbr-adv">
+          <summary><b>Advanced SEO</b></summary>
+          {id && f.slug ? <SeoItemEditor type="page" id={f.slug} mode="advanced" /> : <small>Save first to edit advanced SEO</small>}
+        </details>
       </div>
     </div>
   );

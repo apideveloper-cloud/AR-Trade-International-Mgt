@@ -1,0 +1,2 @@
+/* Brand page: the grid, pager and header reuse the Shop classes; only the page wrapper needs its own hook. */
+.brdp-page { min-height: 50vh; }

@@ -18,3 +18,4 @@ export const { Quotations } = pick(() => import('../pages/Quotations.jsx'), 'Quo
 export const { Settings, Team } = pick(() => import('../pages/System.jsx'), 'Settings', 'Team');
 export const { Roles } = pick(() => import('../pages/Roles.jsx'), 'Roles');
 export const { Audit } = pick(() => import('../pages/Audit.jsx'), 'Audit');
+export const { Seo } = pick(() => import('../pages/Seo.jsx'), 'Seo');

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { adm } from '../../adminApi.js';
 import { Modal, Switch } from '../../ui.jsx';
+import SeoItemEditor from '../../seoItem/SeoItemEditor.jsx';
 import './categoryForm.css';
 
 import { readFileAsDataUrl as readFile } from '../../hooks/download.js';
@@ -64,6 +65,7 @@ export function CategoryForm({ cat, onClose, onSaved }) {
           <Switch on={f.visible} onChange={() => setF(v => ({ ...v, visible: !v.visible }))} title="Show on the store now" />
         </div>
       )}
+      {cat && <details><summary>SEO</summary><SeoItemEditor type="category" id={cat.id} mode="full" /></details>}
     </Modal>
   );
 }

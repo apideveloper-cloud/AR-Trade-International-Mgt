@@ -9,6 +9,7 @@ export const MASTER_ONLY = 'roles.manage'; // never granted to anyone but the Ma
 export const AUDIT_VIEW = 'audit.view'; // the audit log
 export const PRODUCTS_WRITE = 'products.manage'; // create, edit, hide and delete products; change price and stock levels in the product list
 export const PURCHASE_APPROVE = 'inventory.approve'; // approve or reject a purchase before it goes into stock
+export const SEO_MANAGE = 'seo.manage'; // SEO templates, redirects, bulk tools: in the role matrix, default for Admin (Master Admin has everything)
 export const ADMIN_ONLY = [AUDIT_VIEW, PRODUCTS_WRITE, PURCHASE_APPROVE];
 
 /** [key, group, label] */
@@ -24,6 +25,7 @@ export const PERMS = [
   ['quotes.manage', 'Sales', 'Write, edit, send and delete quotations'],
   ['products.view', 'Catalog', 'View products and categories'],
   ['categories.manage', 'Catalog', 'Show or hide categories'],
+  [SEO_MANAGE, 'Catalog', 'Manage SEO: templates, redirects, bulk tools'],
   ['hub.view', 'Delivery', 'Delivery Hub board, returns and branches'],
   ['hub.dispatch', 'Delivery', 'Assign riders / couriers, cancel orders, decide returns'],
   ['hub.deliver', 'Delivery', 'Run own deliveries (rider app)'],
@@ -82,7 +84,7 @@ export const DEFAULTS = {
   'Content writer': ['blog.manage', 'pages.manage', 'media.upload']
 };
 
-const ADDED = ['inventory.view', 'inventory.manage', 'quotes.view', 'quotes.manage', 'orders.create'];
+const ADDED = ['inventory.view', 'inventory.manage', 'quotes.view', 'quotes.manage', 'orders.create', SEO_MANAGE];
 let cache = new Map(); // role -> Set(perm)
 
 export async function loadPermissions() {

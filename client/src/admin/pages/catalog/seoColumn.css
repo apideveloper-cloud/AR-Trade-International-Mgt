@@ -1,0 +1,8 @@
+/* Product list: SEO score column. Every class starts with adpl- */
+.adm .a-table .head.prod-cols.adpl-cols, .adm .a-table .row.prod-cols.adpl-cols { grid-template-columns: 40px 48px minmax(170px, 1fr) 110px 90px 90px 60px 140px 60px 52px; }
+.adm .a-table .prod-wrap.adpl-wrap { min-width: 930px; }
+.adpl-badge { display: inline-block; min-width: 32px; text-align: center; padding: 2px 7px; border-radius: 99px; font-size: 12px; font-weight: 700; }
+.adpl-badge.is-good { background: oklch(0.94 0.06 150); color: oklch(0.38 0.1 150); }
+.adpl-badge.is-fair { background: oklch(0.95 0.07 85); color: oklch(0.44 0.1 70); }
+.adpl-badge.is-poor { background: oklch(0.94 0.05 25); color: oklch(0.45 0.15 25); }
+.adpl-badge.is-none { color: #8a8f9b; }

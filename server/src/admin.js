@@ -10,16 +10,32 @@ import { mountAuthRoutes } from './admin/auth.js';
 import { mountDashboardRoutes } from './admin/dashboard.js';
 import { mountOrderRoutes } from './admin/orders.js';
 import { mountCatalogRoutes } from './admin/catalog.js';
+import { mountSeoRoutes } from './admin/seo.js';
+import { mountSeoItemRoutes } from './admin/seoItems.js';
+import { mountSeoBulkRoutes } from './admin/seoBulk.js';
+import { mountSeoCsvRoutes } from './admin/seoCsvRoutes.js';
+import { mountSeoRedirectsRoutes } from './admin/seoRedirects.js';
+import { mountSeoHistoryRoutes } from './admin/seoHistory.js';
 import { mountCustomerRoutes } from './admin/customers.js';
 import { mountTeamRoutes } from './admin/team.js';
+import { mountSeoAutomationRoutes } from './admin/seoAutomation.js';
+import { afterAdminWrite } from './seoAutomation.js';
 
 export { guard }; // other route files (field, hub, inventory, audit, ...) import the guard from here
 
 const router = Router();
+router.use(afterAdminWrite); // purges cached SEO pages / sitemap after every successful admin write, optional IndexNow ping
 mountAuthRoutes(router, guard);
 mountDashboardRoutes(router, guard);
 mountOrderRoutes(router, guard);
 mountCatalogRoutes(router, guard);
+mountSeoRoutes(router, guard); // SEO templates, robots.txt, preview (seo.manage)
+mountSeoItemRoutes(router, guard); // per-item SEO tab, slugs, alt text, brand list (seo.manage)
+mountSeoBulkRoutes(router, guard); // SEO product list, bulk actions, dashboard (seo.manage)
+mountSeoCsvRoutes(router, guard); // SEO CSV export / import (seo.manage)
+mountSeoRedirectsRoutes(router, guard); // redirects, 404 monitor (seo.manage)
+mountSeoHistoryRoutes(router, guard); // SEO change history and revert (seo.manage)
+mountSeoAutomationRoutes(router, guard); // IndexNow, sitemap rebuild, feed preview (seo.manage)
 mountCustomerRoutes(router, guard); // customers, password resets, service requests
 router.use(contentRouter(guard));
 mountEngageRoutes(router, guard);

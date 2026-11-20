@@ -124,7 +124,7 @@ test('robots.txt: new disallows, old ones and Sitemap kept', () => {
 
 test('sitemap index and urlset: lastmod only when a real date', () => {
   const idx = sitemapIndex('https://x.com', CHILD_SITEMAPS.map((path, i) => ({ path, lm: i === 0 ? '2026-01-02' : '' })));
-  assert.equal((idx.match(/<sitemap>/g) || []).length, 4);
+  assert.equal((idx.match(/<sitemap>/g) || []).length, 5);
   assert.equal((idx.match(/<lastmod>/g) || []).length, 1);
   assert.ok(idx.includes('https://x.com/sitemap-pages.xml'));
   assert.ok(!urlEntry('https://x/a', '0.5', '', '').includes('lastmod'));

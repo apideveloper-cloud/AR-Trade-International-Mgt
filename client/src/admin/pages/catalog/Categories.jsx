@@ -5,6 +5,8 @@ import { readFileAsDataUrl as readFile } from '../../hooks/download.js';
 import { useApiData } from '../../hooks/useApiData.js';
 import { CategoryForm } from './CategoryForm.jsx';
 import { CategoryCard } from './CategoryCard.jsx';
+import { DeleteRedirectModal } from '../seo/redirects/DeleteRedirectModal.jsx';
+import '../seo/redirects/redirects.css';
 import './catalogPage.css';
 
 /** Categories page: summary, tiles (grid or list) and the add / edit form. */
@@ -15,6 +17,7 @@ export function Categories({ onChanged }) {
   const [busy, setBusy] = useState('');
   const [actionErr, setErr] = useState('');
   const err = actionErr || list.error;
+  const [gone, setGone] = useState(null); // the category just deleted: offer a redirect from its old address
   const [form, setForm] = useState(null); // 'new', or the category being edited
   const refresh = async () => { await load(); onChanged?.(); };
   const toggle = async c => {
@@ -39,7 +42,7 @@ export function Categories({ onChanged }) {
   const remove = async c => {
     if (!(await confirmBox('Delete the category “' + c.title + '”? It has no products. This cannot be undone.', { danger: true, confirmLabel: 'Delete category' }))) return;
     setErr('');
-    try { await adm.del('/categories/' + c.id); await refresh(); } catch (e) { setErr(e.message); }
+    try { await adm.del('/categories/' + c.id); await refresh(); setGone(c); } catch (e) { setErr(e.message); }
   };
   return (
     <>
@@ -56,6 +59,7 @@ export function Categories({ onChanged }) {
           <CategoryCard key={c.id} c={c} busy={busy === c.id} onPick={file => pick(c, file)} onEdit={() => setForm(c)} onRemove={() => remove(c)} onClearPicture={() => clear(c)} onToggle={() => toggle(c)} />
         ))}
       </div>
+      {gone && <DeleteRedirectModal source={'/shop/' + gone.id} what={'Category “' + gone.title + '” deleted'} onClose={() => setGone(null)} />}
       {form && <CategoryForm cat={form === 'new' ? null : form} onClose={() => setForm(null)} onSaved={refresh} />}
     </>
   );

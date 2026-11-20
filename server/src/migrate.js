@@ -8,6 +8,7 @@ import { ensureIndexes } from './indexes.js';
 import { ensureProductSlugs } from './productSlugs.js';
 import { ensureChatLeads } from './chatLeads.js';
 import { backfillMemberCodes } from './memberCode.js';
+import { ensureBrands } from './brands.js';
 
 const STAFF_COLS = [['nid', 'VARCHAR(20)'], ['present_address', 'VARCHAR(300)'], ['contact_address', 'VARCHAR(300)'], ['ref_name', 'VARCHAR(120)'], ['ref_phone', 'VARCHAR(20)']];
 
@@ -33,6 +34,63 @@ export async function ensureSchema() {
   if (prc.length && !prc.some(r => r.c === 'updated_at')) { await pool.query('ALTER TABLE products ADD COLUMN updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP'); console.log('Added products.updated_at'); }
   // GTIN / EAN barcode (digits only, optional), emitted to Google as product data; no backfill
   if (prc.length && !prc.some(r => r.c === 'gtin')) { await pool.query('ALTER TABLE products ADD COLUMN gtin VARCHAR(14) NULL'); console.log('Added products.gtin'); }
+  // SEO product fields: condition, sale end date, stock status override, warranty wording, hide from Google
+  for (const [c, def] of [['item_condition', "VARCHAR(12) NOT NULL DEFAULT 'new'"], ['sale_ends', 'DATE NULL'], ['stock_status', "VARCHAR(12) NOT NULL DEFAULT 'auto'"], ['warranty_text', "VARCHAR(300) NOT NULL DEFAULT ''"], ['noindex', 'TINYINT(1) NOT NULL DEFAULT 0']]) {
+    if (prc.length && !prc.some(r => r.c === c)) { await pool.query(`ALTER TABLE products ADD COLUMN ${c} ${def}`); console.log('Added products.' + c); }
+  }
+  // brands (one row per distinct product brand) and per-page SEO settings
+  const [tb] = await pool.query("SELECT TABLE_NAME t FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN ('brands', 'seo_meta', 'seo_redirects')");
+  const haveTb = new Set(tb.map(r => r.t));
+  if (!haveTb.has('brands')) {
+    await pool.query("CREATE TABLE brands (id INT AUTO_INCREMENT PRIMARY KEY, slug VARCHAR(80) NOT NULL UNIQUE, name VARCHAR(80) NOT NULL, description TEXT NULL, logo VARCHAR(500) NULL, hidden TINYINT(1) NOT NULL DEFAULT 0, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP)");
+    console.log('Added table brands');
+  }
+  if (!haveTb.has('seo_meta')) {
+    await pool.query(`CREATE TABLE seo_meta (
+      id INT AUTO_INCREMENT PRIMARY KEY, entity_type VARCHAR(20) NOT NULL, entity_id VARCHAR(80) NOT NULL,
+      focus_keyword VARCHAR(120) NOT NULL DEFAULT '', secondary_keywords JSON NULL, canonical_url VARCHAR(500) NOT NULL DEFAULT '',
+      robots_index TINYINT(1) NOT NULL DEFAULT 1, robots_follow TINYINT(1) NOT NULL DEFAULT 1,
+      meta_title VARCHAR(160) NOT NULL DEFAULT '', meta_description VARCHAR(320) NOT NULL DEFAULT '',
+      og_title VARCHAR(160) NOT NULL DEFAULT '', og_description VARCHAR(320) NOT NULL DEFAULT '', og_image VARCHAR(500) NOT NULL DEFAULT '',
+      twitter_title VARCHAR(160) NOT NULL DEFAULT '', twitter_description VARCHAR(320) NOT NULL DEFAULT '',
+      schema_overrides JSON NULL, faq JSON NULL, seo_score INT NULL, seo_issues JSON NULL,
+      updated_by VARCHAR(80) NOT NULL DEFAULT '', updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+      UNIQUE KEY uq_seo_entity (entity_type, entity_id))`);
+    console.log('Added table seo_meta');
+  }
+  if (!haveTb.has('seo_redirects')) {
+    // old address -> new address (301); the unique key uses a 191-character prefix so it fits MySQL 5.7 / 8 utf8mb4 index limits
+    await pool.query(`CREATE TABLE seo_redirects (
+      id INT AUTO_INCREMENT PRIMARY KEY, source VARCHAR(500) NOT NULL, target VARCHAR(500) NOT NULL, code SMALLINT NOT NULL DEFAULT 301,
+      hits INT NOT NULL DEFAULT 0, last_hit TIMESTAMP NULL DEFAULT NULL, auto TINYINT(1) NOT NULL DEFAULT 0,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      UNIQUE KEY uq_redirect_source (source(191)))`);
+    console.log('Added table seo_redirects');
+  }
+  // 404 monitor and SEO change history
+  const [tb2] = await pool.query("SELECT TABLE_NAME t FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN ('seo_404_log', 'seo_history')");
+  const haveTb2 = new Set(tb2.map(r => r.t));
+  if (!haveTb2.has('seo_404_log')) {
+    // one row per missing address (query string removed); hits are added in batches by the 404 logger
+    await pool.query(`CREATE TABLE seo_404_log (
+      id INT AUTO_INCREMENT PRIMARY KEY, path VARCHAR(500) NOT NULL, hits INT NOT NULL DEFAULT 1, referrer VARCHAR(300) NOT NULL DEFAULT '',
+      ignored TINYINT(1) NOT NULL DEFAULT 0, first_seen TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, last_seen TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE KEY uq_404_path (path(191)), KEY idx_404_hits (hits), KEY idx_404_last (last_seen))`);
+    console.log('Added table seo_404_log');
+  }
+  if (!haveTb2.has('seo_history')) {
+    // before / after snapshots of SEO edits, so a change can be reverted
+    await pool.query(`CREATE TABLE seo_history (
+      id INT AUTO_INCREMENT PRIMARY KEY, entity_type VARCHAR(20) NOT NULL, entity_id VARCHAR(80) NOT NULL, action VARCHAR(20) NOT NULL DEFAULT 'save',
+      source VARCHAR(20) NOT NULL DEFAULT 'editor', summary VARCHAR(300) NOT NULL DEFAULT '', before_json MEDIUMTEXT NULL, after_json MEDIUMTEXT NULL,
+      changed_by VARCHAR(80) NOT NULL DEFAULT '', changed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, reverted_by INT NULL,
+      KEY idx_hist_entity (entity_type, entity_id), KEY idx_hist_at (changed_at))`);
+    console.log('Added table seo_history');
+  }
+  if (prc.length) {
+    const added = await ensureBrands(pool).catch(e => { console.error('Brands were not seeded:', e.message); return 0; });
+    if (added) console.log(`Added ${added} brands`);
+  }
   // search-engine fields the admin fills in for blog articles and site pages (title, description, keywords, hide from Google)
   for (const table of ['blog_posts', 'site_pages']) {
     const [tc] = await pool.query('SELECT COLUMN_NAME c FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?', [table]);

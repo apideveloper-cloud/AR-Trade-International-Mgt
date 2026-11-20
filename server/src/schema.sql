@@ -33,6 +33,11 @@ CREATE TABLE IF NOT EXISTS products (
   updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
   sku VARCHAR(80) NOT NULL DEFAULT '',
   gtin VARCHAR(14) NULL,
+  item_condition VARCHAR(12) NOT NULL DEFAULT 'new',
+  sale_ends DATE NULL,
+  stock_status VARCHAR(12) NOT NULL DEFAULT 'auto',
+  warranty_text VARCHAR(300) NOT NULL DEFAULT '',
+  noindex TINYINT(1) NOT NULL DEFAULT 0,
   tags JSON NULL,
   meta_title VARCHAR(160) NOT NULL DEFAULT '',
   meta_desc VARCHAR(320) NOT NULL DEFAULT '',
@@ -490,4 +495,81 @@ CREATE TABLE IF NOT EXISTS product_specs (
   name VARCHAR(80) NOT NULL,
   value VARCHAR(500) NOT NULL,
   KEY idx_product (product_id, position)
+);
+
+CREATE TABLE IF NOT EXISTS brands (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  slug VARCHAR(80) NOT NULL UNIQUE,
+  name VARCHAR(80) NOT NULL,
+  description TEXT NULL,
+  logo VARCHAR(500) NULL,
+  hidden TINYINT(1) NOT NULL DEFAULT 0,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS seo_meta (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  entity_type VARCHAR(20) NOT NULL,
+  entity_id VARCHAR(80) NOT NULL,
+  focus_keyword VARCHAR(120) NOT NULL DEFAULT '',
+  secondary_keywords JSON NULL,
+  canonical_url VARCHAR(500) NOT NULL DEFAULT '',
+  robots_index TINYINT(1) NOT NULL DEFAULT 1,
+  robots_follow TINYINT(1) NOT NULL DEFAULT 1,
+  meta_title VARCHAR(160) NOT NULL DEFAULT '',
+  meta_description VARCHAR(320) NOT NULL DEFAULT '',
+  og_title VARCHAR(160) NOT NULL DEFAULT '',
+  og_description VARCHAR(320) NOT NULL DEFAULT '',
+  og_image VARCHAR(500) NOT NULL DEFAULT '',
+  twitter_title VARCHAR(160) NOT NULL DEFAULT '',
+  twitter_description VARCHAR(320) NOT NULL DEFAULT '',
+  schema_overrides JSON NULL,
+  faq JSON NULL,
+  seo_score INT NULL,
+  seo_issues JSON NULL,
+  updated_by VARCHAR(80) NOT NULL DEFAULT '',
+  updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_seo_entity (entity_type, entity_id)
+);
+
+CREATE TABLE IF NOT EXISTS seo_redirects (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  source VARCHAR(500) NOT NULL,
+  target VARCHAR(500) NOT NULL,
+  code SMALLINT NOT NULL DEFAULT 301,
+  hits INT NOT NULL DEFAULT 0,
+  last_hit TIMESTAMP NULL DEFAULT NULL,
+  auto TINYINT(1) NOT NULL DEFAULT 0,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_redirect_source (source(191))
+);
+
+CREATE TABLE IF NOT EXISTS seo_404_log (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  path VARCHAR(500) NOT NULL,
+  hits INT NOT NULL DEFAULT 1,
+  referrer VARCHAR(300) NOT NULL DEFAULT '',
+  ignored TINYINT(1) NOT NULL DEFAULT 0,
+  first_seen TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  last_seen TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_404_path (path(191)),
+  KEY idx_404_hits (hits),
+  KEY idx_404_last (last_seen)
+);
+
+CREATE TABLE IF NOT EXISTS seo_history (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  entity_type VARCHAR(20) NOT NULL,
+  entity_id VARCHAR(80) NOT NULL,
+  action VARCHAR(20) NOT NULL DEFAULT 'save',
+  source VARCHAR(20) NOT NULL DEFAULT 'editor',
+  summary VARCHAR(300) NOT NULL DEFAULT '',
+  before_json MEDIUMTEXT NULL,
+  after_json MEDIUMTEXT NULL,
+  changed_by VARCHAR(80) NOT NULL DEFAULT '',
+  changed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  reverted_by INT NULL,
+  KEY idx_hist_entity (entity_type, entity_id),
+  KEY idx_hist_at (changed_at)
 );

@@ -22,7 +22,7 @@ const ProductSummary = ({ m }) => (
 /** Products page: summary, filters, table or card view and the product form. */
 export function Products({ cats, staff }) {
   const canWrite = can(staff, 'products.manage'); // Master Admin and Admin only; everyone else sees the list read-only
-  const t = useTable('/products', { cat: '', stock: '', live: '' });
+  const t = useTable('/products', { cat: '', stock: '', live: '', seo: '' });
   const [view, setView] = useView('products');
   const [edit, setEdit] = useState(null); // null | 'new' | product
   const patch = async (p, body) => { try { await adm.put('/products/' + p.id, body); t.reload(); } catch (e) { alertBox(e.message); } };
@@ -35,7 +35,8 @@ export function Products({ cats, staff }) {
         selects={[
           { key: 'cat', label: 'Category', all: 'All categories', icon: 'grid', span: 'c3', options: cats.map(c => ({ v: c.id, t: c.title })) },
           { key: 'stock', label: 'Stock', all: 'Any stock', icon: 'box', span: 'c2', options: [{ v: 'low', t: 'Low stock (5 or fewer)' }] },
-          { key: 'live', label: 'Visibility', all: 'Live and hidden', icon: 'status', span: 'c2', options: [{ v: '0', t: 'Hidden only' }] }
+          { key: 'live', label: 'Visibility', all: 'Live and hidden', icon: 'status', span: 'c2', options: [{ v: '0', t: 'Hidden only' }] },
+          { key: 'seo', label: 'SEO', all: 'All', icon: 'status', span: 'c2', options: [{ v: 'low', t: 'Score under 50' }, { v: 'unscored', t: 'Not scored' }, { v: 'noindex', t: 'Noindex' }] }
         ]} />
       <Toolbar t={t} search={false}>{!canWrite && <span className="ro-note" title="Only an Admin or the Master Admin can change products">👁 View only</span>}<ViewToggle view={view} setView={setView} /></Toolbar>
       <View t={t} patch={patch} catName={catName} setEdit={setEdit} canWrite={canWrite} />

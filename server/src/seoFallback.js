@@ -1,7 +1,7 @@
 // Plain-HTML version of a page, placed inside <div id="root"> of the HTML shell. Crawlers that do not run JavaScript read the
 // headings, text and real links from it; React replaces it as soon as the app starts (createRoot clears the container).
 // Everything that comes from the database is escaped.
-import { NAME, esc, pageUrl, pageWindow, pagesOf, taka } from './seoHelpers.js';
+import { NAME, esc, pageUrl, pageWindow, pagesOf, stockText, taka } from './seoHelpers.js';
 import { productPath } from './slug.js';
 
 const a = (href, text) => `<a href="${esc(href)}">${esc(text)}</a>`;
@@ -17,20 +17,20 @@ const navHtml = cats => `<nav aria-label="Main">${list([
 const footHtml = site => `<footer><p>${esc(NAME)}${site.address ? ' – ' + esc(site.address) : ''}${site.phone ? '. Phone: ' + esc(site.phone) : ''}</p></footer>`;
 const crumbs = items => `<nav aria-label="Breadcrumb"><ol>${items.map(([name, href]) => `<li>${href ? a(href, name) : esc(name)}</li>`).join('')}</ol></nav>`;
 
-export function productFallback({ x, cat, price, related, cats, site, desc }) {
-  const spec = [['Brand', x.brand], ['Part number', x.part], ['SKU', x.sku], ['Technology', x.tech], ['Colour', x.color], ['Page yield', x.yield_info], ['Compatible printers', x.compat]]
+export function productFallback({ x, cat, price, related, cats, site, desc, extra = '' }) {
+  const spec = [['Brand', x.brand], ['Part number', x.part], ['SKU', x.sku], ['Technology', x.tech], ['Colour', x.color], ['Page yield', x.yield_info], ['Compatible printers', x.compat], ['Warranty', x.warranty_text]]
     .filter(([, v]) => String(v || '').trim());
   return wrap(`${navHtml(cats)}<main>${crumbs([['Home', '/'], [cat?.title || 'Shop', cat ? '/shop/' + cat.id : '/shop'], [x.name]])}
 <article><h1>${esc(x.name)}</h1>
-<p>${Number(price) > 0 ? `Price: ${taka(price)}. ${x.stock > 0 ? 'In stock.' : 'Currently out of stock.'}` : 'Price on request: call or message us for the latest price.'}</p>
+<p>${Number(price) > 0 ? `Price: ${taka(price)}. ${stockText(x)}` : 'Price on request: call or message us for the latest price.'}</p>
 ${desc ? `<section><h2>About this product</h2><p>${esc(desc)}</p></section>` : ''}
 ${spec.length ? `<section><h2>Specifications</h2><dl>${spec.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(String(v).slice(0, 400))}</dd>`).join('')}</dl></section>` : ''}
-${related.length ? `<section><h2>More ${esc(cat?.title || 'products')}</h2>${list(related.map(productLine))}</section>` : ''}</article></main>${footHtml(site)}`);
+${related.length ? `<section><h2>More ${esc(cat?.title || 'products')}</h2>${list(related.map(productLine))}</section>` : ''}${extra}</article></main>${footHtml(site)}`);
 }
 
-export function listFallback({ title, intro, trail, rows, page, pages, path, cats, site }) {
+export function listFallback({ title, intro, trail, rows, page, pages, path, cats, site, extra = '' }) {
   const nav = pages > 1 ? `<nav aria-label="Pagination">${list(pageWindow(page, pages).map(n => (n === '…' ? '…' : n === page ? `<strong>Page ${n}</strong>` : a(pageUrl(path, n), `Page ${n}`))))}</nav>` : '';
-  return wrap(`${navHtml(cats)}<main>${crumbs(trail)}<h1>${esc(title)}</h1>${intro ? `<p>${esc(intro)}</p>` : ''}${list(rows.map(productLine))}${nav}</main>${footHtml(site)}`);
+  return wrap(`${navHtml(cats)}<main>${crumbs(trail)}<h1>${esc(title)}</h1>${intro ? `<p>${esc(intro)}</p>` : ''}${list(rows.map(productLine))}${nav}${extra}</main>${footHtml(site)}`);
 }
 
 /** A page made of a title, a paragraph and optional lists of links / text (home, blog, services, about ...). */
@@ -45,6 +45,11 @@ export { a as link, pagesOf };
 export const faqBlock = faqs => {
   const rows = (faqs || []).filter(f => f && String(f.q || '').trim() && String(f.a || '').trim());
   return rows.length ? `<section><h2>Frequently asked questions</h2>${rows.map(f => `<h3>${esc(f.q)}</h3><p>${esc(f.a)}</p>`).join('')}</section>` : '';
+};
+/** Q&A from seo_meta.faq: heading plus a definition list (same text as the FAQPage JSON-LD); '' when empty. */
+export const faqDl = faqs => {
+  const rows = (faqs || []).filter(f => f && String(f.q || '').trim() && String(f.a || '').trim());
+  return rows.length ? `<section><h2>Frequently asked questions</h2><dl>${rows.map(f => `<dt>${esc(f.q)}</dt><dd>${esc(f.a)}</dd>`).join('')}</dl></section>` : '';
 };
 /** Policy headings and paragraphs. */
 export const policyBlocks = policy => (policy?.secs || []).filter(s => s.h || s.p).map(s => `<section>${s.h ? `<h2>${esc(s.h)}</h2>` : ''}${s.p ? `<p>${esc(s.p)}</p>` : ''}</section>`);

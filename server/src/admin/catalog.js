@@ -8,13 +8,16 @@ import { whereOf } from '../listing.js';
 import { SAN } from '../adminContent.js';
 import { normalizeGtin, gtinValid } from '../gtin.js';
 import { like, page } from '../adminHelpers.js';
+import { productSeoFields } from './seoValidate.js';
+import { SEO_JOIN, seoCondition, seoScoreOf } from './catalogSeoList.js';
 
 const prodOut = r => ({
   id: r.id, cat: r.category_id, brand: r.brand, name: r.name, old: r.old_price, price: r.price, img: r.img, stock: r.stock, popular: !!r.popular,
   isNew: !!r.is_new, featured: !!r.featured, active: !!r.active, tech: r.tech, color: r.color, yield: r.yield_info, part: r.part, compat: r.compat, spec: r.spec,
   description: r.description || '', gallery: parseJson(r.gallery) || [], source: r.source_url || '', edited: !!r.edited,
   metaTitle: r.meta_title || '', metaDesc: r.meta_desc || '', metaKeywords: r.meta_keywords || '',
-  warranty: !(r.warranty === 0 || r.warranty === false), gtin: r.gtin || ''
+  warranty: !(r.warranty === 0 || r.warranty === false), gtin: r.gtin || '',
+  itemCondition: r.item_condition || 'new', saleEnds: r.sale_ends ? (r.sale_ends instanceof Date ? r.sale_ends.toISOString().slice(0, 10) : String(r.sale_ends).slice(0, 10)) : '', stockStatus: r.stock_status || 'auto', warrantyText: r.warranty_text || '', noindex: !!r.noindex
 });
 const PROD_COLS = { warranty: 'warranty', metaTitle: 'meta_title', metaDesc: 'meta_desc', metaKeywords: 'meta_keywords', cat: 'category_id', brand: 'brand', name: 'name', old: 'old_price', price: 'price', img: 'img', stock: 'stock', popular: 'popular', isNew: 'is_new', featured: 'featured', active: 'active', tech: 'tech', color: 'color', yield: 'yield_info', part: 'part', compat: 'compat', spec: 'spec' };
 const BOOL = new Set(['popular', 'isNew', 'featured', 'active', 'warranty']);
@@ -35,6 +38,11 @@ function productPatch(body) {
   if ('gallery' in body) { sets.push('gallery = ?'); vals.push(JSON.stringify((Array.isArray(body.gallery) ? body.gallery : []).map(u => String(u).trim()).filter(isLocalImg).slice(0, 12))); }
   if (sets.length) sets.push('edited = 1');
   return { sets, vals };
+}
+
+/** The five SEO product fields (condition, sale end, stock status, warranty text, noindex): { sets, vals } for what was sent; 400 when invalid. */
+function seoFieldsOf(body) {
+  try { return productSeoFields(body); } catch (e) { throw fail(400, e.message); }
 }
 
 /** Reads body.gtin: undefined = not sent, null = clear, else the normalised digits (400 when malformed). */
@@ -61,27 +69,31 @@ export function mountCatalogRoutes(router, guard) {
   router.get('/products', guard('products.view'), wrap(async (req, res) => {
     const { size, offset } = page(req);
     const cond = [], params = [];
-    if (req.query.q) { cond.push('(name LIKE ? OR brand LIKE ? OR part LIKE ? OR id = ?)'); params.push(like(req.query.q), like(req.query.q), like(req.query.q), Number(req.query.q) || 0); }
-    if (req.query.cat && req.query.cat !== 'all') { cond.push('category_id = ?'); params.push(req.query.cat); }
-    if (req.query.priced === '1') cond.push('price > 0'); // products with a selling price (the New order picker: a product without one cannot be ordered)
-    if (req.query.stock === 'low') cond.push('price > 0 AND stock <= 5');
-    if (req.query.live === '0') cond.push('active = 0');
+    if (req.query.q) { cond.push('(p.name LIKE ? OR p.brand LIKE ? OR p.part LIKE ? OR p.id = ?)'); params.push(like(req.query.q), like(req.query.q), like(req.query.q), Number(req.query.q) || 0); }
+    if (req.query.cat && req.query.cat !== 'all') { cond.push('p.category_id = ?'); params.push(req.query.cat); }
+    if (req.query.priced === '1') cond.push('p.price > 0'); // products with a selling price (the New order picker: a product without one cannot be ordered)
+    if (req.query.stock === 'low') cond.push('p.price > 0 AND p.stock <= 5');
+    if (req.query.live === '0') cond.push('p.active = 0');
+    const seoCond = seoCondition(req.query.seo);
+    if (seoCond) cond.push(seoCond);
     const where = whereOf(cond);
-    const [[{ n }]] = await pool.query(`SELECT COUNT(*) n FROM products ${where}`, params);
-    const [rows] = await pool.query(`SELECT * FROM products ${where} ORDER BY id DESC LIMIT ${size} OFFSET ${offset}`, params);
+    const [[{ n }]] = await pool.query(`SELECT COUNT(*) n FROM products p ${seoCond ? SEO_JOIN : ''} ${where}`, params);
+    const [rows] = await pool.query(`SELECT p.*, sm.seo_score FROM products p ${SEO_JOIN} ${where} ORDER BY p.id DESC LIMIT ${size} OFFSET ${offset}`, params);
     const [[a]] = await pool.query(`SELECT COUNT(*) total, SUM(active = 1) live, SUM(active = 0) hidden,
       SUM(active = 1 AND price > 0 AND stock <= 0) outOfStock, SUM(active = 1 AND price > 0 AND stock BETWEEN 1 AND 5) low,
       SUM(active = 1 AND price = 0) quote, SUM(active = 1 AND (img IS NULL OR img = '')) noImage,
       COALESCE(SUM(CASE WHEN active = 1 THEN price * stock END), 0) stockValue FROM products`);
     const [[cc]] = await pool.query('SELECT COUNT(*) n FROM categories WHERE hidden = 0');
     const summary = { total: Number(a.total), live: Number(a.live), hidden: Number(a.hidden), outOfStock: Number(a.outOfStock), low: Number(a.low), quote: Number(a.quote), noImage: Number(a.noImage), stockValue: Number(a.stockValue), categories: cc.n };
-    res.json({ total: n, summary, rows: rows.map(prodOut) });
+    res.json({ total: n, summary, rows: rows.map(r => ({ ...prodOut(r), seoScore: seoScoreOf(r) })) });
   }));
 
   router.put('/products/:id', guard('products.manage'), wrap(async (req, res) => {
     const { sets, vals } = productPatch(req.body);
     const gtin = gtinOf(req.body);
     if (gtin !== undefined) { sets.push('gtin = ?'); vals.push(gtin); if (sets.length === 1) sets.push('edited = 1'); }
+    const seo = seoFieldsOf(req.body);
+    if (seo.sets.length) { if (!sets.length) sets.push('edited = 1'); sets.push(...seo.sets); vals.push(...seo.vals); }
     if (!sets.length) throw fail(400, 'Nothing to update');
     if (!(await updateById('products', sets, vals, req.params.id))) throw fail(404, 'Product not found');
     const [[p]] = await pool.query('SELECT * FROM products WHERE id = ?', [req.params.id]);
@@ -109,6 +121,7 @@ export function mountCatalogRoutes(router, guard) {
     const b = req.body;
     if (typeof b.name !== 'string' || typeof b.cat !== 'string' || typeof b.brand !== 'string' || !b.name || !b.cat || !b.brand) throw fail(400, 'Name, brand and category are required');
     const gtin = gtinOf(b);
+    const seo = seoFieldsOf(b);
     const [[{ m }]] = await pool.query('SELECT COALESCE(MAX(id), 29999) m FROM products WHERE id >= 30000');
     const id = Math.max(30000, m + 1);
     await pool.query('INSERT INTO products (id,category_id,brand,name,old_price,price,img,stock,is_new,active,tech,color,yield_info,part,compat,spec,description,gallery,edited) VALUES (?,?,?,?,?,?,?,?,1,1,?,?,?,?,?,?,?,?,1)',
@@ -116,6 +129,7 @@ export function mountCatalogRoutes(router, guard) {
     await assignSlug(pool, id);
     if ('warranty' in b) await pool.query('UPDATE products SET warranty = ? WHERE id = ?', [+!!b.warranty, id]);
     if (gtin) await pool.query('UPDATE products SET gtin = ? WHERE id = ?', [gtin, id]);
+    if (seo.sets.length) await pool.query(`UPDATE products SET ${seo.sets.join(', ')} WHERE id = ?`, [...seo.vals, id]);
     const [[p]] = await pool.query('SELECT * FROM products WHERE id = ?', [id]);
     const warn = await gtinWarning(gtin, id);
     res.json(warn ? { ...prodOut(p), gtinWarning: warn } : prodOut(p));

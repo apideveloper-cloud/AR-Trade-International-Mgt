@@ -128,7 +128,7 @@ export function policyMeta(policy) {
 export const robotsTxt = base => ['User-agent: *', 'Allow: /', 'Disallow: /admin', 'Disallow: /hub', 'Disallow: /email', 'Disallow: /field', 'Disallow: /api/', 'Disallow: /cart', 'Disallow: /checkout', 'Disallow: /account', 'Disallow: /track', 'Disallow: /success/',
   'Disallow: /wishlist', 'Disallow: /compare', 'Disallow: /login', 'Disallow: /*?sort=', 'Disallow: /*?q=', 'Disallow: /*?new=', '',
   'Allow: /api/uploads/', '', `Sitemap: ${base}/sitemap.xml`, ''].join('\n');
-export const CHILD_SITEMAPS = ['/sitemap-products.xml', '/sitemap-categories.xml', '/sitemap-blog.xml', '/sitemap-pages.xml'];
+export const CHILD_SITEMAPS = ['/sitemap-products.xml', '/sitemap-categories.xml', '/sitemap-blog.xml', '/sitemap-pages.xml', '/sitemap-brands.xml'];
 const isoDay = d => (typeof d === 'string' && /^\d{4}-\d{2}-\d{2}/.test(d) ? d.slice(0, 10) : '');
 /** One <url>; lastmod only when a real YYYY-MM-DD is given. */
 export const urlEntry = (loc, pri, extra = '', lm = '') => `<url><loc>${esc(loc)}</loc>${isoDay(lm) ? `<lastmod>${isoDay(lm)}</lastmod>` : ''}<priority>${pri}</priority>${extra}</url>`;
@@ -141,3 +141,56 @@ export const latestDay = ds => ds.map(isoDay).filter(Boolean).sort().pop() || ''
 // ---------- home hero ----------
 /** URL of the first enabled image slide of the home hero (content.slides), or undefined. */
 export const heroImage = slides => (Array.isArray(slides) ? slides : []).find(s => s && s.type === 'image' && s.on !== false && s.img)?.img;
+
+// ---------- phase 1: robots from settings, verification tags ----------
+/**
+ * robots.txt body. robots = settings.robots ({customTxt, noindexSearch, noindexFilters}); validate = validateRobotsTxt.
+ * A custom text that validates is served as written (a Sitemap line is added when missing); otherwise the generated text is used.
+ * noindexSearch (default true) controls the ?q= / ?new= lines, noindexFilters (default true) the ?sort= line.
+ */
+export function robotsFor(base, robots, validate) {
+  const r = robots || {};
+  const custom = typeof r.customTxt === 'string' ? r.customTxt.trim() : '';
+  if (custom && typeof validate === 'function') {
+    let ok = false;
+    try { const v = validate(custom); ok = v === true || v?.ok === true; } catch { ok = false; }
+    if (ok) return custom + (/^\s*sitemap\s*:/im.test(custom) ? '' : `\n\nSitemap: ${base}/sitemap.xml`) + '\n';
+  }
+  let out = robotsTxt(base);
+  if (r.noindexSearch === false) out = out.replace('Disallow: /*?q=\n', '').replace('Disallow: /*?new=\n', '');
+  if (r.noindexFilters === false) out = out.replace('Disallow: /*?sort=\n', '');
+  return out;
+}
+const TOKEN = /^[A-Za-z0-9_\-.]{6,128}$/;
+/** <meta> tags for search-console ownership (settings.verification.google / .bing); only well-formed tokens. */
+export function verifyTags(v) {
+  const g = String(v?.google ?? '').trim(), b = String(v?.bing ?? '').trim();
+  return [TOKEN.test(g) ? `<meta name="google-site-verification" content="${esc(g)}">` : '', TOKEN.test(b) ? `<meta name="msvalidate.01" content="${esc(b)}">` : ''].filter(Boolean);
+}
+
+/** Product JSON-LD `image`: a plain absolute URL, or an ImageObject with a caption when the image has alt text. items: [{ path, alt }]. */
+export const imageLd = (base, items) => items.filter(i => i && i.path).map(i => {
+  const url = /^https?:\/\//.test(i.path) ? i.path : base + i.path, alt = String(i.alt || '').trim();
+  return alt ? { '@type': 'ImageObject', url, caption: alt } : url;
+});
+/** Sitemap <image:image>; caption and title only when an alt text exists. */
+export const imageEntry = (loc, alt) => { const a = String(alt || '').trim(); return `<image:image><image:loc>${esc(loc)}</image:loc>${a ? `<image:caption>${esc(a)}</image:caption><image:title>${esc(a)}</image:title>` : ''}</image:image>`; };
+
+// ---------- phase 5: IndexNow key file, analytics ----------
+/** The IndexNow key (32 lower-case hex characters) from the SEO settings; '' when missing or malformed. */
+export const indexNowKeyOf = settings => { const k = String(settings?.indexNow?.key ?? '').trim(); return /^[a-f0-9]{32}$/.test(k) ? k : ''; };
+/** Pages that never get analytics (the same list as seo.js PRIVATE, plus search-engine-only paths). */
+export const NO_ANALYTICS = /^\/(admin|hub|email|field|account|cart|checkout|track|success|wishlist|compare|login|reset|prefs)(\/|$)/;
+/**
+ * One inline <script> that loads gtag.js and/or the GTM container 2 seconds after window load (so it never competes with LCP).
+ * verification = settings.verification; only well-formed ids are used. '' when there is nothing valid to load.
+ */
+export function analyticsSnippet(verification) {
+  const ga = String(verification?.ga4 ?? '').trim(), gtm = String(verification?.gtm ?? '').trim();
+  const ids = { ga: /^G-[A-Z0-9]{4,12}$/.test(ga) ? ga : '', gtm: /^GTM-[A-Z0-9]{4,10}$/.test(gtm) ? gtm : '' };
+  if (!ids.ga && !ids.gtm) return '';
+  const js = [];
+  if (ids.ga) js.push(`window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag('js',new Date());gtag('config',${JSON.stringify(ids.ga)},{anonymize_ip:true});var a=document.createElement('script');a.async=true;a.src='https://www.googletagmanager.com/gtag/js?id='+encodeURIComponent(${JSON.stringify(ids.ga)});document.head.appendChild(a);`);
+  if (ids.gtm) js.push(`window.dataLayer=window.dataLayer||[];dataLayer.push({'gtm.start':Date.now(),event:'gtm.js'});var g=document.createElement('script');g.async=true;g.src='https://www.googletagmanager.com/gtm.js?id='+encodeURIComponent(${JSON.stringify(ids.gtm)});document.head.appendChild(g);`);
+  return `<script>window.addEventListener('load',function(){setTimeout(function(){${js.join('')}},2000)});</script>`;
+}

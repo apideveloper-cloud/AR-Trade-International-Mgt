@@ -17,6 +17,7 @@ const Reset = page(() => import('./pages/Reset.jsx'));
 const Blog = page(() => import('./pages/Blog.jsx'), 'Blog');
 const BlogPost = page(() => import('./pages/Blog.jsx'), 'BlogPost');
 const Shop = page(() => import('./pages/Shop.jsx'));
+const BrandPage = page(() => import('./pages/brand/BrandPage.jsx'));
 const Product = page(() => import('./pages/Product.jsx'));
 const Cart = page(() => import('./pages/Cart.jsx'), 'Cart');
 const Checkout = page(() => import('./pages/Cart.jsx'), 'Checkout');
@@ -86,7 +87,8 @@ export default function App() {
           <Route path="/contact" element={<Contact />} />
           <Route path="/faq" element={<Faq />} />
           <Route path="/policy/:key" element={<Policy />} />
-          <Route path="*" element={<NotFound />} />
+          <Route path="/brand/:slug" element={<BrandPage />} />
+          <Route path="*"element={<NotFound />} />
         </Routes>
         </Suspense>
       </main>

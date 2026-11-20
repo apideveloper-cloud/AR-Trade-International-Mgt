@@ -1,0 +1,29 @@
+.adau-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 8px; }
+.adau-block { border: 1px solid #e3e8f0; border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.adau-bh { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.adau-row { display: flex; gap: 10px; font-size: 13px; align-items: baseline; flex-wrap: wrap; }
+.adau-k { color: #64748b; min-width: 110px; font-size: 12px; text-transform: uppercase; letter-spacing: .03em; }
+.adau-v { min-width: 0; overflow-wrap: anywhere; }
+.adau-inl { display: inline-flex; gap: 10px; align-items: center; }
+.adau-pill { font-size: 11px; font-weight: 600; padding: 2px 9px; border-radius: 99px; white-space: nowrap; }
+.adau-pill-ok { background: #dcfce7; color: #166534; }
+.adau-pill-warn { background: #fef3c7; color: #92400e; }
+.adau-pill-off { background: #e2e8f0; color: #475569; }
+.adau-why { font-size: 13px; color: #92400e; background: #fffbeb; border-radius: 8px; padding: 6px 10px; }
+.adau-acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.adau-msg { font-size: 13px; border-radius: 8px; padding: 6px 10px; overflow-wrap: anywhere; }
+.adau-msg-ok { background: #ecfdf5; color: #166534; }
+.adau-msg-err { background: #fef2f2; color: #991b1b; }
+.adau-muted { color: #64748b; font-size: 13px; }
+.adau-counts { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; margin: 0; padding: 0; }
+.adau-counts li { display: flex; flex-direction: column; background: #f1f5f9; border-radius: 8px; padding: 4px 10px; font-size: 11px; color: #64748b; }
+.adau-counts b { font-size: 15px; color: #0f172a; }
+.adau-skip { margin: 0; padding-left: 18px; font-size: 13px; }
+.adau-scroll { overflow-x: auto; }
+.adau-tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.adau-tbl th, .adau-tbl td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #e8edf5; vertical-align: top; }
+.adau-tbl td:nth-child(2) { min-width: 180px; }
+@media (max-width: 760px) {
+  .adau-grid { grid-template-columns: minmax(0, 1fr); }
+  .adau-k { min-width: 0; width: 100%; }
+}

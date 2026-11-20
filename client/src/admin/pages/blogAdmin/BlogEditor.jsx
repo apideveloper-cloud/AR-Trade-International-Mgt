@@ -4,6 +4,8 @@ import { Pill } from '../../ui.jsx';
 import { ymd } from '../../ListFilter.jsx';
 import { SeoPanel } from '../../SeoPanel.jsx';
 import { StackField as Field } from '../../components/StackField.jsx';
+import SeoItemEditor from '../../seoItem/SeoItemEditor.jsx';
+import '../seo/brands.css';
 import { RichToolbar } from './RichToolbar.jsx';
 import { BLOG_TOOLS } from './richTools.js';
 import { useRichEditor } from './useRichEditor.js';
@@ -80,6 +82,10 @@ export function BlogEditor({ id, cats, onDone }) {
         <div className="a-card">
           <SeoPanel value={f} onChange={patch} path={'blog/' + (f.slug || '…')} title={f.title} summary={f.excerpt} category={f.category} />
         </div>
+        <details className="a-card adbr-adv">
+          <summary><b>Advanced SEO</b></summary>
+          {id && f.slug ? <SeoItemEditor type="blog" id={f.slug} mode="advanced" /> : <small>Save first to edit advanced SEO</small>}
+        </details>
         <div className="a-card">
           <h3>Details</h3>
           <Field label="Category"><input className="a-input" list="blog-cats" value={f.category} onChange={e => set('category', e.target.value)} placeholder="e.g. Toner" /><datalist id="blog-cats">{cats.map(c => <option key={c} value={c} />)}</datalist></Field>

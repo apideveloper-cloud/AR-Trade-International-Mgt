@@ -25,7 +25,8 @@ export function mountCatalogRoutes(app) {
     const [imgs] = await pool.query('SELECT path, alt FROM product_images WHERE product_id = ? ORDER BY position', [r.id]);
     const [specs] = await pool.query('SELECT name, value FROM product_specs WHERE product_id = ? ORDER BY position', [r.id]);
     res.json({ ...productOut(r), description: r.description || '', short: r.short_desc || '', sku: r.sku || '', tags: parseJson(r.tags) || [], specs, ...seoOut(r),
-      gallery: imgs.length ? imgs.map(x => x.path) : (parseJson(r.gallery) || []) });
+      gallery: imgs.length ? imgs.map(x => x.path) : (parseJson(r.gallery) || []),
+      galleryAlt: imgs.length ? imgs.map(x => x.alt || '') : (parseJson(r.gallery) || []).map(() => '') });
   }));
 
   // The whole catalogue every page needs at start. It is built once and kept (as JSON and as gzip) until something is written or 30 seconds

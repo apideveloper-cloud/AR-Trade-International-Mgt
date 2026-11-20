@@ -4,7 +4,7 @@ import { Modal } from '../../ui.jsx';
 import { BLANK_PRODUCT, parseSpecs, specsToText } from './productDefaults.js';
 import { useProductGallery } from './useProductGallery.js';
 import { ProductMedia } from './ProductMedia.jsx';
-import { ProductSeoCard } from './ProductSeoCard.jsx';
+import SeoItemEditor from '../../seoItem/SeoItemEditor.jsx';
 import './productForm.css';
 
 /** A titled card of the product form. */
@@ -89,12 +89,12 @@ export function Editor({ product, cats, onClose, onSaved, purchase = false, init
           <Card title={<>Description <small>basic HTML allowed · shown on the product page</small></>}>
             <textarea className="a-input pf-desc" rows={8} value={f.description || ''} onChange={on('description')} placeholder="<p>…</p>" />
           </Card>
-          <div className="pf-two">
-            <Card title={<>Specifications <small>one per line: Name: value</small></>}>
-              <textarea className="a-input pf-specs" rows={9} value={specText} onChange={e => setSpecText(e.target.value)} placeholder={'Page yield: 1,500 pages\nColour: Black'} />
-            </Card>
-            <ProductSeoCard f={f} setF={setF} on={on} />
-          </div>
+          <Card title={<>Specifications <small>one per line: Name: value</small></>}>
+            <textarea className="a-input pf-specs" rows={9} value={specText} onChange={e => setSpecText(e.target.value)} placeholder={'Page yield: 1,500 pages\nColour: Black'} />
+          </Card>
+          {!purchase && <Card title="SEO · Google listing">
+            {isNew ? <small className="pf-hint">Save the product first to edit its SEO.</small> : <SeoItemEditor type="product" id={product.id} mode="full" />}
+          </Card>}
         </div>
       </div>
     </Modal>
