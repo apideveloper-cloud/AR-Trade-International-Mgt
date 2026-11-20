@@ -13,7 +13,7 @@ export function mountGrowthPriceRoutes(router, guard) {
 
   router.get('/growth/prices', R, wrap(async (req, res) => { res.json(await listPrices(req.query)); }));
 
-  router.get('/growth/prices/health', R, wrap(async (req, res) => { const h = priceHistoryHealth(); res.json({ trigger: h.trigger, error: h.error }); }));
+  router.get('/growth/prices/health', R, wrap(async (req, res) => { const h = priceHistoryHealth(); res.json({ trigger: h.trigger, mode: h.trigger === false ? 'snapshot' : h.trigger ? 'trigger' : 'unknown', error: h.error }); }));
 
   router.get('/growth/prices/csv', R, wrap(async (req, res) => {
     res.set({ 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="prices-${new Date().toISOString().slice(0, 10)}.csv"`, 'Cache-Control': 'no-store' });
@@ -57,6 +57,6 @@ export function mountGrowthPriceRoutes(router, guard) {
     if (!Number.isInteger(id) || id <= 0) throw fail(400, 'Bad product id');
     const [[p]] = await pool.query('SELECT id FROM products WHERE id = ?', [id]);
     if (!p) throw fail(404, 'Product not found');
-    res.json({ rows: await historyOf(id, req.query.limit), health: { trigger: priceHistoryHealth().trigger } });
+    res.json({ rows: await historyOf(id, req.query.limit), health: { trigger: priceHistoryHealth().trigger, mode: priceHistoryHealth().trigger === false ? 'snapshot' : 'trigger' } });
   }));
 }

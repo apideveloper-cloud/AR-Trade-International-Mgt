@@ -28,10 +28,36 @@ export async function ensurePriceHistory(db = pool) {
     if (!r.length) await db.query(CREATE_TRIGGER_SQL);
     health = { trigger: true, error: '' };
   } catch (e) {
-    health = { trigger: false, error: String(e.message || e).slice(0, 300) };
+    health = { trigger: false, error: String(e.message || e).slice(0, 300) }; // the snapshot job (below) records history instead
     if (!warned) { warned = true; console.warn('Price history trigger was not created (history is not recording):', health.error); }
   }
   return priceHistoryHealth();
+}
+
+// ---------- fallback when the trigger cannot be created (the database user has no SUPER while binary logging is on) ----------
+export const SNAPSHOT_SQL = `CREATE TABLE IF NOT EXISTS product_price_snapshot (
+  product_id INT NOT NULL PRIMARY KEY, price INT NULL, old_price INT NULL, sale_ends DATE NULL)`;
+const dayKey = d => (d == null ? '' : d instanceof Date ? localYmd(d) : String(d).slice(0, 10));
+/** Compares every product with the last snapshot, writes a history row for each changed price / old price / sale end and refreshes the snapshot.
+ *  The first run only seeds the snapshot. Does nothing when the trigger exists (it already records). Returns the number of changes. */
+export async function snapshotPrices(db = pool) {
+  if (health.trigger === true) return { skipped: 'trigger', changes: 0 };
+  await db.query(SNAPSHOT_SQL);
+  const [[seeded]] = await db.query('SELECT COUNT(*) n FROM product_price_snapshot');
+  const [rows] = await db.query('SELECT p.id, p.price, p.old_price, p.sale_ends, s.product_id seen, s.price s_price, s.old_price s_old, s.sale_ends s_ends FROM products p LEFT JOIN product_price_snapshot s ON s.product_id = p.id');
+  const changed = [], fresh = [];
+  for (const r of rows) {
+    if (!r.seen) { fresh.push(r); continue; }
+    if (r.price !== r.s_price || r.old_price !== r.s_old || dayKey(r.sale_ends) !== dayKey(r.s_ends)) changed.push(r);
+  }
+  if (seeded.n > 0) for (const r of changed) {
+    await db.query('INSERT INTO product_price_history (product_id, price_old, price_new, old_old, old_new, sale_ends_old, sale_ends_new) VALUES (?,?,?,?,?,?,?)',
+      [r.id, r.s_price, r.price, r.s_old, r.old_price, r.s_ends || null, r.sale_ends || null]);
+  }
+  for (const r of [...fresh, ...changed]) {
+    await db.query('INSERT INTO product_price_snapshot (product_id, price, old_price, sale_ends) VALUES (?,?,?,?) ON DUPLICATE KEY UPDATE price = VALUES(price), old_price = VALUES(old_price), sale_ends = VALUES(sale_ends)', [r.id, r.price, r.old_price, r.sale_ends || null]);
+  }
+  return { changes: seeded.n > 0 ? changed.length : 0, seeded: seeded.n === 0 ? fresh.length : 0 };
 }
 
 const ymd = d => (d == null ? null : d instanceof Date ? localYmd(d) : String(d).slice(0, 10));

@@ -18,7 +18,7 @@ export default function HistoryModal({ product, onClose }) {
       <div className="adgp-dlg" role="dialog" aria-modal="true" aria-label="Price history" onClick={e => e.stopPropagation()}>
         <div className="adgr-hd"><h3>Price history: {product.name}</h3><button type="button" className="a-btn ghost sm" onClick={onClose}>Close</button></div>
         <p className="adgr-dim">Who changed what and when.</p>
-        {q.data?.health?.trigger === false && <div className="adgr-warn">Price history is not recording: ask your developer.</div>}
+        {q.data?.health?.trigger === false && (q.data.health.mode === 'snapshot' ? <div className="adgr-hint">Price changes are recorded every 10 minutes, so very quick changes may appear as one.</div> : <div className="adgr-warn">Price history is not recording: ask your developer.</div>)}
         <Msg m={q.error ? { ok: false, text: q.error } : null} />
         {q.loading && <span className="spin" />}
         <div className="adgr-scroll">

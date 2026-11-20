@@ -25,7 +25,7 @@ export default function HealthStrip({ tick, code, setCode }) {
   (d?.rows || []).forEach(r => { labels[r.code] = r.label; });
   return (
     <>
-      {h.data && h.data.trigger === false && <div className="adgr-warn" role="alert">Warning: Price history is not recording: ask your developer.</div>}
+      {h.data && h.data.trigger === false && h.data.mode !== 'snapshot' && <div className="adgr-warn" role="alert">Warning: Price history is not recording: ask your developer.</div>}
       <Section id="adgp-health" title="Price and stock health" what="This checks every product for missing SKUs, ended sales, zero prices and stock problems, so customers always see the right price."
         right={<button type="button" className="a-btn sm" onClick={run} disabled={busy}>{busy ? 'Working…' : 'Run check now'}</button>}>
         {q.error && <Msg m={{ ok: false, text: q.error }} />}
